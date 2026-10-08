@@ -1,18 +1,116 @@
 # from dubGui.serialTerminalShell import Terminal
+import datetime
 import os
+import pathlib
 import sys
+import tempfile
+import webbrowser
 import json
-import time
-from tkinter import *
+# from tkinter import *
+from tkinter import *  # noqa: F401, F403
+from tkinter import *  # noqa: F401, F403
+from tkinter import (
+    LabelFrame, IntVar, StringVar, Checkbutton, Button, Label, 
+    Radiobutton, Entry, Menu)
 from tkinter import ttk
 from tkinter import scrolledtext
+# Use the dubLibs next to this project, not another copy found on PYTHONPATH
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dubLibs import boardcom
+from dubLibs import cfgfile
+from dubLibs import run_cmd_script
+from dubLibs import run_py_script
+from dubLibs import tools
+from dubLibs.version import VERSION as APP_VERSION
 from dubLibs import dubrovnik  # instead of "from dubLibs import Dubrovnik as du"
-from tkinter.filedialog import askopenfilename
-from tkinter.messagebox import showerror, showwarning, showinfo
+from tkinter.filedialog import askopenfilename, asksaveasfilename
+from tkinter.messagebox import showerror, showwarning, showinfo, askyesno
+from tkinter import simpledialog
+# import sys
+# import time
 
 PROMPT = '>>> '
 CLEAR_CMD = 'clear'
+
+
+def toolsFolder():
+    """Folder with the Tools menu scripts: inside the PyInstaller bundle when
+    frozen, otherwise the project's tools folder"""
+    base = getattr(sys, '_MEIPASS',
+                   os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    return os.path.join(base, 'tools')
+
+
+def defaultScriptDir():
+    """Folder where the Run Script dialog starts the first time: the project's
+    dubScripts folder if it exists, else the user's Documents folder"""
+    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    for folder in (os.path.join(here, 'dubScripts'),
+                   os.path.join(os.path.expanduser('~'), 'Documents')):
+        if os.path.isdir(folder):
+            return folder
+    return os.getcwd()
+
+
+def helpFilePath():
+    """Location of the HTML help file: inside the PyInstaller bundle when frozen,
+    otherwise in the project's help folder"""
+    base = getattr(sys, '_MEIPASS',
+                   os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    return os.path.join(base, 'help', 'dubrovnik_help.html')
+
+
+def showHelp(event=None):
+    """Help > Help (F1): open the user guide in the default web browser"""
+    path = helpFilePath()
+    if not os.path.isfile(path):
+        showerror('Help', f'The help file was not found: {path}')
+        return
+    # The help file holds @VERSION@ where the version number belongs. Fill it
+    # in (from dubLibs/version.py) in a temporary copy that the browser opens.
+    try:
+        with open(path, encoding='utf-8') as fh:
+            text = fh.read().replace('@VERSION@', APP_VERSION)
+        shown = os.path.join(tempfile.gettempdir(), 'dubrovnik_help.html')
+        with open(shown, 'w', encoding='utf-8') as fh:
+            fh.write(text)
+        path = shown
+    except OSError:
+        pass                        # fall back to the original file
+    webbrowser.open(pathlib.Path(path).as_uri())
+PANEL_BORDER = 2
+
+# Default value of every remembered setting (also the fallback for bad values)
+CFG_DEFAULTS = dict(
+    autoConnect=0, lastUsedPort='',
+    eraseBlkSize='4', eraseStartAddr='0', eraseNumBlocks='1',
+    progPattern='cafe0000', progIncrement='1', progStartAddr='0',
+    progLength='100',
+    readSpiMode='SPI', readStartAddr='0', readLength='100',
+    terminalTheme='light', showPanels=True,
+    displayMode='Binary (b)', scriptFolder='')
+
+# Terminal colour themes: background, text and selection colours
+TERM_THEMES = {
+    'dark': dict(bg='#1B1F24', fg='#D6DBE1', select='#34506E'),
+    'light': dict(bg='#FFFFFF', fg='#000000', select='#B5D5FF'),
+}
+
+
+def parseField(name, text, base=16, signed=False):
+    """Validates an entry-box string and returns it as an int.
+    Raises ValueError with a user-readable message if it is empty or invalid."""
+    text = text.strip()
+    if text == '':
+        raise ValueError(f'"{name}" is empty. Enter a value.')
+    try:
+        value = int(text, base)
+    except ValueError:
+        kind = 'hexadecimal' if base == 16 else 'decimal'
+        raise ValueError(f'"{name}" is not a valid {kind} number: {text}')
+    if value < 0 and not signed:
+        raise ValueError(f'"{name}" must not be negative: {text}')
+    return value
 
 
 class SerComFrame(LabelFrame):
@@ -29,6 +127,13 @@ class SerComFrame(LabelFrame):
         self.chk_var = IntVar()
         self.autoConnect = 0
         self.serParams = ''
+        self.winSize = None   # (width, height) of the window in pixels
+        self.scriptRunning = False   # True while File > Run Script is running
+        self.scriptDir = ''          # folder of the last script that was run
+        self.winPos = None    # (x, y) of the window's top-left corner
+        self.termTheme = 'light'   # Terminal colours: a key of TERM_THEMES
+        self.dispMode = 'Binary (b)'   # Read panel display mode (a key of dispmodeOptions)
+        self.showPanels = True     # Erase, Program and Read panels shown/hidden
 
         # Check if %AppData%\Dubrovnik folder exists. If not create one
         appData = os.getenv('APPDATA') or ''
@@ -72,6 +177,8 @@ class SerComFrame(LabelFrame):
             self.combo.set(self.portList[0])
 
     def connectPort(self, defaultPort=None, checkIsFlashPresent=True):
+        if self.scriptBusy():
+            return
         if self.portStatus == 'disconnected':
             if defaultPort:
                 self.selPort = defaultPort         # updates class variable as well
@@ -105,6 +212,14 @@ class SerComFrame(LabelFrame):
         # print(f"Port: {selPort} disconnected")
         stsBarComm.config(text='No COM port found!')
 
+    def scriptBusy(self):
+        """True (with a message) while a script is running: the panels, the
+        connection button and the Terminal command line are blocked meanwhile"""
+        if self.scriptRunning:
+            showinfo('Script', 'A script is running.\nPress Esc or choose '
+                     'File > Stop Script to stop it.')
+        return self.scriptRunning
+
     def checkConnection(self):
         if self.portStatus == 'disconnected':
             showerror('Dubrovnik Dashboard Error',
@@ -119,11 +234,8 @@ class SerComFrame(LabelFrame):
         self.comStopbits = self.portHandle.stopbits
         self.comXonXoff = self.portHandle.xonxoff
 
-    def loadDefaultSettings(self):
-        self.chk_var.set(0)
-        self.autoConnect = 0
-        self.selPort = ''
-        self.lastUsedPort = ''
+    def loadDefaultParams(self):
+        """Resets the entry boxes of the Erase, Program and Read panels"""
         erase.blockSize.set(erase.blockSizes[0])
         erase.startAddr.set('0')
         erase.numBlocks.set('1')
@@ -135,46 +247,93 @@ class SerComFrame(LabelFrame):
         read.startAddr.set('0')
         read.readLength.set('100')
 
-    def saveConfig(self):
-        cfg = {'autoConnect': self.chk_var.get(),
-               'lastUsedPort': self.selPort,
-               'eraseBlkSize': str(erase.blockSize.get()),
-               'eraseStartAddr': str(erase.startAddr.get()),
-               'eraseNumBlocks': str(erase.numBlocks.get()),
-               'progPattern': program.pattern.get(),
-               'progIncrement': program.increment.get(),
-               'progStartAddr': program.start_addr.get(),
-               'progLength': program.length.get(),
-               'readSpiMode': read.spiMode.get(),
-               'readStartAddr': read.startAddr.get(),
-               'readLength': read.readLength.get()
-               }
-        cfgFile = os.path.join(self.dubrovnikConfigPath, 'dubrovnik.cfg')
-        with open(cfgFile, 'w') as fh:
-            json.dump(cfg, fh, indent=3)
+    def loadDefaultSettings(self):
+        """Resets everything: connection settings and the entry boxes"""
+        self.chk_var.set(0)
+        self.autoConnect = 0
+        self.selPort = ''
+        self.lastUsedPort = ''
+        self.loadDefaultParams()
 
-    def loadConfig(self):
+    def saveConfig(self, params=False):
+        """Saves the settings that are remembered automatically (connection,
+        window, ...). The entry-box values of the Erase, Program and Read
+        panels are saved only when params=True (File > Parameters > Save);
+        otherwise the values already stored in the file are kept."""
         cfgFile = os.path.join(self.dubrovnikConfigPath, 'dubrovnik.cfg')
-        try:
-            with open(cfgFile, 'r') as fh:
-                cfg = json.load(fh)
-            self.autoConnect = cfg['autoConnect']
-            self.chk_var.set(self.autoConnect)
-            self.selPort = cfg['lastUsedPort']
-            self.lastUsedPort = self.selPort
-            erase.blockSize.set(cfg['eraseBlkSize'])
-            erase.startAddr.set(cfg['eraseStartAddr'])
-            erase.numBlocks.set(cfg['eraseNumBlocks'])
-            program.pattern.set(cfg['progPattern'])
-            program.increment.set(cfg['progIncrement'])
-            program.start_addr.set(cfg['progStartAddr'])
-            program.length.set(cfg['progLength'])
-            read.spiMode.set(cfg['readSpiMode'])
-            read.startAddr.set(cfg['readStartAddr'])
-            read.readLength.set(cfg['readLength'])
-        except FileNotFoundError:
+        # Start from the existing file: it keeps the stored values and any
+        # settings written by other apps (an unreadable file is replaced).
+        cfg, _ = cfgfile.read_json(cfgFile)
+        cfg.update({'autoConnect': self.chk_var.get(),
+                    'lastUsedPort': self.selPort,
+                    'terminalTheme': self.termTheme,
+                    'showPanels': self.showPanels,
+                    'displayMode': self.dispMode,
+                    'scriptFolder': self.scriptDir})
+        # own keys: the Workbench stores its size in different (scaled) units
+        if self.winSize:
+            cfg['mainWindowWidth'], cfg['mainWindowHeight'] = self.winSize
+        if self.winPos:
+            cfg['mainWindowX'], cfg['mainWindowY'] = self.winPos
+        if params:
+            cfg.update({'eraseBlkSize': str(erase.blockSize.get()),
+                        'eraseStartAddr': str(erase.startAddr.get()),
+                        'eraseNumBlocks': str(erase.numBlocks.get()),
+                        'progPattern': program.pattern.get(),
+                        'progIncrement': program.increment.get(),
+                        'progStartAddr': program.start_addr.get(),
+                        'progLength': program.length.get(),
+                        'readSpiMode': read.spiMode.get(),
+                        'readStartAddr': read.startAddr.get(),
+                        'readLength': read.readLength.get()})
+        # the Workbench now has its own file; drop its old entries
+        for key in ('windowWidth', 'windowHeight', 'windowX', 'windowY',
+                    'appearance'):
+            cfg.pop(key, None)
+        cfgfile.write_json(cfgFile, cfg)
+
+    def loadConfig(self, prefs=True, params=True):
+        """Loads the settings file: the remembered settings (prefs) and/or the
+        stored entry-box values (params). A missing or damaged file, or a bad
+        value in it, falls back to defaults; this never stops the app."""
+        cfgFile = os.path.join(self.dubrovnikConfigPath, 'dubrovnik.cfg')
+        cfg, status = cfgfile.read_json(cfgFile)
+        if status != 'ok':          # first run, or unreadable (kept as .bad)
             self.loadDefaultSettings()
-            self.saveConfig()
+            self.saveConfig(params=True)
+            return
+        v = cfgfile.clean(cfg, CFG_DEFAULTS)
+        for key, allowed in (('eraseBlkSize', erase.blockSizes),
+                             ('readSpiMode', read.spiModes),
+                             ('displayMode', tuple(read.dispmodeOptions)),
+                             ('terminalTheme', tuple(TERM_THEMES))):
+            if v[key] not in allowed:
+                v[key] = CFG_DEFAULTS[key]
+        if prefs:
+            self.autoConnect = v['autoConnect']
+            self.chk_var.set(self.autoConnect)
+            self.selPort = v['lastUsedPort']
+            self.lastUsedPort = self.selPort
+            self.termTheme = v['terminalTheme']
+            self.showPanels = v['showPanels']
+            self.dispMode = v['displayMode']
+            read.applyDispMode(self.dispMode)
+            self.scriptDir = v['scriptFolder'] if os.path.isdir(v['scriptFolder']) else ''
+            self.winSize = cfgfile.int_pair(cfg, 'mainWindowWidth',
+                                            'mainWindowHeight', 200, 20000)
+            self.winPos = cfgfile.int_pair(cfg, 'mainWindowX', 'mainWindowY',
+                                           -32000, 32000)
+        if params:
+            erase.blockSize.set(v['eraseBlkSize'])
+            erase.startAddr.set(v['eraseStartAddr'])
+            erase.numBlocks.set(v['eraseNumBlocks'])
+            program.pattern.set(v['progPattern'])
+            program.increment.set(v['progIncrement'])
+            program.start_addr.set(v['progStartAddr'])
+            program.length.set(v['progLength'])
+            read.spiMode.set(v['readSpiMode'])
+            read.startAddr.set(v['readStartAddr'])
+            read.readLength.set(v['readLength'])
 
     def testSerComm(self):
         serParams = '%s, baud=%d, bytes=%1d,\nparity=%s, stop=%1d, protocol=%s' \
@@ -191,7 +350,7 @@ class ProgramFrame(LabelFrame):
     progData = []
 
     def __init__(self, parent=None, DEBUG=False):
-        LabelFrame.__init__(self, parent, text='Program', padx=5, pady=5)
+        LabelFrame.__init__(self, parent, text='Program', padx=5, pady=10)
         # self.pack(side=TOP, anchor=NW, padx=10, pady=10)
         self.DEBUG = DEBUG
         self.start_addr = StringVar()
@@ -241,13 +400,14 @@ class ProgramFrame(LabelFrame):
 
         self.btn_openFile = Button(
             self, text='Open', width=10, command=self.openFile, state=DISABLED)
-        self.btn_openFile.grid(row=5, column=0, padx=10, pady=10)
+        self.btn_openFile.grid(row=5, column=0, padx=10, sticky=S, pady=(2, 10))
         self.btn_progFile = Button(
             self, text='Program', width=10, command=self.program)
-        self.btn_progFile.grid(row=5, column=1, padx=10, pady=10)
+        self.btn_progFile.grid(row=5, column=1, padx=10, sticky=S, pady=(2, 10))
+        self.grid_rowconfigure(5, weight=1)    # button row sits at the panel bottom
         self.btn_progVer = Button(self, text='Prog/Verify',
                                   width=10, command=self.progVerify, state=DISABLED)
-        self.btn_progVer.grid(row=5, column=2, padx=10, pady=10)
+        self.btn_progVer.grid(row=5, column=2, padx=10, sticky=S, pady=(2, 10))
 
     def get_states(self):
         global startAddr
@@ -255,11 +415,15 @@ class ProgramFrame(LabelFrame):
         global endAddr
         global pattn
         global incr
-        startAddr = int(self.start_addr.get(), 16)
-        dataLen = int(self.length.get(), 16)
+        s_addr = parseField('Start Address', self.start_addr.get())
+        d_len = parseField('Length', self.length.get())
+        if self.progModeVar.get() == 'pattern':
+            parseField('Pattern', self.pattern.get())
+            parseField('Increment', self.increment.get(), signed=True)
+        startAddr, dataLen = s_addr, d_len
         endAddr = startAddr + dataLen
-        pattn = self.pattern.get()
-        incr = self.increment.get()
+        pattn = self.pattern.get().strip()
+        incr = self.increment.get().strip()
 
     def grayOutEntry(self):
         if self.progModeVar.get() == 'file':
@@ -274,12 +438,15 @@ class ProgramFrame(LabelFrame):
             self.btn_openFile.config(state=DISABLED)
 
     def program(self):
+        if serCom.scriptBusy():
+            return
         serCom.checkConnection()  # check if board is connected
-        self.get_states()
+        try:
+            self.get_states()
+        except ValueError as e:
+            showerror('Program', str(e))
+            return
         if self.progModeVar.get() == 'pattern':
-            print(
-                f'startAddr: {startAddr:X}, dataLen: {dataLen:x}, pattn: {pattn}, incr: {incr}')
-            print('Programming...')
             t_prog = du.page_program(
                 self.comm, startAddr, dataLen, pattn, incr)
             term.tprint(du.textToDisplay[:-1])
@@ -292,8 +459,6 @@ class ProgramFrame(LabelFrame):
             # term.tprint('Programming...\n')
             t_prog = du.data_program(self.comm, self.progData, startAddr)
             term.tprint(du.textToDisplay[:-1])
-        prog_time = du.time_conv_from_usec(t_prog)
-        print(f'DONE. Effective programming time: {prog_time}')
 
     def progVerify(self):
         pass
@@ -301,13 +466,19 @@ class ProgramFrame(LabelFrame):
     def openFile(self):
         filename = askopenfilename(title='Select File to Program', initialdir=os.getcwd(
         ), filetypes=(('All files', '*.*'), ('Binary files', '*.bin'), ('Hex files', '*.hex')))
-        print(filename)
-        fnameParts = os.path.splitext(filename)
-        extension = fnameParts[-1]
-        if extension.lower() == '.bin':
+        if not filename:             # dialog cancelled
+            return False
+        extension = os.path.splitext(filename)[-1]
+        if extension.lower() != '.bin':
+            showerror('Open', 'Only .bin files are supported at the moment.')
+            return False
+        try:
             with open(filename, 'rb') as f:
-                # self.progData = bytes(f.read(), 'utf-8')
                 self.progData = f.read()
+        except OSError as e:
+            showerror('Open', f'Could not read the file:\n{e}')
+            return False
+        return True
                 # print(self.progData)
 
 
@@ -359,7 +530,8 @@ class EraseFrame(LabelFrame):
 
         btn2_ers = Button(self, text='Erase', width=12,
                           justify='center', command=self.blockErase)
-        btn2_ers.grid(row=3, column=2, padx=2, pady=2)
+        btn2_ers.grid(row=4, column=2, sticky='sew', pady=(2, 10))
+        self.grid_rowconfigure(4, weight=1)    # button row sits at the panel bottom
 
         if self.DEBUG:
             lbl4_ers = Label(self, text='Results here:')
@@ -370,10 +542,16 @@ class EraseFrame(LabelFrame):
             quit_btn_ers.grid(row=3, column=1, padx=2, pady=2)
 
     def blockErase(self):
+        if serCom.scriptBusy():
+            return
         serCom.checkConnection()  # check if board is connected
         blkSzStr = self.blockSize.get().lower()
-        start_addr = int(self.startAddr.get(), 16)
-        num_blocks = int(self.numBlocks.get())
+        try:
+            start_addr = parseField('Start Address', self.startAddr.get())
+            num_blocks = parseField('Num. Blocks', self.numBlocks.get(), base=10)
+        except ValueError as e:
+            showerror('Erase', str(e))
+            return
 
         if blkSzStr != 'chip':  # if it is a '4','32' or '64
             block_size = int(blkSzStr)
@@ -388,8 +566,6 @@ class EraseFrame(LabelFrame):
             t_erase = du.block_erase(self.comm, blkSzStr)
 
         term.tprint(du.textToDisplay[:-1])
-        erase_time = du.time_conv_from_usec(t_erase)
-        print(f'DONE. Elapsed time: {erase_time}')
 
     def erase_test(self):
         print(f'Selected Erase Block Size : {self.blockSize.get()}')
@@ -429,24 +605,26 @@ class ReadFrame(LabelFrame):
                                variable=self.spiMode, value=self.spiModes[3])
         rb4_read.grid(row=3, column=0, padx=10, pady=2, sticky=W)
         rb5_read = Radiobutton(self, text=self.spiModes[4],
-                               variable=self.spiMode, value=self.spiModes[4])
+                               variable=self.spiMode, value=self.spiModes[4],
+                               state=DISABLED)  # not supported yet
         rb5_read.grid(row=4, column=0, padx=10, pady=2, sticky=W)
         rb6_read = Radiobutton(self, text=self.spiModes[5],
-                               variable=self.spiMode, value=self.spiModes[5])
-        rb6_read.grid(row=5, column=0, padx=10, pady=2, sticky=W)
+                               variable=self.spiMode, value=self.spiModes[5],
+                               state=DISABLED)  # not supported yet
+        rb6_read.grid(row=5, column=0, padx=10, pady=2, sticky=NW)
 
         lbl_read = Label(self, text='Start Address:  0x')
         lbl_read.grid(row=0, column=1, padx=10, pady=2, sticky=E)
         ent1_read = Entry(self, textvariable=self.startAddr)
-        ent1_read.grid(row=0, column=2, sticky=W)
+        ent1_read.grid(row=0, column=2, sticky=EW)
 
         self.startAddr.set('0')
         self.readLength.set('200')
 
-        lbl2_read = Label(self, text='Lenght:  0x')
+        lbl2_read = Label(self, text='Length:  0x')
         lbl2_read.grid(row=1, column=1, padx=10, pady=2, sticky=E)
         ent2_read = Entry(self, textvariable=self.readLength)
-        ent2_read.grid(row=1, column=2, sticky=W)
+        ent2_read.grid(row=1, column=2, sticky=EW)
 
         # self.spiMode.set('0')
 
@@ -457,8 +635,8 @@ class ReadFrame(LabelFrame):
         self.dispmodeOptions = {"Binary (b)": 'b', "DWord (w)": 'w'}
         options = list(self.dispmodeOptions.keys())
         self.dispmode_cb = ttk.Combobox(
-            self, width=16, values=options)
-        self.dispmode_cb.grid(row=4, column=2, padx=5, sticky="E")
+            self, width=16, values=options, state='readonly')
+        self.dispmode_cb.grid(row=4, column=2, sticky=EW)
 
         self.dispmode_cb.set(options[0])
         du.dispmode = self.dispmodeOptions[options[0]]
@@ -467,12 +645,18 @@ class ReadFrame(LabelFrame):
 
         btn1_read = Button(self, text='Read', width=12,
                            justify='center', command=self.readFlash)
-        btn1_read.grid(row=5, column=2, padx=2, pady=2)
+        btn1_read.grid(row=5, column=2, sticky='sew', pady=(2, 10))
+        self.grid_rowconfigure(5, weight=1)    # button row sits at the panel bottom
 
         if self.DEBUG:
             btn2_read = Button(self, text='Read test',
                                width=12, command=self.readFlash)
             btn2_read.grid(row=5, column=1, padx=2, pady=2)
+
+    def applyDispMode(self, label):
+        """Selects a display mode (a key of dispmodeOptions) in the combo box"""
+        self.dispmode_cb.set(label)
+        du.dispmode = self.dispmodeOptions[label]
 
     def dispmode_cb_updated(self, event):
         dispModeSelKey = self.dispmode_cb.get()  # get the selected item in Combo
@@ -487,15 +671,28 @@ class ReadFrame(LabelFrame):
         else:
             # change it to [2] once hexView 'h' is implemented
             self.dispmode_cb.set(self.modeKeys[0])
+        serCom.dispMode = self.dispmode_cb.get()    # remembered automatically
+        serCom.saveConfig()
 
     def readFlash(self):
+        if serCom.scriptBusy():
+            return
         serCom.checkConnection()  # check if board is connected
-        readStartAddr = int(self.startAddr.get(), 16)
-        readLen = int(self.readLength.get(), 16)
+        try:
+            readStartAddr = parseField('Start Address', self.startAddr.get())
+            readLen = parseField('Length', self.readLength.get())
+        except ValueError as e:
+            showerror('Read', str(e))
+            return
         # print(f'SPI Mode      : {self.spiMode.get()}')
         # print(f'Start Address : {readStartAddr}')
         # print(f'Read Lenght   : {readLen}')
-        du.read(self.comm, start_addr=readStartAddr, length=readLen, echo=0)
+        try:
+            du.read_mode(self.comm, self.spiMode.get(),
+                         start_addr=readStartAddr, length=readLen, echo=0)
+        except ValueError as e:
+            showerror('Read', str(e))
+            return
         term.tprint(du.textToDisplay[:-1], printOn='guiConsole')
 
 
@@ -520,6 +717,7 @@ class Terminal(LabelFrame):
             self, wrap=CHAR, width=80, height=24, font=("Consolas", 11))
         self.txt.grid(row=1, column=0, columnspan=99,
                       pady=10, padx=10, sticky="NSEW")
+        self.applyTheme('light')
 
         self.clear()
         self.txt.focus()      # placing cursor in text area
@@ -531,6 +729,10 @@ class Terminal(LabelFrame):
         self.txt.bind('<Up>', self.onUpArrowKey)
         self.txt.bind('<Down>', self.onDownArrowKey)
         self.txt.bind('<Left>', self.onLeftArrowKey)
+        # Typing/pasting is only allowed on the active prompt line
+        self.txt.bind('<Key>', self.onKeyPress)
+        self.txt.bind('<<Paste>>', self.onPaste)
+        self.txt.bind('<<Cut>>', lambda e: 'break')
 
         # Right-click context menu
         self.ctxMenu = Menu(self.txt, tearoff=False)
@@ -540,6 +742,12 @@ class Terminal(LabelFrame):
         # Start the async serial poller. It runs forever and no-ops when the
         # port isn't open or a synchronous command is in progress.
         self.after(self.pollIntervalMs, self.pollSerial)
+
+    def applyTheme(self, name):
+        """Sets the Terminal colours to one of TERM_THEMES ('dark'/'light')"""
+        t = TERM_THEMES[name]
+        self.txt.configure(bg=t['bg'], fg=t['fg'], insertbackground=t['fg'],
+                           selectbackground=t['select'], selectforeground=t['fg'])
 
     def showContextMenu(self, event):
         try:
@@ -574,9 +782,10 @@ class Terminal(LabelFrame):
         self.txt.see(INSERT)
 
     def onReturnKey(self, event):
+        if serCom.scriptRunning:
+            return 'break'          # the script owns the board
         cmdstr = self.txt.get("end-1l linestart", "end-1l lineend")[
             len(PROMPT):].strip()
-        print(cmdstr)
         if len(cmdstr) > 0:
             self.history.append(cmdstr)
 
@@ -584,14 +793,7 @@ class Terminal(LabelFrame):
             self.clear()
             return 'break'
         elif len(cmdstr) > 0:
-            self.cmdInProgress = True
-            try:
-                self.comm.send(cmdstr)
-                resp = self.comm.response(removeCmd=True, removePrompt=True).strip()
-            except Exception as e:
-                resp = f'error from boardcom: {e}'
-            finally:
-                self.cmdInProgress = False
+            resp = self.execute(cmdstr)
             if resp != '':
                 self.txt.insert(END, '\n' + resp)
 
@@ -602,10 +804,84 @@ class Terminal(LabelFrame):
         # Returning 'break' prevents the native behavior, i.e. line break.
         return 'break'
 
+    def execute(self, cmdstr):
+        """Sends one command to the board and returns the reply text"""
+        self.cmdInProgress = True
+        try:
+            self.comm.send(cmdstr)
+            resp = self.comm.response(removeCmd=True, removePrompt=True).strip()
+        except Exception as e:
+            resp = f'error from boardcom: {e}'
+        finally:
+            self.cmdInProgress = False
+        return resp
+
+    def runScriptCommand(self, cmdstr):
+        """Runs cmdstr as if it had been typed (the command and its reply are
+        shown in the Terminal) and returns the reply"""
+        self.ensureActiveLine()
+        self.txt.delete('end-1l linestart+%dc' % len(PROMPT), 'end-1c')
+        self.txt.insert(END, cmdstr)
+        if cmdstr == CLEAR_CMD:
+            self.clear()
+            return ''
+        resp = self.execute(cmdstr)
+        if resp != '':
+            self.txt.insert(END, '\n' + resp)
+        self.txt.insert(END, '\n' + PROMPT)
+        self.txt.mark_set(INSERT, END)
+        self.txt.see(INSERT)
+        return resp
+
+    def scriptPrint(self, text):
+        """Shows a line printed by a script, above the prompt line"""
+        self.ensureActiveLine()
+        self.txt.delete('end-1l linestart', 'end-1c')     # drop the empty prompt
+        self.txt.insert(END, text + '\n' + PROMPT)
+        self.txt.mark_set(INSERT, END)
+        self.txt.see(INSERT)
+
+    def ensureActiveLine(self):
+        """Moves the cursor to the end of the active prompt line unless it is
+        already on that line (after the prompt). Returns True if it moved."""
+        line, col = map(int, self.txt.index(INSERT).split('.'))
+        lastLine = int(self.txt.index('end-1c').split('.')[0])
+        if line == lastLine and col >= len(PROMPT):
+            return False
+        self.txt.tag_remove('sel', '1.0', END)
+        self.txt.mark_set(INSERT, 'end-1c')
+        self.txt.see(INSERT)
+        return True
+
+    def onKeyPress(self, event):
+        """Earlier output is read-only (select/copy only): typing a character
+        jumps the cursor to the prompt line first; other edits are blocked."""
+        ch = event.char
+        if ch and ch.isprintable():
+            self.ensureActiveLine()      # then the character is inserted there
+            return None
+        if ch:                           # a control character
+            key = event.keysym.lower()
+            if key in ('c', 'a'):        # copy / select all
+                return None
+            if key == 'v':               # paste goes to the prompt line
+                self.ensureActiveLine()
+                return None
+            return 'break'               # Tab, Ctrl+X/Z/Y, ...
+        return None                      # navigation and modifier keys
+
+    def onPaste(self, event):
+        self.ensureActiveLine()
+        return None
+
     def onBackSpace(self, event):
+        if self.ensureActiveLine():
+            return 'break'               # just jump to the prompt line
         return self.allowDelete(5)
 
     def onDelete(self, event):
+        if self.ensureActiveLine():
+            return 'break'
         return self.allowDelete(4)
 
     def allowDelete(self, charIndex):
@@ -640,6 +916,7 @@ class Terminal(LabelFrame):
     def clear(self):
         self.txt.delete(1.0, END)
         self.txt.insert(1.0, PROMPT)
+        self.txt.mark_set(INSERT, END)
 
     def tprint(self, text, printOn='guiConsole'):
         """Targeted Print\n
@@ -688,29 +965,17 @@ if __name__ == "__main__":
     #     stsBarComm.config(text=statusMsg)
 
     def showAbout():
-        aboutMsg = '''
+        aboutMsg = f'''
                    ***************************
                    *** Dubrovnik Workbench ***
                    ***************************
 
-                   Ver 0.5
+                   Version {APP_VERSION}
 
                    Authors:
-                   Csaba Moldvai
-                   Eyal Barzilay'''
+                   Csaba Moldvai (System/Board design, GUI)
+                   Eyal Barzilay (Tiberias flash support software)'''
         showinfo('About', aboutMsg)
-
-    def get_vt_distribution():
-        pass
-
-    def dub_func_test():
-        pass
-
-    def ina230_calibration():
-        pass
-
-    def program_sfdp():
-        pass
 
     root = Tk()
     root.title('Dubrovnik Dashboard App')
@@ -730,7 +995,7 @@ if __name__ == "__main__":
     serCom = SerComFrame(root, DEBUG=False)  # invoking the class
     # serCom.pack(side=TOP, fill=BOTH)
     serCom.grid_propagate(0)
-    serCom.config(width=350, height=60, bd=2, relief=GROOVE)
+    serCom.config(width=350, height=60, bd=PANEL_BORDER, relief=GROOVE)
     serCom.grid(row=0, column=0, padx=10, pady=4, sticky=NW)
     serCom.combo.set(portList[0])
     serCom.comm = comm
@@ -740,9 +1005,8 @@ if __name__ == "__main__":
 # ******************************
     erase = EraseFrame(root, DEBUG=False)  # invoking the class
     # erase.pack(side=LEFT, fill=BOTH)
-    erase.grid_propagate(0)
-    erase.config(width=350, height=210, bd=2, relief=GROOVE)
-    erase.grid(row=1, column=0, padx=10, pady=4, sticky=NW)
+    erase.config(bd=PANEL_BORDER, relief=GROOVE)
+    erase.grid(row=1, column=0, padx=10, pady=4, sticky=NSEW)
     erase.comm = comm     # initializeing self.com in Erase class
 
 # ******************************
@@ -751,9 +1015,8 @@ if __name__ == "__main__":
     # TODO rename program to progFrm
     program = ProgramFrame(root, DEBUG=False)  # invoking the class
     # program.pack(side=LEFT, fill=BOTH)
-    program.grid_propagate(0)
-    program.config(width=380, height=210, bd=2, relief=GROOVE)
-    program.grid(row=1, column=1, padx=10, pady=4, sticky=NW)
+    program.config(bd=PANEL_BORDER, relief=GROOVE)
+    program.grid(row=1, column=1, padx=10, pady=4, sticky=NSEW)
     program.comm = comm   # initializeing self.com in Program class
 
 # ***************************
@@ -761,25 +1024,34 @@ if __name__ == "__main__":
 # ***************************
     read = ReadFrame(root, DEBUG=False)  # invoking the class
     # read.pack(side=LEFT, fill=BOTH)
-    read.grid_propagate(0)
-    read.config(width=380, height=210, bd=2, relief=GROOVE)
-    read.grid(row=1, column=2, padx=10, pady=4, sticky=NW)
+    read.config(bd=PANEL_BORDER, relief=GROOVE)
+    read.grid(row=1, column=2, padx=10, pady=4, sticky=NSEW)
     read.comm = comm     # initializeing self.com in ReadFrame class
+
+    # All three panels get the same height: as tall as the tallest one needs, so
+    # no button is squished. Widths stay fixed.
+    root.update_idletasks()
+    panelH = max(f.winfo_reqheight() for f in (erase, program, read))
+    for panel, panelW in ((erase, 350), (program, 380), (read, 380)):
+        panel.grid_propagate(0)
+        panel.config(width=panelW, height=panelH)
 
 # ***********************************
 # ******** Terminal Window **********
 # ***********************************
     term = Terminal(root)
-    term.grid(row=2, column=0, padx=10, pady=4, columnspan=3, sticky=NSEW)
+    term.grid(row=2, column=0, padx=10, pady=4, columnspan=4, sticky=NSEW)
     term.grid_columnconfigure(0, weight=1)
     term.grid_rowconfigure(1, weight=1)  # txt widget lives at row 1
     term.comm = comm     # initializeing self.com in Erase class
 
-    # Let the terminal row absorb all extra vertical space, and let the three
-    # panel columns share extra horizontal space evenly.
+    # Let the terminal row absorb all extra vertical space.
     root.grid_rowconfigure(2, weight=1)
+    # Panels stay at their natural width, locked to the left; only the spacer
+    # column 3 absorbs extra horizontal space (the Terminal grows with it).
     for col in (0, 1, 2):
-        root.grid_columnconfigure(col, weight=1)
+        root.grid_columnconfigure(col, weight=0)
+    root.grid_columnconfigure(3, weight=1)
 
 # ***************************
 # ****** Status Bar *********
@@ -790,7 +1062,7 @@ if __name__ == "__main__":
     # stsBarComm.pack(side=BOTTOM, fill=X, anchor=W, padx=10, pady=10)
     stsBarComm.grid_propagate(0)
     stsBarComm.grid(row=4, column=0, padx=10, pady=4,
-                    columnspan=3, sticky=EW)
+                    columnspan=4, sticky=EW)
 
     # stsBarRight = Label(root, text='Hello', width=10, font=(
     #     "Helvetica", 9), anchor=W, justify=RIGHT, pady=2)
@@ -805,39 +1077,287 @@ if __name__ == "__main__":
 
     file_menu = Menu(my_menu, tearoff=False)
     my_menu.add_cascade(label="File", menu=file_menu)
-    file_menu.add_command(label="New")
-    file_menu.add_command(label="Open")
-    file_menu.add_command(label="Save")
-    file_menu.add_command(label="Save As")
+    file_menu.add_command(label="Open...", command=lambda: openForProgramming())
+    scripts_menu = Menu(file_menu, tearoff=False)
+    file_menu.add_cascade(label="Scripts", menu=scripts_menu)
+    scripts_menu.add_command(label="Run Command Script...",
+                             command=lambda: runScript())
+    scripts_menu.add_command(label="Run Python Script...",
+                             command=lambda: runPythonScript())
+    scripts_menu.add_separator()
+    scripts_menu.add_command(label="Stop Script  (Esc)",
+                             command=lambda: stopScript())
+    file_menu.add_command(label="Save Terminal Log...",
+                          command=lambda: saveTerminalLog())
     file_menu.add_separator()
-    file_menu.add_command(label="Exit")
+    file_menu.add_command(label="Exit", command=lambda: onClose())
 
-    tools_menu = Menu(my_menu, tearoff=False)
+    tools_menu = Menu(my_menu, tearoff=False,
+                      postcommand=lambda: refreshTools())
     my_menu.add_cascade(label="Tools", menu=tools_menu)
-    #tools_menu.add_command(label="Open script", command=loadConfig)
-    tools_menu.add_command(label="VT distribution",
-                           command=get_vt_distribution)
-    tools_menu.add_command(
-        label="Dubrovnik functional test", command=dub_func_test)
-    tools_menu.add_command(label="INA230 calibration",
-                           command=ina230_calibration)
-    tools_menu.add_command(label="SFDP Program", command=program_sfdp)
-    tools_menu.add_command(label="Other tools")
 
-    config_menu = Menu(my_menu, tearoff=False)
-    my_menu.add_cascade(label="Config", menu=config_menu)
-    config_menu.add_command(label="Load config", command=serCom.loadConfig)
-    config_menu.add_command(label="Store config", command=serCom.saveConfig)
-    config_menu.add_command(label="Restore defaults",
-                            command=serCom.loadDefaultSettings)
+    # View menu: panel visibility and Terminal colours (radio items mark the
+    # current choice)
+    view_menu = Menu(my_menu, tearoff=False)
+    my_menu.add_cascade(label="View", menu=view_menu)
+    panels_menu = Menu(view_menu, tearoff=False)
+    theme_menu = Menu(view_menu, tearoff=False)
+    view_menu.add_cascade(label="Panels (Erase/Program/Read)", menu=panels_menu)
+    view_menu.add_separator()
+    view_menu.add_cascade(label="Terminal theme", menu=theme_menu)
+
+    panelsVar = StringVar(value='show' if serCom.showPanels else 'hide')
+    termThemeVar = StringVar(value=serCom.termTheme)
+
+    def layoutPanels():
+        """Shows or hides the three panels together (serCom.showPanels).
+        grid_remove() remembers the grid options, so grid() restores them."""
+        for frame in (erase, program, read):
+            if serCom.showPanels:
+                frame.grid()
+            else:
+                frame.grid_remove()
+
+    def syncPanels():
+        """Applies serCom.showPanels to the menu mark and the layout"""
+        panelsVar.set('show' if serCom.showPanels else 'hide')
+        layoutPanels()
+
+    def onPanelToggle():
+        """A Panels menu item was clicked: re-layout, then change the window
+        height by the height gained or lost so the Terminal keeps its size"""
+        serCom.showPanels = panelsVar.get() == 'show'
+        root.update_idletasks()
+        # measure before re-laying out: a window that was never given an
+        # explicit size follows its requested size by itself
+        before, curW, curH = (root.winfo_reqheight(), root.winfo_width(),
+                              root.winfo_height())
+        layoutPanels()
+        root.update_idletasks()
+        minW = min(root.winfo_reqwidth(), scrW - marginW)
+        root.minsize(width=minW, height=1)
+        h = curH + root.winfo_reqheight() - before
+        h = max(1, min(h, scrH - marginH))
+        root.geometry(f'{max(minW, curW)}x{h}')
+        serCom.saveConfig()
+
+    def setTermTheme():
+        serCom.termTheme = termThemeVar.get()
+        term.applyTheme(serCom.termTheme)
+        serCom.saveConfig()
+
+    def syncTermTheme():
+        """Applies serCom.termTheme (e.g. just loaded from the config file)"""
+        termThemeVar.set(serCom.termTheme)
+        term.applyTheme(serCom.termTheme)
+
+    for label, value in (('Show', 'show'), ('Hide', 'hide')):
+        panels_menu.add_radiobutton(label=label, value=value, variable=panelsVar,
+                                    command=onPanelToggle)
+    theme_menu.add_radiobutton(label="Light Terminal", value='light',
+                               variable=termThemeVar, command=setTermTheme)
+    theme_menu.add_radiobutton(label="Dark Terminal", value='dark',
+                               variable=termThemeVar, command=setTermTheme)
+
+    # File > Parameters: save / load / reset the entry-box values of the Erase,
+    # Program and Read panels (the only settings that are NOT saved automatically)
+    params_menu = Menu(file_menu, tearoff=False)
+    file_menu.insert_cascade(4, label="Parameters", menu=params_menu)
+    file_menu.insert_separator(5)                    # before "Exit"
+
+    def showStatus(msg, ms=3000):
+        """Shows msg in the status bar for a few seconds"""
+        old = stsBarComm.cget('text')
+        stsBarComm.configure(text=msg)
+        root.after(ms, lambda: stsBarComm.configure(text=old)
+                   if stsBarComm.cget('text') == msg else None)
+
+    def saveParams():
+        serCom.saveConfig(params=True)
+        showStatus('Parameters saved')
+
+    def loadParams():
+        serCom.loadConfig(prefs=False)
+        showStatus('Parameters loaded')
+
+    def defaultParams():
+        serCom.loadDefaultParams()
+        showStatus('Default parameters restored (File > Parameters > Save '
+                   'to keep them)')
+
+    # Scripts (File > Scripts). Both kinds run on the GUI thread and call
+    # root.update() between commands, so the window stays alive and Esc is seen.
+    #   Command script: a text file, one Terminal command per line
+    #                   (see dubLibs/run_cmd_script.py)
+    #   Python script : a Python file that uses the `dub` object
+    #                   (see dubLibs/run_py_script.py)
+    scriptStop = [False]
+
+    def pickScript(title, filetypes):
+        """Asks for a script file and remembers its folder; returns the path"""
+        name = askopenfilename(
+            title=title, initialdir=serCom.scriptDir or defaultScriptDir(),
+            filetypes=filetypes)
+        if name:
+            serCom.scriptDir = os.path.dirname(name)      # start here next time
+            serCom.saveConfig()
+        return name
+
+    def scriptReady():
+        """True if a script may be started now"""
+        if serCom.scriptRunning:
+            return False
+        if serCom.portStatus != 'connected':
+            serCom.checkConnection()
+            return False
+        return True
+
+    def runScript():
+        """File > Scripts > Run Command Script"""
+        if not scriptReady():
+            return
+        name = pickScript('Run Command Script', (
+            ('Script files', '*.txt *.scr'), ('All files', '*.*')))
+        if not name:
+            return
+        try:
+            with open(name, encoding='utf-8-sig') as fh:
+                commands = run_cmd_script.parse(fh.read())
+        except (OSError, UnicodeDecodeError) as e:
+            showerror('Run Command Script', f'Could not read the file:\n{e}')
+            return
+        if not commands:
+            showinfo('Run Command Script', 'The file contains no commands.')
+            return
+        serCom.scriptRunning = True
+        scriptStop[0] = False
+        term.scriptPrint(f'--- Running script {os.path.basename(name)} '
+                         f'({len(commands)} commands) ---')
+        reason = None
+        try:
+            for lineno, cmd in commands:
+                if scriptStop[0]:
+                    reason = 'stopped by the user'
+                    break
+                reply = term.runScriptCommand(cmd)
+                root.update()
+                if run_cmd_script.is_error(reply):
+                    reason = f'error at line {lineno}: {cmd}'
+                    break
+        finally:
+            serCom.scriptRunning = False
+        term.scriptPrint('--- Script finished ---' if reason is None
+                         else f'--- Script stopped: {reason} ---')
+
+    def runPythonScript():
+        """File > Scripts > Run Python Script"""
+        if not scriptReady():
+            return
+        name = pickScript('Run Python Script', (
+            ('Python scripts', '*.py'), ('All files', '*.*')))
+        if not name:
+            return
+        executePython(name)
+
+    def executePython(path):
+        """Runs a Python file with the `dub` object and reports how it ended"""
+        api = run_py_script.DubApi(
+            term, du, root.update, lambda: scriptStop[0],
+            ask=lambda prompt, default='': simpledialog.askstring(
+                'Script', prompt, initialvalue=default, parent=root),
+            confirm=lambda question: askyesno('Script', question, parent=root),
+            notify=lambda text: showinfo('Script', text, parent=root))
+        serCom.scriptRunning = True
+        scriptStop[0] = False
+        term.scriptPrint(f'--- Running Python script {os.path.basename(path)} ---')
+        try:
+            ok, message = run_py_script.run_file(path, api, term)
+        finally:
+            serCom.scriptRunning = False
+        term.scriptPrint('--- Script finished ---' if ok
+                         else f'--- Script stopped: {message} ---')
+
+    def stopScript():
+        scriptStop[0] = True
+
+    # Tools menu: one entry for every script in the tools folder that has a
+    # "# TOOL: name" header (see dubLibs/tools.py). Rebuilt each time it opens.
+    def runTool(tool):
+        if not scriptReady():
+            return
+        if tool['confirm'] and not askyesno(tool['name'], tool['confirm']):
+            return
+        if tool['description']:
+            showStatus(tool['description'], 8000)
+        executePython(tool['path'])
+
+    def openToolsFolder():
+        folder = toolsFolder()
+        if os.path.isdir(folder):
+            os.startfile(folder)
+        else:
+            showerror('Tools', f'The tools folder was not found:\n{folder}')
+
+    def refreshTools():
+        tools_menu.delete(0, 'end')
+        found = tools.find_tools(toolsFolder())
+        for tool in found:
+            tools_menu.add_command(label=tool['name'],
+                                   command=lambda t=tool: runTool(t))
+        if not found:
+            tools_menu.add_command(label='(no tools found)', state='disabled')
+        tools_menu.add_separator()
+        tools_menu.add_command(label='Open Tools Folder',
+                               command=openToolsFolder)
+
+    root.bind('<Escape>', lambda e: stopScript())
+
+    def openForProgramming():
+        """File > Open: pick a .bin file and set the Program panel up to
+        program it ("Load from File" mode)"""
+        if program.openFile():
+            program.progModeVar.set('file')
+            program.grayOutEntry()
+            showStatus(f'Loaded {len(program.progData)} bytes to program '
+                       f'(Program panel: Load from File)')
+
+    def saveTerminalLog():
+        """File > Save Terminal Log: write the Terminal contents to a text file"""
+        name = asksaveasfilename(
+            title='Save Terminal Log', defaultextension='.txt',
+            initialfile=datetime.datetime.now().strftime(
+                'dubrovnik_terminal_%Y%m%d_%H%M%S.txt'),
+            filetypes=(('Text files', '*.txt'), ('All files', '*.*')))
+        if not name:
+            return
+        try:
+            with open(name, 'w', encoding='utf-8') as fh:
+                fh.write(term.txt.get('1.0', 'end-1c') + '\n')
+        except OSError as e:
+            showerror('Save Terminal Log', f'Could not write the file:\n{e}')
+            return
+        showStatus('Terminal log saved')
+
+    params_menu.add_command(label="Save", command=saveParams)
+    params_menu.add_command(label="Load", command=loadParams)
+    params_menu.add_command(label="Defaults", command=defaultParams)
 
     help_menu = Menu(my_menu, tearoff=False)
     my_menu.add_cascade(label="Help", menu=help_menu)
-    help_menu.add_command(label="Help")
+    help_menu.add_command(label="Help", accelerator="F1", command=showHelp)
+    root.bind('<F1>', showHelp)
     help_menu.add_separator()
     help_menu.add_command(label="About", command=showAbout)
 
     serCom.loadConfig()  # includes autoConnect and lastUsedPort
+    syncTermTheme()
+    syncPanels()   # before the window size is worked out below
+
+    # Save the connection settings whenever they change, so they survive even
+    # if the app is killed instead of closed normally. The entry-box values are
+    # saved only by File > Parameters > Save.
+    # (Traces are added after loadConfig so loading doesn't trigger a save.)
+    serCom.chk_var.trace_add('write', lambda *args: serCom.saveConfig())
 
     # * At this point we have a list of valid COM ports.
     # * Next step is to connect to one of them.
@@ -862,6 +1382,12 @@ if __name__ == "__main__":
             showwarning(
                 'Warning', 'No flash device detected\nInstall a device and RESET the board')
 
+    # Board commands (volt, freq, config, ...) don't need a flash device, so the
+    # terminal must stay usable. The modal warning steals focus: give it back.
+    root.focus_force()
+    term.txt.focus_set()
+    term.txt.mark_set(INSERT, END)
+
     stsBarComm.config(text=serCom.serParams)
 
     # Minimum width is the natural width of the panels row (serCom on top of
@@ -878,6 +1404,22 @@ if __name__ == "__main__":
     if reqW > scrW - marginW or reqH > scrH - marginH:
         root.geometry(f'{fitW}x{fitH}+0+0')
     root.minsize(width=fitW, height=1)
+
+    # Restore the window size saved at the last exit, if it fits on this
+    # display; otherwise (or on first run) keep the default size.
+    if serCom.winSize:
+        savedW, savedH = serCom.winSize
+        if savedW <= scrW - marginW and savedH <= scrH - marginH:
+            geom = f'{max(savedW, fitW)}x{savedH}'
+            if serCom.winPos:
+                # only if the title bar is still reachable on a monitor
+                # (a monitor may have been removed since the last run)
+                x, y = serCom.winPos
+                vx, vy = root.winfo_vrootx(), root.winfo_vrooty()
+                vw, vh = root.winfo_vrootwidth(), root.winfo_vrootheight()
+                if (vx - 100 < x < vx + vw - 100 and vy - 10 <= y < vy + vh - 60):
+                    geom += f'+{x}+{y}'
+            root.geometry(geom)
 
     # print(comm.serialAvailable(comport))
 
@@ -899,5 +1441,21 @@ if __name__ == "__main__":
     # timer_lbl = Label(root, text='')
     # # timer_lbl.pack() # make it invisible. Used as timer for checking serial port
     # timer()  # must call the function once to start it
+
+    def onClose():
+        """Store the last used entry values and window size on exit."""
+        if serCom.scriptRunning:          # stop a running script first
+            stopScript()
+            root.after(300, onClose)
+            return
+        try:
+            if root.state() == 'normal':      # not minimized / maximized
+                serCom.winSize = (root.winfo_width(), root.winfo_height())
+                serCom.winPos = (root.winfo_x(), root.winfo_y())
+            serCom.saveConfig()
+        finally:
+            root.destroy()
+
+    root.protocol('WM_DELETE_WINDOW', onClose)
 
     mainloop()

@@ -131,7 +131,8 @@ class Dubrovnik:
     # read_444
     # read_888
 
-    def read(self, comm, start_addr=0, length=256, echo=1, opcode='0b'):
+    def read(self, comm, start_addr=0, length=256, echo=1, opcode='0b',
+             mode_byte=None):
         """### Reads content of flash memory
         Parameters:\n
         * comm       : handle to comm port to communicate with the Dubrovnik board
@@ -139,12 +140,17 @@ class Dubrovnik:
         * length     : the number of bytes to read
         * echo       : if 1, it will print the respose to the console
         * opcode     : defines which opcode to use for read e.g. '03', '0b'
+        * mode_byte  : hex mode byte for opcodes that take one between address
+                       and count, e.g. 'eb' (<addr> <mode> <count>); else None
         Returns the response string from TestBench
         """
         self.textToDisplay = ""
         # CM use class attribute instead of passing it in the argument
         self.set_dispmode(comm, self.dispmode)
-        cmdstr = f'{opcode} {start_addr:x} {length:x}'
+        if mode_byte is None:
+            cmdstr = f'{opcode} {start_addr:x} {length:x}'
+        else:
+            cmdstr = f'{opcode} {start_addr:x} {mode_byte} {length:x}'
         comm.send(cmdstr)
         resp = comm.response()
         self.textToDisplay = resp
@@ -463,7 +469,75 @@ class Dubrovnik:
             cmdstr = f'pmoncfg meas {meas}'
             comm.send(cmdstr)
 
+    # Read opcode for each SPI mode shown in the GUI's Read panel
+    READ_OPCODES = {'SPI': '0b',         # 1-1-1 fast read
+                    'Dual': '3b',        # 1-1-2 dual output fast read
+                    'Quad (114)': '6b',  # 1-1-4 quad output fast read
+                    'Quad (144)': 'eb'}  # 1-4-4 quad I/O fast read
+    # Opcodes with a mode byte between address and count: EB <addr> <mode> <count>
+    # 00 = no continuous-read mode, so each read starts with a full opcode
+    READ_MODE_BYTES = {'eb': '00'}
+    QUAD_MODES = ('Quad (114)', 'Quad (144)')
+    QE_MASK = 0x02                       # Quad Enable = bit 1 of status reg 2
+
+    def read_status2(self, comm):
+        """Reads status register 2 (opcode 35h; the board returns 1 byte)"""
+        comm.send('35')
+        resp = comm.response(removeCmd=True, removePrompt=True).split()
+        return int(resp[-1], 16)
+
+    def set_quad_enable(self, comm, enable):
+        """Sets (enable=True) or clears the Quad Enable bit in status register 2.
+        The write is skipped if the bit is already in the requested state
+        (QE is non-volatile on most flash devices), and the result is verified
+        by reading the register back. Raises ValueError if QE didn't change."""
+        sr2 = self.read_status2(comm)
+        new = (sr2 | self.QE_MASK) if enable else (sr2 & ~self.QE_MASK)
+        if new != sr2:
+            comm.send(f'{self.wel}; 31 {new:02x}; wait 0')  # write status reg 2
+            if self.read_status2(comm) != new:
+                raise ValueError(
+                    f'Quad Enable could not be {"set" if enable else "cleared"}'
+                    f' (status register 2 is {sr2:02x}, expected {new:02x})')
+
+    def read_mode(self, comm, spi_mode, start_addr=0, length=256, echo=1):
+        """Reads flash using the read opcode of spi_mode (a key of READ_OPCODES).
+        Quad Enable is set for the quad modes and cleared for SPI and Dual.
+        Raises ValueError for a mode that is not supported."""
+        if spi_mode not in self.READ_OPCODES:
+            raise ValueError(f'SPI mode "{spi_mode}" is not supported yet')
+        isQuad = spi_mode in self.QUAD_MODES
+        opcode = self.READ_OPCODES[spi_mode]
+        try:
+            self.set_quad_enable(comm, isQuad)
+        except IndexError:
+            raise ValueError('Unexpected reply when reading status register 2')
+        return self.read(comm, start_addr, length, echo,
+                         opcode=opcode,
+                         mode_byte=self.READ_MODE_BYTES.get(opcode))
+
+    def pattern_program(self, comm, start_addr=0, end_addr=0,
+                        pattern='cafe0000', increment=0, echo=0):
+        """Programs the range [start_addr, end_addr) with a pattern (page by
+        page). Same as page_program(), but takes an end address instead of a
+        length, and accepts the increment as an integer or a hex string.
+        Used by older scripts, e.g. get_vt_distribution_*.py.
+        Returns the wait time (us) of the last page, like page_program()."""
+        if isinstance(increment, int):
+            increment = f'{increment:x}'
+        return self.page_program(comm, start_addr, end_addr - start_addr,
+                                 pattern, increment, echo)
+
+    def echo(self, comm, onoff):
+        """Turns the board's command echo 'on' or 'off' (the 'echo' command).
+        Used by older scripts, e.g. debugging.get_vt_curves()."""
+        if str(onoff).lower() not in ('on', 'off'):
+            raise ValueError('echo must be "on" or "off"')
+        comm.send(f'echo {str(onoff).lower()}')
+
     def set_spi_mode(self, spi_mode):
+        """Returns the read opcode for a short mode name used by older scripts
+        ('spi', 'q114', 'q144', 'q044'). The GUI uses read_mode() instead."""
         if spi_mode == 'spi':
             # READ OpCode in SPI: 03 (legacy), 0B (fast read)
             return '0b'
@@ -473,10 +547,7 @@ class Dubrovnik:
             return 'eb'                 # READ OpCode in QSPI 1-4-4
         elif spi_mode == 'q044':
             return 'ebc'
-        elif spi_mode == 'qpi':
-            pass
-        else:
-            pass
+        return None                     # 'qpi' and others: not supported yet
 
     def paint_flash_with_pattern(self, comm, params):
         """### Paint flash with pattern\n

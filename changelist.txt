@@ -1,0 +1,180 @@
+DUBROVNIK WORKBENCH - CHANGE LIST
+=================================
+Newest version first. The version number is set in one place, dubLibs\version.py.
+It is shown in both About dialogs and in the help file, and the installer build
+(packaging\build.bat) takes it from there too.
+
+To release a new version: change VERSION in dubLibs\version.py, add an entry at
+the top of this file, commit, then tag the commit:  git tag v<VERSION>
+
+
+VERSION 1.0                                                        2026-10-07
+-----------------------------------------------------------------------------
+First numbered release of both applications. They share the libraries in
+dubLibs, the user guide (help\dubrovnik_help.html) and the tools folder:
+
+  Dubrovnik Workbench   dubGui\dubrovnik_workbench.py
+                        New edition (CustomTkinter), light/dark appearance.
+                        dubGui\dubrovnik_workbench_compact.py starts it with
+                        everything about 12% smaller.
+  Classic edition       dubGui\dub_gui_main.py
+                        The original (tkinter) application, updated. This is
+                        the one the installer (packaging) currently builds.
+
+Everything below applies to both applications unless marked "Workbench only".
+
+
+NEW FEATURES
+------------
+Read
+  * Read modes now work: SPI (0B), Dual (3B), Quad (114) (6B) and Quad (144)
+    (EB <address> <mode 00> <count>). Before, the selected mode was ignored and
+    every read used the single-SPI command 0B.
+  * The Quad Enable bit (status register 2, bit 1) is set for the Quad modes and
+    cleared for SPI and Dual. The register is written only when the bit has to
+    change, and the result is read back and checked.
+  * QPI (444) and Octal are greyed out (not supported yet).
+  * Display Mode (Binary / DWord) is read-only (no typing) and remembered.
+
+Scripts (File > Scripts)
+  * Run Command Script: a text file of Terminal commands, one per line. '#'
+    starts a comment, ';' chains commands on a line, a ';' at the end of a line
+    is ignored. Stops at the first "Error:" reply and names the line.
+  * Run Python Script: a Python file that gets a ready-made object called "dub":
+    dub.send, erase, program, program_bytes, read, sleep, stop_requested, ask,
+    confirm, message, output_path, comm, du. print() goes to the Terminal.
+    Python errors are shown with their line number.
+  * Stop Script (Esc) stops either kind. While a script runs, the panels, the
+    Connect button and the Terminal command line are blocked.
+  * The Run Script dialogs start in the folder of the last script (dubScripts if
+    it exists, otherwise Documents).
+  * Python scripts may import modules that sit next to them.
+
+Tools menu
+  * Built from the Python scripts in the "tools" folder. A script appears if one
+    of its first 20 lines is "# TOOL: Menu name"; optional "# DESCRIPTION:" and
+    "# CONFIRM:" lines add a status-bar message and a Yes/No question. The menu
+    is rebuilt every time it opens. Drop-in tools need no code change.
+  * Dubrovnik Functional Test (tools\functional_test.py): DAC/ADC, five power
+    monitors, LEDs, program/erase/read of block 0, V_ADJ steps. Ends with the
+    number of checks passed/failed and RESULT: PASS or FAIL.
+  * SFDP Program (ATXP032) (tools\sfdp_program_atxp032.py)
+  * Icc Read Measurement (tools\icc_read_meas.py): result file saved in
+    Documents\Dubrovnik\Results.
+  * INA230 Calibration (tools\ina230_calibration.py)
+  * The empty placeholder entries (VT distribution, "Other tools") were removed.
+
+File menu
+  * New / Save / Save As placeholders removed. Now: Open... (choose a .bin file
+    and switch the Program panel to "Load from File"), Scripts, Save Terminal
+    Log..., Parameters, Exit (Exit now works).
+  * Opening a file that is not .bin, or that cannot be read, shows a message.
+
+Settings and saved values
+  * Remembered automatically: window size and position, panels shown/hidden,
+    Appearance (Workbench), Terminal theme, last COM port, Auto connect,
+    Display Mode, folder of the last script.
+  * Saved only on File > Parameters > Save (so that erase/program values never
+    come back unnoticed): everything typed in the Erase, Program and Read entry
+    boxes, plus the selected block size and SPI mode. Parameters > Load restores
+    them, Parameters > Defaults resets the boxes.
+  * The Workbench has its own settings file, dubrovnik_workbench.cfg; the classic
+    edition keeps dubrovnik.cfg (both in %APPDATA%\Dubrovnik). On its first run the
+    Workbench copies the stored values from dubrovnik.cfg.
+  * Window size and position are restored when they fit the display; otherwise
+    the default size is used.
+  * Robust settings files: a missing, damaged or hand-edited file, or a bad value,
+    falls back to defaults and never stops the program. A damaged file is kept
+    with ".bad" added to its name. Files are saved safely (temporary file, then
+    replace).
+
+View menu
+  * Panels: Show / Hide the Erase, Program and Read panels together; the window
+    shrinks and grows by the height they take, the Terminal keeps its size.
+  * Terminal theme: Light / Dark.
+  * Appearance: Light / Dark / System (Workbench only). A dark window always has a
+    dark Terminal; "Light Terminal" is greyed out while the window is dark.
+
+Help
+  * HTML user guide (help\dubrovnik_help.html): Help > Help or F1 opens it in the
+    web browser. It contains a quick start, every panel and menu, the Terminal,
+    scripts and the "dub" calls, settings, the board command list and
+    troubleshooting.
+  * The version number in the guide is filled in from dubLibs\version.py when it
+    is opened.
+  * About: version 1.0; authors Csaba Moldvai (System/Board design, GUI) and
+    Eyal Barzilay (Tiberias flash support software).
+
+Terminal
+  * Usable without a flash device: after the "No flash device detected" warning
+    the cursor and keyboard focus return to the Terminal.
+  * Earlier output is read-only (select and copy only). Typing or pasting while
+    the cursor is in old text jumps to the prompt line; editing and cutting
+    old text is blocked.
+  * Debug console messages removed (connection and serial-settings lines,
+    "DONE ..." lines, echo of typed commands).
+
+Entry checking
+  * Empty or non-numeric entries (address, length, pattern, increment, block
+    count) show a message naming the field. No command is sent. Before, an empty
+    Pattern or Increment sent a malformed command to the board.
+
+
+LOOK AND LAYOUT
+---------------
+Workbench only
+  * New look with a colour palette (light and dark), a custom menu bar with a
+    larger font, a new About dialog, smaller radio buttons and checkbox, shorter
+    entry boxes, wider COM-port arrow, dark terminal by default.
+  * Compact launcher (dubrovnik_workbench_compact.py): all widgets 12% smaller.
+
+Both
+  * Panels lock to the left and keep their natural width; extra window width goes
+    to the Terminal. Window minimum width follows the panels; minimum height keeps
+    8 Terminal lines.
+  * Serial Connection panel is as wide as Erase and their right edges line up; the
+    Display Mode drop-down, entry boxes and Read button share the same edges.
+  * Buttons in the Erase, Program and Read panels are aligned along the bottom;
+    the three panels have equal height. (Classic edition: the Read button was
+    squeezed; panels now take the height their content needs.)
+  * Typo "Lenght" corrected to "Length".
+
+
+LIBRARIES (dubLibs)
+-------------------
+  * dubrovnik.py: read_mode(), set_quad_enable(), READ_OPCODES, loadDefaultParams
+    support, pattern_program() and echo() (called by older scripts but missing from
+    the library), set_spi_mode() kept for older scripts.
+  * boardcom.py: debug prints removed.
+  * New modules: cfgfile.py (settings files), run_cmd_script.py (command scripts),
+    run_py_script.py (Python scripts and the "dub" object), tools.py (Tools menu),
+    version.py (version number).
+  * The applications now put the project's own dubLibs first on the import path.
+    Before, a copy named on the PYTHONPATH environment variable
+    (C:\MyLibs\Python\Dubrovnik) could be loaded instead of this project's.
+
+
+PACKAGING
+---------
+  * packaging\dubrovnik.spec bundles the help and tools folders.
+  * packaging\build.bat reads the version from dubLibs\version.py and passes it to
+    the installer (installer.iss).
+  * requirements.txt added (customtkinter, pyserial); .venv\ is ignored by git.
+
+
+KNOWN LIMITATIONS
+-----------------
+  * Not tested on real hardware (written and tested against a simulated board):
+    Dual/Quad reads with Quad Enable handling on every flash type, the Tools
+    scripts (functional test, SFDP program, Icc measurement, INA230 calibration),
+    and the Python-script and command-script runners. Check the first runs.
+  * The INA230 calibration re-synchronises with the board after RESET instead of
+    closing and reopening the COM port as the original script did.
+  * The Tools menu has no VT distribution tool yet (needs matplotlib and the old
+    debugging module); Prog/Verify is a placeholder; QPI and Octal reads are not
+    supported; Save Read Data is not implemented.
+  * Python scripts run on the window's own thread: a long calculation without a
+    dub call (or time.sleep) freezes the window until it ends. Use dub.sleep().
+  * A script can erase and program the flash without asking, and a Python script
+    can do anything the user can do on the PC. Only run scripts you trust.
+  * The installer script (packaging) builds the classic edition.

@@ -51,8 +51,6 @@ class BoardComm:
             # raise IOError("cannot open " + comport)
             askretrycancel('Comport Error', f'Cannot open port {comport}\n \
                            Make sure it is not used by another program')
-        if echo:
-            print(f'Connected to {comport}...')
         return self.handle
         # return comport
 
@@ -176,7 +174,7 @@ class BoardComm:
 
         # increase serial timeout for long Erase times (minutes)
         self.handle.timeout = 200
-        print(self.handle.get_settings())  # TODO sometimes long timeout not set
+        # TODO sometimes long timeout not set (check self.handle.get_settings())
         return resp
 
     def isFlashPresent(self):

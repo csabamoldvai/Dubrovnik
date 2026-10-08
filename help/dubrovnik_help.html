@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dubrovnik Workbench &ndash; Help</title>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #22262b; --muted: #5b6470; --accent: #2f6fb5;
+    --card: #eef0f3; --border: #c5cbd3; --code-bg: #e6e9ee;
+    --warn-bg: #fff4d6; --warn-bd: #e0b84c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1e2126; --fg: #e3e6ea; --muted: #9aa3ae; --accent: #6aa5e8;
+      --card: #2a2e35; --border: #3a3f47; --code-bg: #252a31;
+      --warn-bg: #3b3420; --warn-bd: #8a742c;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+         font: 15px/1.55 "Segoe UI", system-ui, sans-serif; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 24px 28px 64px; }
+  h1 { font-size: 28px; margin: 0 0 4px; }
+  h2 { font-size: 21px; margin: 40px 0 10px; padding-bottom: 6px;
+       border-bottom: 1px solid var(--border); }
+  h3 { font-size: 16px; margin: 22px 0 6px; }
+  a { color: var(--accent); }
+  p, ul, ol { margin: 8px 0; }
+  li { margin: 3px 0; }
+  .sub { color: var(--muted); margin-bottom: 18px; }
+  nav { background: var(--card); border: 1px solid var(--border);
+        border-radius: 8px; padding: 12px 18px; margin: 18px 0 8px; }
+  nav ol { margin: 4px 0; columns: 2; padding-left: 20px; }
+  code, kbd { font-family: Consolas, "Cascadia Mono", monospace; font-size: 13.5px;
+              background: var(--code-bg); border-radius: 4px; padding: 1px 5px; }
+  kbd { border: 1px solid var(--border); border-bottom-width: 2px; }
+  pre { background: var(--code-bg); border-radius: 6px; padding: 10px 14px;
+        overflow-x: auto; font: 13.5px/1.45 Consolas, "Cascadia Mono", monospace; }
+  table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+  th, td { border: 1px solid var(--border); padding: 6px 10px; text-align: left;
+           vertical-align: top; }
+  th { background: var(--card); }
+  .note, .warn { border-left: 4px solid var(--accent); background: var(--card);
+                 padding: 8px 14px; border-radius: 0 6px 6px 0; margin: 12px 0; }
+  .warn { border-left-color: var(--warn-bd); background: var(--warn-bg); }
+  details { margin: 10px 0; }
+  summary { cursor: pointer; font-weight: 600; }
+  footer { margin-top: 48px; color: var(--muted); font-size: 13px; }
+  @media print { nav { display: none; } a { color: inherit; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Dubrovnik Workbench</h1>
+<div class="sub">User guide &ndash; version @VERSION@</div>
+
+<p>The Dubrovnik Workbench is the PC front end of the Dubrovnik test board. It
+lets you erase, program and read SPI flash devices in the board's socket, and
+gives you a terminal for talking to the board directly (voltage, SPI clock,
+configuration and raw flash commands).</p>
+
+<nav>
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#quickstart">Quick start</a></li>
+    <li><a href="#window">The main window</a></li>
+    <li><a href="#connection">Serial Connection</a></li>
+    <li><a href="#erase">Erase</a></li>
+    <li><a href="#program">Program</a></li>
+    <li><a href="#read">Read</a></li>
+    <li><a href="#terminal">Terminal</a></li>
+    <li><a href="#scripts">Scripts</a></li>
+    <li><a href="#menus">Menus</a></li>
+    <li><a href="#settings">Settings and saved values</a></li>
+    <li><a href="#commands">Board command reference</a></li>
+    <li><a href="#trouble">Troubleshooting</a></li>
+    <li><a href="#shortcuts">Keyboard shortcuts</a></li>
+  </ol>
+</nav>
+
+<!-- ------------------------------------------------------------------ -->
+<h2 id="quickstart">1. Quick start</h2>
+<ol>
+  <li>Connect the board to the PC with the USB cable and switch it on.</li>
+  <li>Start the Workbench. If <em>Auto connect</em> is ticked, it connects by
+      itself to the last used COM port. Otherwise choose the port in the
+      <em>Serial Connection</em> panel and click <strong>Connect</strong>.</li>
+  <li>Put the flash device in the socket. If the board was already running,
+      press its <strong>RESET</strong> button so it detects the device.</li>
+  <li>Use the <strong>Erase</strong>, <strong>Program</strong> and
+      <strong>Read</strong> panels. Each operation prints what it did, and how
+      long it took, in the Terminal.</li>
+  <li>To keep your entry-box values for next time, choose
+      <strong>File &rarr; Parameters &rarr; Save</strong>.</li>
+</ol>
+<div class="note">A flash device is <em>not</em> required to use the Terminal.
+Commands such as <code>volt</code>, <code>freq</code> and <code>config</code>
+work with an empty socket.</div>
+
+<!-- ------------------------------------------------------------------ -->
+<h2 id="window">2. The main window</h2>
+<table>
+  <tr><th style="width:190px">Area</th><th>Purpose</th></tr>
+  <tr><td>Menu bar</td><td>File, Tools, View, Help (see <a href="#menus">Menus</a>).</td></tr>
+  <tr><td>Serial Connection</td><td>Choose the COM port and connect to the board.</td></tr>
+  <tr><td>Erase / Program / Read</td><td>The three flash operations. They can be hidden with <em>View &rarr; Panels &rarr; Hide</em>.</td></tr>
+  <tr><td>Terminal</td><td>Results of all operations, plus a command line to the board.</td></tr>
+  <tr><td>Status bar</td><td>Connection state and the serial port settings. It also shows short messages, for example "Parameters saved".</td></tr>
+</table>
+<p>The window can be resized. It cannot be made narrower than the three panels
+need, or shorter than eight lines of the Terminal. Its size and position are
+remembered for the next start.</p>
+
+<!-- ------------------------------------------------------------------ -->
+<h2 id="connection">3. Serial Connection</h2>
+<ul>
+  <li><strong>Auto connect</strong> &ndash; connect to the last used port at start-up.</li>
+  <li><strong>COM port</strong> &ndash; the list is refreshed every time you open it.</li>
+  <li><strong>Connect / Disconnect</strong> &ndash; opens or closes the port.</li>
+</ul>
+<p>After connecting, the status bar shows the port and its settings, for
+example <code>Connected: COM7 (115200,8,N,1,False)</code>.</p>
+<div class="note">Only one program can use a COM port at a time. If connecting
+fails with "access denied", close any other terminal program or a second copy
+of the Workbench.</div>
+<p>If no flash device is found after connecting, a warning asks you to install a
+device and press RESET. You can still use the Terminal.</p>
+
+<!-- ------------------------------------------------------------------ -->
+<h2 id="erase">4. Erase</h2>
+<table>
+  <tr><th style="width:190px">Control</th><th>Meaning</th></tr>
+  <tr><td>4kB / 32kB / 64kB / Chip</td><td>Size of the block to erase. <em>Chip</em> erases the whole device and ignores the address and block count.</td></tr>
+  <tr><td>Start Address (0x)</td><td>Hexadecimal address. It is rounded down to a multiple of the block size.</td></tr>
+  <tr><td>Num. Blocks</td><td>Number of consecutive blocks to erase. <strong>Decimal.</strong></td></tr>
+</table>
+<p>The Terminal lists the erase command for each block with its erase time.</p>
+<div class="warn"><strong>Erasing cannot be undone.</strong> Check the start
+address and block count before pressing <strong>Erase</strong>. This is why
+these values are kept only when you choose <em>Parameters &rarr; Save</em>
+and are not restored automatically.</div>
+
+<!-- ------------------------------------------------------------------ -->
+<h2 id="program">5. Program</h2>
+<p>Choose where the data comes from:</p>
+<h3>Use Pattern</h3>
+<table>
+  <tr><th style="width:190px">Entry</th><th>Meaning (all hexadecimal)</th></tr>
+  <tr><td>Pattern (0x)</td><td>First 32-bit data word, for example <code>cafe0000</code>.</td></tr>
+  <tr><td>Increment (0x)</td><td>Value added to the pattern for each following word. May be negative, for example <code>-1</code>.</td></tr>
+  <tr><td>Start Address (0x)</td><td>First flash address to program.</td></tr>
+  <tr><td>Length (0x)</td><td>Number of bytes to program.</td></tr>
+</table>
+<h3>Load from File</h3>
+<p>Click <strong>Open</strong> (or use <em>File &rarr; Open</em>) and choose a
+<code>.bin</code> file. Only binary files are supported at present. The pattern,
+increment and length entries are greyed out; the file's size sets the length.
+The start address still applies.</p>
+<p>Click <strong>Program</strong> to start. The Terminal shows the page-program
+commands with the time for each page and the total.
+<strong>Prog/Verify</strong> is reserved for a later version.</p>
+<div class="warn">Flash can only change bits from 1 to 0 when programming.
+<strong>Erase the area first</strong>, otherwise the stored data will not match
+what you programmed.</div>
+
+<!-- ------------------------------------------------------------------ -->
+<h2 id="read">6. Read</h2>
+<table>
+  <tr><th style="width:190px">Control</th><th>Meaning</th></tr>
+  <tr><td>SPI / Dual / Quad (114) / Quad (144)</td><td>How the data is transferred. See the table below.</td></tr>
+  <tr><td>Start Address (0x), Length (0x)</td><td>Where to start and how many bytes to read (hexadecimal).</td></tr>
+  <tr><td>Display Mode</td><td><em>Binary (b)</em> shows bytes, <em>DWord (w)</em> shows 32-bit words. The choice is remembered.</td></tr>
+</table>
+<table>
+  <tr><th style="width:190px">Mode</th><th>Opcode</th><th>Description</th></tr>
+  <tr><td>SPI</td><td><code>0B</code></td><td>Fast read, one data line</td></tr>
+  <tr><td>Dual</td><td><code>3B</code></td><td>Fast read, dual output (1-1-2)</td></tr>
+  <tr><td>Quad (114)</td><td><code>6B</code></td><td>Fast read, quad output (1-1-4)</td></tr>
+  <tr><td>Quad (144)</td><td><code>EB</code></td><td>Fast read, quad I/O (1-4-4). The workbench sends mode byte <code>00</code>.</td></tr>
+</table>
+<p>QPI (444) and Octal are greyed out: they are not supported yet.</p>
+<div class="note"><strong>Quad Enable is handled for you.</strong> Before a read,
+the Workbench sets the Quad Enable bit (bit 1 of status register 2) for the two
+Quad modes and clears it for SPI and Dual. It only writes the register when the
+bit has to change, and checks the result. The bit is non-volatile in most flash
+devices, so it stays as the last read left it.</div>
+
+<!-- ------------------------------------------------------------------ -->
+<h2 id="terminal">7. Terminal</h2>
+<p>The Terminal shows the results of the buttons above and also accepts commands
+for the board. Type after the <code>&gt;&gt;&gt;</code> prompt and press
+<kbd>Enter</kbd>. The reply appears below the command.</p>
+<ul>
+  <li><kbd>&uarr;</kbd> / <kbd>&darr;</kbd> step through the commands you typed earlier.</li>
+  <li><code>clear</code> (or right-click &rarr; <em>Clear</em>) empties the Terminal.</li>
+  <li>Earlier output is read-only. You can click and select it and copy it with
+      <kbd>Ctrl</kbd>+<kbd>C</kbd>. If you start typing while the cursor is in
+      old text, the cursor jumps back to the prompt line.</li>
+  <li>Messages the board sends by itself, for example after you press RESET, are
+      shown automatically.</li>
+  <li><strong>File &rarr; Save Terminal Log</strong> writes the whole Terminal to a text file.</li>
+  <li>The Terminal colours can be changed under <em>View &rarr; Terminal theme</em>.</li>
+</ul>
+<h3>Examples</h3>
+<pre>&gt;&gt;&gt; config           show the board configuration
+&gt;&gt;&gt; volt 1.8         set the voltage of the device socket to 1.8 V
+&gt;&gt;&gt; freq 120         set the SPI clock to 120 MHz
+&gt;&gt;&gt; 9f 2             send flash opcode 9Fh and read 2 bytes (the ID)
+&gt;&gt;&gt; help all         list every board command
+&gt;&gt;&gt; help 3b          show the syntax of flash opcode 3Bh</pre>
+<p>A command that starts with a hexadecimal number is sent to the flash as an
+opcode. <code>help &lt;opcode&gt;</code> shows its syntax, and
+<code>help &lt;command&gt;</code> works for the board commands.</p>
+
+<!-- ------------------------------------------------------------------ -->
+<h2 id="scripts">8. Scripts</h2>
+<p>Scripts repeat a series of operations without clicking. Two kinds are
+available under <strong>File &rarr; Scripts</strong>:</p>
+<table>
+  <tr><th style="width:230px">Menu item</th><th>Use it for</th></tr>
+  <tr><td><strong>Run Command Script...</strong></td><td>A plain text file of Terminal commands. The simplest way to repeat a setup or a test sequence.</td></tr>
+  <tr><td><strong>Run Python Script...</strong></td><td>A Python file. Use it when you need loops, conditions, calculations or want to check the data that was read.</td></tr>
+</table>
+<p>Both show every command and reply in the Terminal, block the panels and the
+Terminal command line while they run, and need the board to be connected.
+<strong>Stop Script</strong> (<kbd>Esc</kbd>) stops either kind. The Run Script
+dialog starts in the folder of the last script you ran.</p>
+<div class="warn">A script can erase and program the flash, and it starts
+without asking. A Python script can also do anything else the user can do on
+the PC. Read a script from somebody else before you run it.</div>
+
+<h3 id="cmdscripts">8.1 Command scripts</h3>
+<p>One Terminal command per line:</p>
+<pre># set up the device
+config
+freq 120            # sets the frequency to 120 MHz
+volt 1.9
+6; 31 2;            # write enable, then write status register 2
+pattern caba0000 1
+6; 2 0; wait 0      # page program from the write buffer at address 0
+b 0 100             # read 0x100 bytes from address 0</pre>
+<ul>
+  <li>Everything after <code>#</code> on a line is a comment. Blank lines are ignored.</li>
+  <li>Several commands can be chained on one line with <code>;</code>, for example
+      <code>6; 2 0; wait 0</code>. A <code>;</code> at the end of a line is ignored.</li>
+  <li>Save the file as <code>.txt</code> or <code>.scr</code> with any text editor.</li>
+  <li>Scripts use the same commands as the Terminal, including flash opcodes. See the
+      <a href="#commands">command reference</a>.</li>
+  <li>If the board answers with an <code>Error:</code> message, the script stops at that
+      line and the Terminal says which line it was.</li>
+</ul>
+
+<h3 id="pyscripts">8.2 Python scripts</h3>
+<p>A Python script is an ordinary <code>.py</code> file. The app gives it an
+object called <code>dub</code> &ndash; there is nothing to import &ndash; and
+everything you <code>print()</code> appears in the Terminal.</p>
+<pre>print("JEDEC ID:", dub.send("9f 2"))
+dub.erase(block=4, address=0x1000, blocks=2)
+dub.program(address=0x1000, length=0x100, pattern="caba0000", increment=1)
+data = dub.read(address=0x1000, length=0x100, mode="Quad (144)")
+if "caba0000" not in data:
+    print("verify failed!")</pre>
+<table>
+  <tr><th style="width:44%">Call</th><th>What it does</th></tr>
+  <tr><td><code>dub.send(command)</code></td><td>Sends a Terminal command and returns the reply as text. An <code>Error:</code> reply raises an error and stops the script; use <code>check=False</code> to handle it yourself, and <code>echo=False</code> to keep the command out of the Terminal.</td></tr>
+  <tr><td><code>dub.erase(block=4, address=0, blocks=1)</code></td><td>Same as the Erase panel. <code>block</code> is 4, 32, 64 or <code>"chip"</code>. Returns the time in &micro;s.</td></tr>
+  <tr><td><code>dub.program(address, length, pattern="cafe0000", increment=1)</code></td><td>Same as Program with <em>Use Pattern</em>. Pattern and increment may be integers or hex strings. Returns the time in &micro;s.</td></tr>
+  <tr><td><code>dub.program_bytes(address, data)</code></td><td>Programs a <code>bytes</code> object, for example the contents of a file you opened in the script.</td></tr>
+  <tr><td><code>dub.read(address, length, mode="SPI", show=True)</code></td><td>Same as the Read panel (<code>"SPI"</code>, <code>"Dual"</code>, <code>"Quad (114)"</code>, <code>"Quad (144)"</code>); Quad Enable is handled as usual. Returns the data as text, without the echoed command. <code>show=False</code> keeps it out of the Terminal.</td></tr>
+  <tr><td><code>dub.sleep(seconds)</code></td><td>Waits and keeps the window alive. Use it instead of <code>time.sleep</code>.</td></tr>
+  <tr><td><code>dub.stop_requested</code></td><td><code>True</code> after <kbd>Esc</kbd>. A long loop can check it and finish tidily.</td></tr>
+  <tr><td><code>dub.ask(prompt, default="")</code></td><td>Asks the user to type a value and returns it as text, or <code>None</code> if the dialog was cancelled. Use it instead of <code>input()</code>, which does not work inside the program.</td></tr>
+  <tr><td><code>dub.confirm(question)</code></td><td>Yes/No dialog. Returns <code>True</code> for Yes.</td></tr>
+  <tr><td><code>dub.message(text)</code></td><td>Shows a message and waits for OK, for example for instructions such as "press RESET".</td></tr>
+  <tr><td><code>dub.output_path(filename)</code></td><td>Full path for a result file: <code>Documents\Dubrovnik\Results\filename</code>. The folder is created if needed. Use it instead of a bare file name, which ends up in whichever folder the program was started from.</td></tr>
+  <tr><td><code>dub.comm</code>, <code>dub.du</code></td><td>The board connection and the library object, for scripts written for them directly (<code>comm.send(...)</code>, <code>comm.response()</code>). Write <code>comm = dub.comm</code> and drop the lines that connect and disconnect.</td></tr>
+</table>
+<ul>
+  <li>Esc stops the script at its next <code>dub</code> call or <code>print</code>. Use
+      <code>dub.sleep()</code> for waiting. A long calculation without any <code>dub</code>
+      call, or <code>time.sleep()</code>, freezes the window until it ends.</li>
+  <li>An error in the script is shown in the Terminal with its line number, and the script stops.</li>
+  <li>In the installed program a script can import what is built into Python and what
+      the program contains. Other packages, such as numpy, may not be available.</li>
+</ul>
+<p>Examples to start from are in the <code>dubScripts</code> folder:
+<code>example_device_check.txt</code> and <code>example_python_script.py</code>.</p>
+
+<!-- ------------------------------------------------------------------ -->
+<h2 id="menus">9. Menus</h2>
+<h3>File</h3>
+<ul>
+  <li><strong>Open...</strong> &ndash; choose a <code>.bin</code> file to program and switch the Program panel to <em>Load from File</em>.</li>
+  <li><strong>Scripts</strong> &ndash; <em>Run Command Script...</em> runs a text file of Terminal commands, <em>Run Python Script...</em> runs a Python file, and <em>Stop Script</em> (<kbd>Esc</kbd>) stops either (see <a href="#scripts">Scripts</a>).</li>
+  <li><strong>Save Terminal Log...</strong> &ndash; save the Terminal contents as a text file.</li>
+  <li><strong>Parameters</strong> &ndash; <em>Save</em> stores the values of the Erase, Program and Read entry boxes; <em>Load</em> restores the stored values; <em>Defaults</em> resets the boxes to the built-in values (use <em>Save</em> afterwards to keep them).</li>
+  <li><strong>Exit</strong> &ndash; close the Workbench.</li>
+</ul>
+<h3>Tools</h3>
+<p>Ready-made procedures that run with one click. Each entry is a Python script
+from the <code>tools</code> folder of the program, run like a
+<a href="#pyscripts">Python script</a>: its output appears in the Terminal, the
+panels are blocked while it runs, and <kbd>Esc</kbd> stops it. Some tools ask
+for confirmation first, because they change the device or the board.</p>
+<ul>
+  <li><strong>Dubrovnik Functional Test</strong> &ndash; checks the board itself: DAC and ADC,
+      the five power monitors, the LEDs (you check these by eye), a program, erase and read
+      of block 0 of the device in the socket (Adesto/Renesas AT parts only), and the adjustable
+      supply voltage. It ends with the number of checks passed and failed and an overall
+      <code>RESULT: PASS</code> or <code>RESULT: FAIL</code>. Use <em>File &rarr; Save Terminal Log</em>
+      to keep the result.</li>
+  <li><strong>SFDP Program (ATXP032)</strong> &ndash; rewrites the SFDP table of an ATXP032 in
+      the socket and compares it afterwards.</li>
+  <li><strong>Icc Read Measurement</strong> &ndash; reads the flash in the chosen modes at the chosen voltage and
+      clock while measuring the supply current, and compares the data with the expected pattern. It asks for a
+      device number, a temperature label and whether to paint the memory first. The result is saved as
+      <code>Documents\Dubrovnik\Results\&lt;part&gt; UNIT &lt;n&gt; &lt;temp&gt;.txt</code>. The modes, voltages and clocks are
+      settings at the top of <code>tools\icc_read_meas.py</code>.</li>
+  <li><strong>INA230 Calibration</strong> &ndash; calibrates the power monitor of the power domains you choose and
+      writes the result to the board EEPROM. Follow the instructions in the dialogs: the sockets of the calibrated
+      domains must be empty and the board has to be reset twice.</li>
+  <li><strong>Open Tools Folder</strong> &ndash; opens the folder in Windows Explorer.</li>
+</ul>
+<p><strong>Adding your own tool.</strong> Put a Python script in the tools folder and start
+it with a line <code># TOOL: Name in the menu</code> within its first 20 lines. The menu is
+rebuilt every time it opens, so the new entry appears at once. Optional header lines:
+<code># DESCRIPTION: one line</code> (shown in the status bar when the tool starts) and
+<code># CONFIRM: question</code> (the tool starts only if the user answers Yes; write
+<code>\n</code> for a new line).</p>
+<h3>View</h3>
+<ul>
+  <li><strong>Panels (Erase/Program/Read)</strong> &ndash; <em>Show</em> or <em>Hide</em> all three panels together. Hiding them gives the Terminal more room, which suits users who work mainly with commands.</li>
+  <li><strong>Appearance</strong> &ndash; <em>Light</em>, <em>Dark</em> or <em>System</em> (follow Windows). In a dark window the Terminal is always dark. This option is not available in the classic edition of the tool.</li>
+  <li><strong>Terminal theme</strong> &ndash; <em>Light Terminal</em> or <em>Dark Terminal</em>.</li>
+</ul>
+<h3>Help</h3>
+<ul>
+  <li><strong>Help</strong> (<kbd>F1</kbd>) &ndash; opens this guide in your web browser.</li>
+  <li><strong>About</strong> &ndash; version and authors.</li>
+</ul>
+
+<!-- ------------------------------------------------------------------ -->
+<h2 id="settings">10. Settings and saved values</h2>
+<table>
+  <tr><th style="width:290px">Remembered automatically</th><th>Saved only with Parameters &rarr; Save</th></tr>
+  <tr><td>
+    <ul>
+      <li>Window size and position</li>
+      <li>Panels shown or hidden</li>
+      <li>Appearance and Terminal theme</li>
+      <li>Last COM port and Auto connect</li>
+      <li>Display Mode</li>
+    </ul></td>
+  <td>
+    <ul>
+      <li>Everything typed in the Erase, Program and Read entry boxes</li>
+      <li>The selected block size and SPI mode</li>
+    </ul>
+    <p>These act on the flash, so they always start from the values you chose
+    to store, never from whatever you happened to type last.</p></td></tr>
+</table>
+<p>The settings are in a small text file in your Windows profile:</p>
+<pre>%APPDATA%\Dubrovnik\</pre>
+<ul>
+  <li><code>dubrovnik_workbench.cfg</code> &ndash; the Workbench</li>
+  <li><code>dubrovnik.cfg</code> &ndash; the classic edition</li>
+</ul>
+<p>You can edit these files, but you do not have to. If a file is damaged, or a
+value in it is not valid, the Workbench starts with default values instead and
+keeps a copy of the damaged file with <code>.bad</code> added to its name. Delete
+the file to return to the factory settings. The uninstaller offers to remove the
+folder.</p>
+
+<!-- ------------------------------------------------------------------ -->
+<h2 id="commands">11. Board command reference</h2>
+<p>These commands can be typed in the Terminal. The list comes from the board's
+<code>help all</code> and depends on the board firmware, so run
+<code>help all</code> for the list of your board. Use <code>help &lt;command&gt;</code>
+for details of one command.</p>
+<details open>
+<summary>Commands (board firmware at the time of writing)</summary>
+<table>
+<tr><th style="width:42%">Command</th><th>Description</th></tr>
+<tr><td><code>abid</code></td><td>ABh command which returns device ID</td></tr>
+<tr><td><code>adc</code></td><td>ADh continuation (subsequent transfer)</td></tr>
+<tr><td><code>adcread</code></td><td>reads latest ADC conversion</td></tr>
+<tr><td><code>adcstart &lt;config&gt;</code></td><td>configure ADC and start conversion</td></tr>
+<tr><td><code>afc</code></td><td>AFh continuation (subsequent transfer)</td></tr>
+<tr><td><code>bbc &lt;addr&gt; &lt;mode&gt; &lt;count&gt;</code></td><td>BBh continuation (subsequent transfer)</td></tr>
+<tr><td><code>bbmode &lt;mode&gt; &lt;pin&gt;</code></td><td>enable/disable bit-banging mode</td></tr>
+<tr><td><code>bcc &lt;addr&gt; &lt;mode&gt; &lt;count&gt;</code></td><td>BCh continuation (subsequent transfer)</td></tr>
+<tr><td><code>bcmp &lt;offset&gt; &lt;num_bytes&gt;</code></td><td>compare read and write buffers and print stats</td></tr>
+<tr><td><code>bdc &lt;addr&gt; &lt;mode&gt; &lt;count&gt;</code></td><td>BDh continuation (subsequent transfer)</td></tr>
+<tr><td><code>cmeas</code></td><td>[test mode] current measurement</td></tr>
+<tr><td><code>cmp &lt;offset&gt; &lt;num_bytes&gt;</code></td><td>compare read and write buffers</td></tr>
+<tr><td><code>config</code></td><td>show current configuration parameters</td></tr>
+<tr><td><code>count1 &lt;num_bytes&gt;</code></td><td>count number of 1 bits in read buffer</td></tr>
+<tr><td><code>crw &lt;offset&gt; &lt;num_bytes&gt;</code></td><td>copy data of read buffer to write buffer</td></tr>
+<tr><td><code>csply &lt;current_ua&gt;</code></td><td>[test mode] supply current into DUT</td></tr>
+<tr><td><code>cycle &lt;address&gt; &lt;num_cycles&gt; &lt;num_pages&gt;</code></td><td>perform a cycling procedure on load board</td></tr>
+<tr><td><code>dacread</code></td><td>read DAC register</td></tr>
+<tr><td><code>dacset &lt;val&gt;</code></td><td>set DAC register value</td></tr>
+<tr><td><code>delay &lt;time_us&gt;</code></td><td>time delay</td></tr>
+<tr><td><code>dispmode &lt;mode&gt;</code></td><td>set memory read display mode</td></tr>
+<tr><td><code>dummy &lt;num_dummy_cycles&gt;</code></td><td>set the number of host dummy cycles (decimal); must match the dummy cycles configured in the flash</td></tr>
+<tr><td><code>dump &lt;buf_id&gt; &lt;offset&gt; &lt;num_bytes&gt;</code></td><td>dump contents of read/write buffer</td></tr>
+<tr><td><code>dvar &lt;var_name&gt;</code></td><td>display value of variable</td></tr>
+<tr><td><code>e7c</code>, <code>ebc</code>, <code>ecc</code>, <code>edc</code>, <code>eec</code> <code>&lt;addr&gt; &lt;mode&gt; &lt;count&gt;</code></td><td>E7h / EBh / ECh / EDh / EEh continuation (subsequent transfer)</td></tr>
+<tr><td><code>echo &lt;mode&gt;</code></td><td>set output echo mode</td></tr>
+<tr><td><code>eeprd &lt;eeaddress&gt; &lt;count&gt;</code></td><td>read EEPROM</td></tr>
+<tr><td><code>eepwr &lt;eeaddress&gt; &lt;count&gt;</code></td><td>write EEPROM</td></tr>
+<tr><td><code>freq &lt;desired_freq&gt;</code></td><td>set SCLK frequency (in MHz, for example <code>freq 120</code>)</td></tr>
+<tr><td><code>gpiocfg &lt;pin_id&gt; &lt;config&gt;</code></td><td>configure GPIO pin</td></tr>
+<tr><td><code>gpiord &lt;pin_id&gt;</code></td><td>read GPIO input pin</td></tr>
+<tr><td><code>gpiowr &lt;pin_id&gt; &lt;bin_val&gt;</code></td><td>write to GPIO output pin</td></tr>
+<tr><td><code>help &lt;cmd&gt;</code></td><td>help for a command (<code>help all</code> lists all commands)</td></tr>
+<tr><td><code>hostds &lt;drv_strength&gt;</code></td><td>set host MCU pin drive strength</td></tr>
+<tr><td><code>hwrst &lt;mode&gt;</code></td><td>perform hardware reset on flash with RESET pin</td></tr>
+<tr><td><code>jrst</code></td><td>reset flash using JEDEC reset</td></tr>
+<tr><td><code>lbsel &lt;group_num&gt; &lt;dev_num&gt;</code></td><td>select group(s) and device on load board</td></tr>
+<tr><td><code>mode &lt;mode&gt;</code></td><td>set communication mode: <code>s</code> SPI, <code>q</code> QPI, <code>s4</code> SPI 4-byte address, <code>q4</code> QPI 4-byte address (EcoXiP: <code>s</code>, <code>qs</code>, <code>qd</code>, <code>os</code>, <code>od</code>)</td></tr>
+<tr><td><code>muxset &lt;addr&gt;</code></td><td>set MUX address</td></tr>
+<tr><td><code>pattern &lt;init_val&gt; &lt;increment&gt;</code></td><td>generate data pattern in write buffer</td></tr>
+<tr><td><code>pmon &lt;domain&gt; &lt;op&gt;</code></td><td>power monitor &ndash; measure current/power for different power domains</td></tr>
+<tr><td><code>pmoncal &lt;domain&gt; &lt;max_exp_curr_ma&gt; &lt;res_val_ohm&gt;</code></td><td>calibrate power monitor</td></tr>
+<tr><td><code>pmoncfg &lt;category&gt; &lt;value&gt;</code></td><td>configure power monitor</td></tr>
+<tr><td><code>psget &lt;power supply domain&gt;</code></td><td>read current voltage for a specific power supply domain</td></tr>
+<tr><td><code>psset &lt;power supply domain&gt; &lt;desired volt&gt;</code></td><td>set voltage for a specific power supply domain</td></tr>
+<tr><td><code>rsm</code></td><td>return to SPI</td></tr>
+<tr><td><code>setpart &lt;part# string&gt;</code></td><td>set a new target part</td></tr>
+<tr><td><code>timer &lt;start/stop&gt;</code></td><td>measure time</td></tr>
+<tr><td><code>trig &lt;trig_mode&gt;</code></td><td>generate trigger on GPIO pin</td></tr>
+<tr><td><code>ver</code></td><td>test bench version</td></tr>
+<tr><td><code>vmeas</code></td><td>[test mode] voltage measurement</td></tr>
+<tr><td><code>volt &lt;desired_volt&gt;</code></td><td>set DUT voltage</td></tr>
+<tr><td><code>vramp &lt;vstart&gt; &lt;vend&gt; &lt;vincr&gt; &lt;interval_us&gt;</code></td><td>voltage ramp</td></tr>
+<tr><td><code>wait &lt;bit_val&gt;</code></td><td>wait for RDY/BSY bit</td></tr>
+<tr><td><code>wcmp &lt;offset&gt; &lt;num_bytes&gt; &lt;win_size&gt; &lt;cont&gt;</code></td><td>compare wrapped read buffer to write buffer</td></tr>
+<tr><td><code>write &lt;offset&gt; &lt;data&gt;</code></td><td>write data bytes to write buffer</td></tr>
+</table>
+</details>
+<p>Several commands can be chained on one line with semicolons, for example
+<code>06; 20 1000; wait 0</code> (write enable, erase the 4&nbsp;kB block at
+0x1000, wait until the device is ready).</p>
+
+<!-- ------------------------------------------------------------------ -->
+<h2 id="trouble">12. Troubleshooting</h2>
+<table>
+  <tr><th style="width:36%">Symptom</th><th>What to do</th></tr>
+  <tr><td>"Serial COM Port Not Found"</td>
+      <td>Connect the USB cable, switch the board on, press RESET and restart the application.</td></tr>
+  <tr><td>Connecting fails with "access denied"</td>
+      <td>Another program, or a second copy of the Workbench, has the COM port open. Close it.</td></tr>
+  <tr><td>"Communication Error: Serial Port Timeout" &ndash; Retry / Cancel</td>
+      <td>The board does not answer. Check that it is on and press its RESET button, then choose <em>Retry</em>.</td></tr>
+  <tr><td>"No flash device detected"</td>
+      <td>Insert a device in the socket and press RESET. The Terminal commands (<code>volt</code>, <code>freq</code>, <code>config</code>, ...) still work without a device.</td></tr>
+  <tr><td>A dialog says an entry "is empty" or "is not a valid hexadecimal number"</td>
+      <td>Correct the entry box it names. Address, length, pattern and increment are hexadecimal; the number of erase blocks is decimal. The command is not sent until all entries are valid.</td></tr>
+  <tr><td>A Quad or Dual read returns shifted or wrong data</td>
+      <td>The number of dummy cycles probably does not match the flash. Set it with <code>dummy &lt;n&gt;</code> and check the device's data sheet.</td></tr>
+  <tr><td>"Quad Enable could not be set"</td>
+      <td>The flash did not accept the status-register write, or keeps its Quad Enable bit elsewhere. Use <code>help 31</code> and <code>help 01</code> to see the write commands, and the data sheet to find the bit.</td></tr>
+  <tr><td>A script stops with "error at line N"</td>
+      <td>The board rejected that command. Run it by hand in the Terminal, and use <code>help &lt;command&gt;</code> to see the syntax it expects.</td></tr>
+  <tr><td>"Only .bin files are supported"</td>
+      <td>Convert the data to a raw binary file first.</td></tr>
+  <tr><td>The settings look wrong or the window opens in an odd place</td>
+      <td>Use <em>File &rarr; Parameters &rarr; Defaults</em> for the entry boxes, or delete the <code>.cfg</code> file listed in <a href="#settings">Settings</a>.</td></tr>
+  <tr><td>The Terminal does not accept typing</td>
+      <td>Click on the last line, after the <code>&gt;&gt;&gt;</code> prompt. Earlier output is read-only.</td></tr>
+</table>
+
+<!-- ------------------------------------------------------------------ -->
+<h2 id="shortcuts">13. Keyboard shortcuts</h2>
+<table>
+  <tr><th style="width:240px">Keys</th><th>Action</th></tr>
+  <tr><td><kbd>F1</kbd></td><td>Open this guide</td></tr>
+  <tr><td><kbd>Esc</kbd></td><td>Stop a running script</td></tr>
+  <tr><td><kbd>Enter</kbd></td><td>Send the command on the prompt line</td></tr>
+  <tr><td><kbd>&uarr;</kbd> / <kbd>&darr;</kbd></td><td>Previous / next command from the history</td></tr>
+  <tr><td><kbd>Ctrl</kbd>+<kbd>C</kbd></td><td>Copy the selected Terminal text</td></tr>
+  <tr><td><kbd>Ctrl</kbd>+<kbd>V</kbd></td><td>Paste at the prompt</td></tr>
+</table>
+
+<footer>Dubrovnik Workbench @VERSION@ &ndash; Csaba Moldvai (System/Board design, GUI),
+Eyal Barzilay (Tiberias flash support software).</footer>
+
+</div>
+</body>
+</html>

@@ -1,5 +1,6 @@
 __pycache__
 *.bak
+*.lnk
 dubGui/__pycache__
 dubGui/dev/
 dubGui/temp/
@@ -7,3 +8,6 @@ dubLibs/__pycache__
 dubScripts/*
 dubUtils/*
 packaging/*
+
+
+.venv/
