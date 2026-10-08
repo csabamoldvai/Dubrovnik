@@ -5,13 +5,11 @@ import pathlib
 import sys
 import tempfile
 import webbrowser
-import json
-# from tkinter import *
-from tkinter import *  # noqa: F401, F403
-from tkinter import *  # noqa: F401, F403
 from tkinter import (
-    LabelFrame, IntVar, StringVar, Checkbutton, Button, Label, 
-    Radiobutton, Entry, Menu)
+    LabelFrame, IntVar, StringVar, Checkbutton, Button, Label,
+    Radiobutton, Entry, Menu,
+    CHAR, DISABLED, E, END, EW, GROOVE, INSERT, LEFT, NORMAL, NSEW, NW, S,
+    SUNKEN, Tk, W, mainloop)
 from tkinter import ttk
 from tkinter import scrolledtext
 # Use the dubLibs next to this project, not another copy found on PYTHONPATH
@@ -60,7 +58,7 @@ def helpFilePath():
     return os.path.join(base, 'help', 'dubrovnik_help.html')
 
 
-def showHelp(event=None):
+def showHelp(_event=None):
     """Help > Help (F1): open the user guide in the default web browser"""
     path = helpFilePath()
     if not os.path.isfile(path):
@@ -171,10 +169,14 @@ class SerComFrame(LabelFrame):
                                pady=10, sticky=EW, columnspan=3)
 
     def updtPortList(self):
-        self.portList = self.comm.findPorts()
+        self.portList = self.comm.findPorts(exit_if_none=False)
         self.combo['values'] = self.portList
         if self.portList:
             self.combo.set(self.portList[0])
+        elif self.portStatus == 'disconnected':
+            self.combo.set('')
+            stsBarComm.config(text='No COM port found: connect the USB cable, '
+                             'turn on the board and press RESET')
 
     def connectPort(self, defaultPort=None, checkIsFlashPresent=True):
         if self.scriptBusy():
@@ -185,8 +187,21 @@ class SerComFrame(LabelFrame):
                 self.combo.set(self.selPort)
             else:
                 self.selPort = self.combo.get()
+            if not self.selPort:            # nothing chosen yet: look again
+                self.updtPortList()
+                self.selPort = self.combo.get()
+            if not self.selPort:
+                showwarning(
+            'No board found',
+            'No Dubrovnik board was found.\n\n1. Connect the USB cable\n'
+            '2. Turn on the board\n3. Press the RESET button\n\n'
+            'Then click Connect (the COM port list refreshes when you open it).')
+                return
             # only if disconnected, connect to selected port
             self.portHandle = self.comm.connect(self.selPort)
+            if self.portHandle is None:     # the port could not be opened
+                stsBarComm.config(text=f'Could not open {self.selPort}')
+                return
             self.setSerialParams()
             self.btn2.config(text='Disconnect')  # change button label
             self.portStatus = 'connected'  # update connection status
@@ -221,9 +236,45 @@ class SerComFrame(LabelFrame):
         return self.scriptRunning
 
     def checkConnection(self):
+        """True if connected; otherwise shows a message and returns False"""
         if self.portStatus == 'disconnected':
-            showerror('Dubrovnik Dashboard Error',
+            showerror('Dubrovnik Workbench (Classic) Error',
                       'Unable to open COM port!\nConnect to the board')
+            return False
+        return True
+
+    def connectionLost(self):
+        """The board was switched off or unplugged: its COM port is gone.
+        Closes the port and brings the window back to the disconnected state."""
+        if self.portStatus != 'connected':
+            return
+        lost = self.selPort
+        try:
+            self.comm.disconnect(lost, echo=0)
+        except Exception:
+            pass                        # the port is gone anyway
+        self.portStatus = 'disconnected'
+        self.serParams = ''
+        self.btn2.config(text='Connect')
+        stsBarComm.config(text=f'Connection to {lost} lost: the board was '
+                         'switched off or unplugged')
+        term.displayText(f'*** Connection to {lost} lost (board switched off or '
+                         'unplugged). Switch it on, press RESET and click '
+                         'Connect. ***')
+        if self.scriptRunning:          # a script can't go on without the board
+            scriptStop[0] = True
+
+    def checkLink(self):
+        """Every 2 s: is the COM port of the connected board still there?
+        (Backs up the faster check in Terminal.pollSerial.)"""
+        if self.portStatus == 'connected':
+            try:
+                present = self.selPort in self.comm.getPortList()
+            except Exception:
+                present = True          # can't tell: assume it is
+            if not present:
+                self.connectionLost()
+        self.after(2000, self.checkLink)
 
     def setSerialParams(self):
         """ Gets serial communication port parameters """
@@ -440,14 +491,15 @@ class ProgramFrame(LabelFrame):
     def program(self):
         if serCom.scriptBusy():
             return
-        serCom.checkConnection()  # check if board is connected
+        if not serCom.checkConnection():  # check if board is connected
+            return
         try:
             self.get_states()
         except ValueError as e:
             showerror('Program', str(e))
             return
         if self.progModeVar.get() == 'pattern':
-            t_prog = du.page_program(
+            du.page_program(
                 self.comm, startAddr, dataLen, pattn, incr)
             term.tprint(du.textToDisplay[:-1])
             # term.displayText(du.textToDisplay)
@@ -457,7 +509,7 @@ class ProgramFrame(LabelFrame):
             du.write_buf_write(self.comm, self.progData, dsize)
             term.displayText('Programming...\n')
             # term.tprint('Programming...\n')
-            t_prog = du.data_program(self.comm, self.progData, startAddr)
+            du.data_program(self.comm, self.progData, startAddr)
             term.tprint(du.textToDisplay[:-1])
 
     def progVerify(self):
@@ -498,7 +550,7 @@ class EraseFrame(LabelFrame):
         self.buildFrame()
         self.blockSize.set(self.blockSizes[0])
 
-    def buildFrame(self, parent=None):
+    def buildFrame(self):
         '''Makes a reusable frame for a flash erase operation'''
         # ersfrm = LabelFrame(self, parent).pack(side=LEFT, anchor=NW, padx=10,pady=10)
         rb1_ers = Radiobutton(self, text='4kB',
@@ -544,7 +596,8 @@ class EraseFrame(LabelFrame):
     def blockErase(self):
         if serCom.scriptBusy():
             return
-        serCom.checkConnection()  # check if board is connected
+        if not serCom.checkConnection():  # check if board is connected
+            return
         blkSzStr = self.blockSize.get().lower()
         try:
             start_addr = parseField('Start Address', self.startAddr.get())
@@ -559,11 +612,11 @@ class EraseFrame(LabelFrame):
             startAddr = (start_addr // blockSizeKB) * blockSizeKB
             term.tprint(f'Erasing {num_blocks} {block_size}kB block(s) from address {startAddr:x}',
                         printOn='guiConsole')
-            t_erase = du.block_erase(
+            du.block_erase(
                 self.comm, block_size, start_addr, num_blocks)
         else:
             term.tprint('Erasing chip', printOn='guiConsole')
-            t_erase = du.block_erase(self.comm, blkSzStr)
+            du.block_erase(self.comm, blkSzStr)
 
         term.tprint(du.textToDisplay[:-1])
 
@@ -589,7 +642,7 @@ class ReadFrame(LabelFrame):
         self.buildFrame()
         self.spiMode.set(self.spiModes[0])
 
-    def buildFrame(self, parent=None):
+    def buildFrame(self):
         '''Makes a reusable frame for a flash erase operation'''
         # ersfrm = LabelFrame(self, parent).pack(side=LEFT, anchor=NW, padx=10,pady=10)
         rb1_read = Radiobutton(self, text=self.spiModes[0],
@@ -658,7 +711,7 @@ class ReadFrame(LabelFrame):
         self.dispmode_cb.set(label)
         du.dispmode = self.dispmodeOptions[label]
 
-    def dispmode_cb_updated(self, event):
+    def dispmode_cb_updated(self, _event):
         dispModeSelKey = self.dispmode_cb.get()  # get the selected item in Combo
         # assign the associated value to dispmode
         mode = self.dispmodeOptions[dispModeSelKey]
@@ -677,7 +730,8 @@ class ReadFrame(LabelFrame):
     def readFlash(self):
         if serCom.scriptBusy():
             return
-        serCom.checkConnection()  # check if board is connected
+        if not serCom.checkConnection():  # check if board is connected
+            return
         try:
             readStartAddr = parseField('Start Address', self.startAddr.get())
             readLen = parseField('Length', self.readLength.get())
@@ -732,7 +786,7 @@ class Terminal(LabelFrame):
         # Typing/pasting is only allowed on the active prompt line
         self.txt.bind('<Key>', self.onKeyPress)
         self.txt.bind('<<Paste>>', self.onPaste)
-        self.txt.bind('<<Cut>>', lambda e: 'break')
+        self.txt.bind('<<Cut>>', lambda _e: 'break')
 
         # Right-click context menu
         self.ctxMenu = Menu(self.txt, tearoff=False)
@@ -762,7 +816,11 @@ class Terminal(LabelFrame):
             handle = getattr(self.comm, 'handle', None)
             if (handle is not None and handle.is_open
                     and not self.cmdInProgress):
-                n = handle.in_waiting
+                try:
+                    n = handle.in_waiting
+                except Exception:      # the port vanished: board off or unplugged
+                    n = 0
+                    serCom.connectionLost()
                 if n > 0:
                     data = handle.read(n).decode('utf-8', errors='replace')
                     data = data.replace('\r', '')
@@ -781,7 +839,7 @@ class Terminal(LabelFrame):
         self.txt.mark_set(INSERT, END)
         self.txt.see(INSERT)
 
-    def onReturnKey(self, event):
+    def onReturnKey(self, _event):
         if serCom.scriptRunning:
             return 'break'          # the script owns the board
         cmdstr = self.txt.get("end-1l linestart", "end-1l lineend")[
@@ -870,16 +928,16 @@ class Terminal(LabelFrame):
             return 'break'               # Tab, Ctrl+X/Z/Y, ...
         return None                      # navigation and modifier keys
 
-    def onPaste(self, event):
+    def onPaste(self, _event):
         self.ensureActiveLine()
         return None
 
-    def onBackSpace(self, event):
+    def onBackSpace(self, _event):
         if self.ensureActiveLine():
             return 'break'               # just jump to the prompt line
         return self.allowDelete(5)
 
-    def onDelete(self, event):
+    def onDelete(self, _event):
         if self.ensureActiveLine():
             return 'break'
         return self.allowDelete(4)
@@ -890,17 +948,17 @@ class Terminal(LabelFrame):
         if charPos < charIndex:
             return 'break'  # Returning 'break' prevents the native behavior, e.g. Del
 
-    def onUpArrowKey(self, event):
+    def onUpArrowKey(self, _event):
         if self.historyIndex > 0:
             self.historyIndex -= 1
         return self.replaceLineWithHistory()
 
-    def onDownArrowKey(self, event):
+    def onDownArrowKey(self, _event):
         if self.historyIndex < len(self.history):
             self.historyIndex += 1
         return self.replaceLineWithHistory()
 
-    def onLeftArrowKey(self, event):
+    def onLeftArrowKey(self, _event):
         return self.allowDelete(5)
 
     def replaceLineWithHistory(self):
@@ -966,9 +1024,9 @@ if __name__ == "__main__":
 
     def showAbout():
         aboutMsg = f'''
-                   ***************************
-                   *** Dubrovnik Workbench ***
-                   ***************************
+                   *************************************
+                   *** Dubrovnik Workbench (Classic) ***
+                   *************************************
 
                    Version {APP_VERSION}
 
@@ -978,13 +1036,12 @@ if __name__ == "__main__":
         showinfo('About', aboutMsg)
 
     root = Tk()
-    root.title('Dubrovnik Dashboard App')
+    root.title('Dubrovnik Workbench (Classic)')
 
     comm = boardcom.BoardComm()   # create an instance of class Comm
     du = dubrovnik.Dubrovnik()
 
-    portList = comm.findPorts()
-    comport = portList[0]
+    portList = comm.findPorts(exit_if_none=False)   # may be empty: no board yet
 
     # TODO Eventually migrate to a format where MainWindow is in itw own class
     # window = MainWindow(root)
@@ -997,8 +1054,10 @@ if __name__ == "__main__":
     serCom.grid_propagate(0)
     serCom.config(width=350, height=60, bd=PANEL_BORDER, relief=GROOVE)
     serCom.grid(row=0, column=0, padx=10, pady=4, sticky=NW)
-    serCom.combo.set(portList[0])
+    if portList:
+        serCom.combo.set(portList[0])
     serCom.comm = comm
+    serCom.checkLink()      # notices when the board is switched off
 
 # ******************************
 # ****** Erase Panel   *********
@@ -1310,7 +1369,7 @@ if __name__ == "__main__":
         tools_menu.add_command(label='Open Tools Folder',
                                command=openToolsFolder)
 
-    root.bind('<Escape>', lambda e: stopScript())
+    root.bind('<Escape>', lambda _e: stopScript())
 
     def openForProgramming():
         """File > Open: pick a .bin file and set the Program panel up to
@@ -1357,11 +1416,11 @@ if __name__ == "__main__":
     # if the app is killed instead of closed normally. The entry-box values are
     # saved only by File > Parameters > Save.
     # (Traces are added after loadConfig so loading doesn't trigger a save.)
-    serCom.chk_var.trace_add('write', lambda *args: serCom.saveConfig())
+    serCom.chk_var.trace_add('write', lambda *_args: serCom.saveConfig())
 
     # * At this point we have a list of valid COM ports.
     # * Next step is to connect to one of them.
-    if serCom.autoConnect:  # if autoConnect set
+    if serCom.autoConnect and portList:  # auto connect, if a board was found
         if len(portList) > 1:  # no need to check if ==0. boardcom.py already does
             if serCom.lastUsedPort in portList:  # if last used port is in the portList
                 # connect to that port
@@ -1374,13 +1433,21 @@ if __name__ == "__main__":
 
         # * At this point we are connected to the UART chip on Dubrovnik, but not yet
         # * to the MCU. It may require a manual RESET to boot.
-        resp = comm.connectToMCU()
-        # print(resp)
-        term.clear()
+        if serCom.portStatus == 'connected':   # the port could be opened
+            resp = comm.connectToMCU()
+            # print(resp)
+            term.clear()
 
-        if comm.isFlashPresent() == 0:
-            showwarning(
-                'Warning', 'No flash device detected\nInstall a device and RESET the board')
+            if comm.isFlashPresent() == 0:
+                showwarning(
+                    'Warning', 'No flash device detected\nInstall a device and RESET the board')
+
+    elif serCom.autoConnect:     # Auto connect is on, but no board was found
+        showwarning(
+            'No board found',
+            'No Dubrovnik board was found.\n\n1. Connect the USB cable\n'
+            '2. Turn on the board\n3. Press the RESET button\n\n'
+            'Then click Connect (the COM port list refreshes when you open it).')
 
     # Board commands (volt, freq, config, ...) don't need a flash device, so the
     # terminal must stay usable. The modal warning steals focus: give it back.

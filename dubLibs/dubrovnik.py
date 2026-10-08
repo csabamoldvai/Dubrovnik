@@ -7,12 +7,12 @@ class Dubrovnik:
         self.wel = '06'
         self.led_dict = {'r1': '9', 'g1': '11', 'b1': '10',
                          'r2': '14', 'g2': '13', 'b2': '12'}
-        # used by other modules to display text(e.g. dub_gui_main)
+        # used by other modules to display text(e.g. dubrovnik_workbench_classic)
         self.textToDisplay = ""
         self.dispmode = 'b'
 
     def get_version(self, comm, echo=1):
-        """### Returns TestBench software version"""
+        """### Returns Tiberias software version"""
         comm.send('ver')
         resp = comm.response(removeCmd=True, removePrompt=True)
         if echo:
@@ -72,7 +72,7 @@ class Dubrovnik:
     def get_wait_time_us(self, comm):
         """### Gets and returns the wait time for certain operations to finish
         Prerequisit: previously a 'wait 0' or 'wait 1' command must be issued\n
-        The 'wait 0/1' command polls the RDY#/BUSY bit. TestBench measures and stores the time
+        The 'wait 0/1' command polls the RDY#/BUSY bit. Tiberias measures and stores the time
         the bit was set to specified value (0 or 1). It calculates and returns this time using
         the 'dvar wait_time' command.
         Returns: wait (elapsed) time (int) in microseconds [us]
@@ -142,7 +142,7 @@ class Dubrovnik:
         * opcode     : defines which opcode to use for read e.g. '03', '0b'
         * mode_byte  : hex mode byte for opcodes that take one between address
                        and count, e.g. 'eb' (<addr> <mode> <count>); else None
-        Returns the response string from TestBench
+        Returns the response string from Tiberias
         """
         self.textToDisplay = ""
         # CM use class attribute instead of passing it in the argument
@@ -232,7 +232,7 @@ class Dubrovnik:
         """
         * takes an input binary array
         * loads the data from the binary array into the
-        * test bench write buffer using a sequence of 'write' commands
+        * Tiberias write buffer using a sequence of 'write' commands
         """
         offst = 0
         while offst < dsize:
@@ -252,8 +252,8 @@ class Dubrovnik:
         """
         * gets a binary data array from the caller
         * programs binary data page by page
-        * first writing the page data into the test bench write buffer
-        * then performing a test bench program operation
+        * first writing the page data into the Tiberias write buffer
+        * then performing a Tiberias program operation
         """
         self.textToDisplay = ""  # used by GUI teminal
         prog_time = 0

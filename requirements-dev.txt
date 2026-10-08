@@ -1,0 +1,3 @@
+# Needed to build the installer (packaging\build.bat); not needed to run the programs
+-r requirements.txt
+pyinstaller>=6.22

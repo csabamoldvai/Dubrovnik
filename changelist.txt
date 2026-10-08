@@ -17,7 +17,7 @@ dubLibs, the user guide (help\dubrovnik_help.html) and the tools folder:
                         New edition (CustomTkinter), light/dark appearance.
                         dubGui\dubrovnik_workbench_compact.py starts it with
                         everything about 12% smaller.
-  Classic edition       dubGui\dub_gui_main.py
+  Classic edition       dubGui\dubrovnik_workbench_classic.py
                         The original (tkinter) application, updated. This is
                         the one the installer (packaging) currently builds.
 
@@ -114,6 +114,16 @@ Terminal
   * Debug console messages removed (connection and serial-settings lines,
     "DONE ..." lines, echo of typed commands).
 
+Connection
+  * Starting without a board no longer ends the program (it used to exit after the
+    "press RESET ... restart the application" pop-up). It starts disconnected; Auto
+    connect warns, and the Connect button and the COM port list work later.
+  * If the board is switched off or unplugged while connected, the program notices
+    within a fraction of a second: the status bar says "Connection to COMn lost",
+    the button goes back to "Connect", a note appears in the Terminal, and a running
+    script is stopped. Erase, Program and Read then ask you to connect instead of
+    failing.
+
 Entry checking
   * Empty or non-numeric entries (address, length, pattern, increment, block
     count) show a message naming the field. No command is sent. Before, an empty
@@ -156,10 +166,20 @@ LIBRARIES (dubLibs)
 
 PACKAGING
 ---------
-  * packaging\dubrovnik.spec bundles the help and tools folders.
-  * packaging\build.bat reads the version from dubLibs\version.py and passes it to
-    the installer (installer.iss).
-  * requirements.txt added (customtkinter, pyserial); .venv\ is ignored by git.
+  * packaging\dubrovnik.spec builds BOTH programs into one bundle (dist\Dubrovnik):
+    DubrovnikWorkbench.exe (new edition) and DubrovnikClassic.exe (classic edition),
+    sharing one runtime, the help folder and the tools folder. Built with
+    PyInstaller 6.22.
+  * File naming: the programs have no version number in their file name (shortcuts
+    and upgrades keep working). The version is stored in each .exe's file
+    properties (Details tab), taken from dubLibs\version.py. The installer is named
+    Dubrovnik-Setup-<version>.exe.
+  * packaging\build.bat uses the project's .venv, reads the version from
+    dubLibs\version.py and passes it to the installer script (installer.iss, which
+    now installs both programs with Start-menu shortcuts). Set DUB_CONSOLE=1 to
+    build with a console window that shows start-up errors.
+  * requirements.txt (customtkinter, pyserial) and requirements-dev.txt (adds
+    PyInstaller); .venv\ is ignored by git.
 
 
 KNOWN LIMITATIONS
@@ -177,4 +197,5 @@ KNOWN LIMITATIONS
     dub call (or time.sleep) freezes the window until it ends. Use dub.sleep().
   * A script can erase and program the flash without asking, and a Python script
     can do anything the user can do on the PC. Only run scripts you trust.
-  * The installer script (packaging) builds the classic edition.
+  * The installer itself (Inno Setup) has not been compiled yet; the two programs
+    were built and started successfully.

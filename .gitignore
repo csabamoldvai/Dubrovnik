@@ -11,3 +11,8 @@ packaging/*
 
 
 .venv/
+
+# editor settings and VS Code leftovers
+.vscode/
+*.code-workspace
+tempCodeRunnerFile.py

@@ -1,9 +1,57 @@
+TODO LIST - reviewed for version 1.0 (2026-10-07)
+=================================================
+
+OPEN:
+1. "Prog & Verify" button (Gordon's wishlist): still a disabled placeholder.
+   It should return the differences, or which block is not correct.
+
+2. Show the READ time. Erase and program already show the time per block / per page and
+   the total in the Terminal; the Read panel shows only the data.
+
+3. Cancel in the "Communication Error: Serial Port Timeout" dialog (board stops answering while
+   connected) ends the program at once with sys.exit(): settings and window size are not saved.
+   Consider closing the application cleanly instead.
+
+4. Check on hardware: the Read button now shows the command line the board echoes as the
+   first line of the Read output (Feature Request: "the send command string is not shown").
+   The GUI does not print the command before it is sent. Confirm that this is enough.
+
+PLANNED:
+1. Program section: open and decode .srec files and download them to the flash.
+   - Reuse the srec loader in dubUtils (fhd.py, pgm_srec.py; sample files test1.srec, test2.srec).
+   - Note: dubUtils/ is ignored by git (.gitignore). Un-ignore the files once the app uses them.
+
+2. New Tools menu entry: put the chip into test mode (uses fhd.py).
+   - Not a simple process: needs several steps. Plan them before porting.
+   - Add it as a script in the tools folder (# TOOL: header), run with the dub object.
+
+3. Tools menu: VT distribution (get_vt_distribution_*.py). Needs matplotlib and the old
+   debugging module (pandas). Decide: port with matplotlib+pandas, matplotlib only, or
+   no matplotlib (CSV + simple plot). pattern_program() and echo() now exist in dubLibs.
+
+RESOLVED (original notes, kept for reference)
+---------------------------------------------
+1.-3. below, with how they were resolved:
+  - Note 1 (prompt must be bytes): done. BoardComm stores self.prompt = bytes(prompt, 'utf-8').
+  - Note 2 (delay while Tiberias fills the input buffer): obsolete. send() reads until the
+    prompt arrives (read_until), no fixed time.sleep() is needed.
+  - Note 3 (reset the input buffer before each send): done, both solutions are in send():
+    it resets the input buffer first and processes the response at the end.
+  - Starting the program with the board off / no COM port: used to end the program after the
+    "press RESET ... restart the application" pop-up. Fixed: the program now starts without a
+    connection (warning only if Auto connect is on); Connect and the COM list work later.
+  - Debug session (start with the board off, Retry, power on without RESET, crash): confirmed fixed.
+    The program starts without a board and without a flash device; no crash.
+  - Gordon's wishlist: "display prog/erase/read times" - done for erase and program (see
+    open item 2 for read); "program and log how long each page takes" - done: the page
+    program time of every page is shown in the Terminal and File > Save Terminal Log keeps it.
+
 NOTES:
 
 1.  self.prompt = prompt must be of type bytes
     self.prompt = prompt.encode('utf-8')
 
-2. There is a challenge, because we don't know how long it will take for TestBench to finalize filling
+2. There is a challenge, because we don't know how long it will take for Tiberias to finalize filling
    in the input buffer.
    I had to play with some delay times: time.sleep(0.02)
    May have to change (increase) this time in the future
@@ -29,23 +77,3 @@ NOTES:
    - add a "prog & verify" button
       returns differences, or which block not correct
    - program and log how long it takes to program each page (to check how many pages are over erased)
-
-   
-DEBUG SESSION:
-Issue:
-1. Start program board turned off.
-  - Retry pop-up
-  - Connect to power and don't press RESET button on the board
-  - Click "Retry" button
-    System crashes
-
-
-
-
-
-
-Feature Request:
-1. Hit Read button the send command string is not show
-
-   
-

@@ -51,6 +51,7 @@ class BoardComm:
             # raise IOError("cannot open " + comport)
             askretrycancel('Comport Error', f'Cannot open port {comport}\n \
                            Make sure it is not used by another program')
+            self.handle = None      # not connected (don't keep an old, closed port)
         return self.handle
         # return comport
 
@@ -93,23 +94,28 @@ class BoardComm:
                 portList.append(ports[i].device)
         return portList
 
-    def findPorts(self):
-        """findPorts() keeps calling getPortList until a port is found or the operation is aborted.\n
+    def findPorts(self, exit_if_none=True):
+        """Returns the sorted list of Dubrovnik COM ports. With exit_if_none=True (the default,
+        used by stand-alone scripts) an error dialog is shown and the program quits when there is
+        none. The GUI applications pass exit_if_none=False and get an empty list instead.\n
+        Older description: findPorts() keeps calling getPortList until a port is found or the operation is aborted.\n
         In case a communication port is not avaiable (e.g. USB cable not connected, Dubrovnik board
         not turned on, or the RESET button was not pressed) a dialog box keeps popping-up until the
         situation is remedied ("Retry") or the operation is cancelled in which case the program quits.\n
         Returns the sorted list of found ports (portList) or quits the program if no valid port was found.
         """
         portList = self.getPortList()
+        if portList == [] and not exit_if_none:
+            return portList
         if portList == []:
-            showerror('Dubronik Dashboard Error (dubrovnik.py findPorts)',
+            showerror('Dubrovnik Workbench Error (findPorts)',
                       'Serial COM Port Not Found!\n\n1. Connect USB cable\n2. Turn on the board\n3. Press RESET button\n4. Restart the application')
             sys.exit()
         portList.sort()  # in-place sorting of the list
         return portList  # return sorted port list
 
         # while portList == []:
-        #     if askretrycancel('Dubrovnik Dashboard (dubrovnik.py) Error',
+        #     if askretrycancel('Dubrovnik Workbench Error',
         #                       'COM Port Not Found!\nConnect USB cable.\nTurn on the board.\nPress RESET button.\nRetry?'):
         #         portList = self.getPortList()
         #     else:
@@ -119,7 +125,7 @@ class BoardComm:
         # return portList  # return sorted port list
 
     def find_and_connect(self, desiredPort='auto', echo=0):
-        """### Finds all USB serial ports that have a potential Dubronik board connected to it
+        """### Finds all USB serial ports that have a potential Dubrovnik board connected to it
         It is possible to specify a desired COM port to connect to.
         Parameters:
         * desiredPort : integer value or the port we want to connect to.\n
@@ -204,7 +210,7 @@ class BoardComm:
     # ********************************************************
 
     def send(self, cmdstr):
-        """### Sends a command string to TestBench
+        """### Sends a command string to Tiberias
         After the command was sent it reads the response from the input buffer
         until the expected prompt is received.\n
         It handles corner cases when the board is not turned on, or the reset
@@ -216,7 +222,7 @@ class BoardComm:
         """
         self.handle.reset_input_buffer()  # in case we have garbage in in-box (shouldn't happen)
 
-        if cmdstr[-1] != '\r':  # TestBench expects a newline
+        if cmdstr[-1] != '\r':  # Tiberias expects a newline
             cmdstr += '\r'      # append if not already there
 
         self.cmdline = cmdstr
@@ -224,7 +230,7 @@ class BoardComm:
         numBytesSent = self.handle.write(byteseq)  # send to port
         # time.sleep(0.03)
         # sleep() is used if the last command of send() function is not a response().
-        # Allows some time for the response from TestBench to arrive
+        # Allows some time for the response from Tiberias to arrive
         # min 0.006 sec for 0x1000 bytes, 0.025 sec for 0x4000 bytes.
 
         # Read back content of in-buffer (empty it), then save response in "raw" and "cooked"
@@ -242,7 +248,7 @@ class BoardComm:
 
         self.cooked = self.raw.lower()
         # RECOMMENDED to get a response. If not, after a back-to-back "send()" command we must have
-        # a blind wait (established experimentally) allowing all data to arrive from TestBench, before
+        # a blind wait (established experimentally) allowing all data to arrive from Tiberias, before
         # the next send command is sent, otherwise it will mess up the input buffer.
         # The wait time depends on the lenght of the response, which we don't know ahead of time.
         self.response()
@@ -250,7 +256,7 @@ class BoardComm:
         return numBytesSent
 
     def response(self, removeCmd=False, removePrompt=True, returnAsList=False, readInBuffer=False):
-        """### Get a response from TestBench
+        """### Get a response from Tiberias
         If no response is received, a pop-up dialog will prompt the user to turn on or reset the board
         (which may remedy the situation). If "Cancel" is pressed, the program quits.\n
         Parameters:\n
