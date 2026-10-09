@@ -29,6 +29,16 @@ PLANNED:
    debugging module (pandas). Decide: port with matplotlib+pandas, matplotlib only, or
    no matplotlib (CSV + simple plot). pattern_program() and echo() now exist in dubLibs.
 
+4. Version 1.1 documents (REMIND Csaba): files for the docs folder / Help > Documents.
+   - PDF of the Dubrovnik PowerPoint slides.
+   - Board pictures that show where things are (annotated), as PNG.
+   - Table that maps header pin numbers to the SPI signals, so they can be probed with a
+     logic analyzer. Goes into the help (Power measurement style table), or a docs file.
+   - Name the files for the menu: leading number sets the order, underscores become spaces,
+     for example 01_Board_Photo.png. docs/ is ignored by git (internal material).
+   - Then rebuild the installer as 1.1 (packaging\build.bat) and update changelist.txt.
+   - Already done: Documents menu, schematic in docs, Power measurement section in the help.
+
 RESOLVED (original notes, kept for reference)
 ---------------------------------------------
 1.-3. below, with how they were resolved:

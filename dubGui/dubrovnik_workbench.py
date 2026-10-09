@@ -4,6 +4,7 @@
 import datetime
 import os
 import pathlib
+import re
 import sys
 import tempfile
 import webbrowser
@@ -12,8 +13,7 @@ from tkinter import (
     NORMAL, NSEW, NW, S, SW, StringVar, W)
 from tkinter import ttk
 from tkinter.filedialog import askopenfilename, asksaveasfilename
-from tkinter.messagebox import showerror, showwarning, showinfo, askyesno
-from tkinter import simpledialog
+from tkinter.messagebox import showerror, showwarning, showinfo
 import customtkinter as ctk
 from customtkinter.windows.widgets.scaling import ScalingTracker
 # Use the dubLibs next to this project, not another copy found on PYTHONPATH
@@ -23,11 +23,20 @@ from dubLibs import cfgfile
 from dubLibs import run_cmd_script
 from dubLibs import run_py_script
 from dubLibs import tools
+from dubLibs import documents
 from dubLibs.version import VERSION as APP_VERSION
 from dubLibs import dubrovnik  # instead of "from dubLibs import Dubrovnik as du"
 
 PROMPT = '>>> '
 CLEAR_CMD = 'clear'
+
+
+def docsFolder():
+    """Folder with the documents of the Help > Documents menu: inside the
+    PyInstaller bundle when frozen, otherwise the project's docs folder"""
+    base = getattr(sys, '_MEIPASS',
+                   os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    return os.path.join(base, 'docs')
 
 
 def toolsFolder():
@@ -388,6 +397,15 @@ class SerComFrame(LabeledFrame):
                          'Connect. ***')
         if self.scriptRunning:          # a script can't go on without the board
             scriptStop[0] = True
+
+    def deviceDetected(self, partNumber):
+        """The board (re)detected its device, e.g. after being switched off and
+        on again: show it in the status bar ('' = no device)"""
+        if self.portStatus != 'connected':
+            return
+        base = self.serParams.split('    Device:')[0]
+        self.serParams = base + (f'    Device: {partNumber}' if partNumber else '')
+        stsBarComm.configure(text=self.serParams)
 
     def checkLink(self):
         """Every 2 s: is the COM port of the connected board still there?
@@ -928,6 +946,10 @@ class Terminal(LabeledFrame):
 
     def showContextMenu(self, event):
         try:
+            # same font as the menu bar (the default Tk menu font is tiny);
+            # menuFont is set once the window is built. Multiply the size
+            # here to make this menu larger.
+            self.ctxMenu.configure(font=(menuFont[0], int(menuFont[1] * 1.0)))
             self.ctxMenu.tk_popup(event.x_root, event.y_root)
         finally:
             self.ctxMenu.grab_release()
@@ -951,10 +973,24 @@ class Terminal(LabeledFrame):
                         self.txt.insert(END, data)
                         self.txt.mark_set(INSERT, END)
                         self.txt.see(INSERT)
+                        self.watchBootMessage(data)
         except Exception as e:
             print(f'pollSerial error: {e}')
         finally:
             self.after(self.pollIntervalMs, self.pollSerial)
+
+    def watchBootMessage(self, data):
+        """The board detects its device after power-up or RESET and prints a
+        banner. Keep the status bar in step with it: 'Detecting flash part'
+        clears the device, 'Part info: <part> ...' sets it."""
+        self.bootBuf = (getattr(self, 'bootBuf', '') + data)[-2000:]
+        if 'Detecting flash part' in self.bootBuf:
+            serCom.deviceDetected('')
+            self.bootBuf = self.bootBuf.split('Detecting flash part')[-1]
+        m = re.search(r'Part info:\s*(\S+)\s', self.bootBuf)  # whole word received
+        if m:
+            serCom.deviceDetected(m.group(1))
+            self.bootBuf = ''
 
     def displayText(self, text):
         self.txt.insert(END, '\n' + text)
@@ -1052,8 +1088,16 @@ class Terminal(LabeledFrame):
         return None                      # navigation and modifier keys
 
     def onPaste(self, _event):
+        """Pastes onto the prompt line as ONE clean command line: no '>>>', no
+        line breaks, no invisible characters (see run_cmd_script.clean_pasted)"""
+        try:
+            text = self.txt.clipboard_get()
+        except Exception:               # empty clipboard or not text
+            return 'break'
         self.ensureActiveLine()
-        return None
+        self.txt.insert(INSERT, run_cmd_script.clean_pasted(text))
+        self.txt.see(INSERT)
+        return 'break'
 
     def onBackSpace(self, _event):
         if self.ensureActiveLine():
@@ -1171,6 +1215,61 @@ if __name__ == "__main__":
         dlg.geometry(f'+{max(x, 0)}+{max(y, 0)}')
         dlg.bind('<Escape>', lambda _e: dlg.destroy())
         dlg.after(100, lambda: (dlg.grab_set(), dlg.focus_set()))
+
+    def dialogBox(title, text, buttons, entryDefault=None):
+        """Modal dialog in the Workbench look and size (the standard Windows and
+        Tk dialogs use a small fixed font). buttons: [(label, value), ...], the
+        first one is the default (Enter), the last one is what Esc and closing
+        the window return. With entryDefault the dialog has a text box and the
+        first button returns its text."""
+        dlg = ctk.CTkToplevel(root)
+        dlg.title(title)
+        dlg.resizable(False, False)
+        dlg.transient(root)
+        result = [buttons[-1][1]]
+        font = ctk.CTkFont(size=14)
+
+        ctk.CTkLabel(dlg, text=text, font=font, justify='left', anchor='w',
+                     wraplength=520).grid(row=0, column=0, padx=28, pady=(24, 12),
+                                          sticky='w')
+        entry = None
+        row = 1
+        if entryDefault is not None:
+            entry = ctk.CTkEntry(dlg, width=360, font=font)
+            entry.insert(0, entryDefault)
+            entry.grid(row=row, column=0, padx=28, pady=(0, 12), sticky='w')
+            row += 1
+
+        def finish(value, index):
+            if entry is not None and index == 0:
+                value = entry.get()
+            result[0] = value
+            dlg.destroy()
+
+        bar = ctk.CTkFrame(dlg, fg_color='transparent')
+        bar.grid(row=row, column=0, padx=28, pady=(4, 22), sticky='e')
+        for i, (label, value) in enumerate(buttons):
+            ctk.CTkButton(bar, text=label, width=100, font=font,
+                          command=lambda v=value, n=i: finish(v, n)
+                          ).grid(row=0, column=i, padx=(8, 0))
+        dlg.bind('<Return>', lambda _e: finish(buttons[0][1], 0))
+        dlg.bind('<Escape>', lambda _e: finish(buttons[-1][1], len(buttons) - 1))
+        dlg.protocol('WM_DELETE_WINDOW',
+                     lambda: finish(buttons[-1][1], len(buttons) - 1))
+
+        dlg.update_idletasks()
+        x = root.winfo_x() + (root.winfo_width() - dlg.winfo_width()) // 2
+        y = root.winfo_y() + (root.winfo_height() - dlg.winfo_height()) // 2
+        dlg.geometry(f'+{max(x, 0)}+{max(y, 0)}')
+
+        def focus():
+            dlg.grab_set()
+            (entry or dlg).focus_set()
+            if entry is not None:
+                entry.select_range(0, END)
+        dlg.after(150, focus)
+        root.wait_window(dlg)
+        return result[0]
 
     root = ctk.CTk()
     root.title('Dubrovnik Workbench')
@@ -1456,10 +1555,11 @@ if __name__ == "__main__":
         """Runs a Python file with the `dub` object and reports how it ended"""
         api = run_py_script.DubApi(
             term, du, root.update, lambda: scriptStop[0],
-            ask=lambda prompt, default='': simpledialog.askstring(
-                'Script', prompt, initialvalue=default, parent=root),
-            confirm=lambda question: askyesno('Script', question, parent=root),
-            notify=lambda text: showinfo('Script', text, parent=root))
+            ask=lambda prompt, default='': dialogBox(
+                'Script', prompt, [('OK', None), ('Cancel', None)], default),
+            confirm=lambda question: dialogBox(
+                'Script', question, [('Yes', True), ('No', False)]),
+            notify=lambda text: dialogBox('Script', text, [('OK', None)]))
         serCom.scriptRunning = True
         scriptStop[0] = False
         term.scriptPrint(f'--- Running Python script {os.path.basename(path)} ---')
@@ -1478,7 +1578,8 @@ if __name__ == "__main__":
     def runTool(tool):
         if not scriptReady():
             return
-        if tool['confirm'] and not askyesno(tool['name'], tool['confirm']):
+        if tool['confirm'] and not dialogBox(
+                tool['name'], tool['confirm'], [('Yes', True), ('No', False)]):
             return
         if tool['description']:
             showStatus(tool['description'], 8000)
@@ -1602,9 +1703,40 @@ if __name__ == "__main__":
     help_menu.add_separator()
     help_menu.add_command(label="About", command=showAbout)
 
+    # Help > Documents: one entry for every file in the docs folder
+    # (see dubLibs/documents.py); rebuilt each time the submenu opens.
+    docs_menu = Menu(help_menu, tearoff=False, font=menuFont,
+                     postcommand=lambda: refreshDocs())
+    help_menu.insert_cascade(1, label="Documents", menu=docs_menu)
+
+    def openDocument(path):
+        try:
+            os.startfile(path)
+        except OSError as e:
+            showerror('Documents', f'Could not open the file:\n{path}\n\n{e}')
+
+    def openDocsFolder():
+        folder = docsFolder()
+        if os.path.isdir(folder):
+            os.startfile(folder)
+        else:
+            showerror('Documents', f'The documents folder was not found:\n{folder}')
+
+    def refreshDocs():
+        docs_menu.delete(0, 'end')
+        found = documents.find_documents(docsFolder())
+        for label, path in found:
+            docs_menu.add_command(label=label,
+                                  command=lambda p=path: openDocument(p))
+        if not found:
+            docs_menu.add_command(label='(no documents found)', state='disabled')
+        docs_menu.add_separator()
+        docs_menu.add_command(label='Open Documents Folder',
+                              command=openDocsFolder)
+
     serCom.loadConfig()  # includes autoConnect and lastUsedPort
     allMenus = (file_menu, tools_menu, view_menu, panels_menu, params_menu, scripts_menu,
-                help_menu, appearance_menu, theme_menu)
+                help_menu, docs_menu, appearance_menu, theme_menu)
     syncTheme()
     watchSystemAppearance()
     syncPanels()

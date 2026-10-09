@@ -2,6 +2,7 @@
 import datetime
 import os
 import pathlib
+import re
 import sys
 import tempfile
 import webbrowser
@@ -19,6 +20,7 @@ from dubLibs import cfgfile
 from dubLibs import run_cmd_script
 from dubLibs import run_py_script
 from dubLibs import tools
+from dubLibs import documents
 from dubLibs.version import VERSION as APP_VERSION
 from dubLibs import dubrovnik  # instead of "from dubLibs import Dubrovnik as du"
 from tkinter.filedialog import askopenfilename, asksaveasfilename
@@ -29,6 +31,14 @@ from tkinter import simpledialog
 
 PROMPT = '>>> '
 CLEAR_CMD = 'clear'
+
+
+def docsFolder():
+    """Folder with the documents of the Help > Documents menu: inside the
+    PyInstaller bundle when frozen, otherwise the project's docs folder"""
+    base = getattr(sys, '_MEIPASS',
+                   os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    return os.path.join(base, 'docs')
 
 
 def toolsFolder():
@@ -263,6 +273,15 @@ class SerComFrame(LabelFrame):
                          'Connect. ***')
         if self.scriptRunning:          # a script can't go on without the board
             scriptStop[0] = True
+
+    def deviceDetected(self, partNumber):
+        """The board (re)detected its device, e.g. after being switched off and
+        on again: show it in the status bar ('' = no device)"""
+        if self.portStatus != 'connected':
+            return
+        base = self.serParams.split('    Device:')[0]
+        self.serParams = base + (f'    Device: {partNumber}' if partNumber else '')
+        stsBarComm.config(text=self.serParams)
 
     def checkLink(self):
         """Every 2 s: is the COM port of the connected board still there?
@@ -805,6 +824,8 @@ class Terminal(LabelFrame):
 
     def showContextMenu(self, event):
         try:
+            # one entry only: make it easy to hit
+            self.ctxMenu.configure(font=('Segoe UI', 14))
             self.ctxMenu.tk_popup(event.x_root, event.y_root)
         finally:
             self.ctxMenu.grab_release()
@@ -828,10 +849,24 @@ class Terminal(LabelFrame):
                         self.txt.insert(END, data)
                         self.txt.mark_set(INSERT, END)
                         self.txt.see(INSERT)
+                        self.watchBootMessage(data)
         except Exception as e:
             print(f'pollSerial error: {e}')
         finally:
             self.after(self.pollIntervalMs, self.pollSerial)
+
+    def watchBootMessage(self, data):
+        """The board detects its device after power-up or RESET and prints a
+        banner. Keep the status bar in step with it: 'Detecting flash part'
+        clears the device, 'Part info: <part> ...' sets it."""
+        self.bootBuf = (getattr(self, 'bootBuf', '') + data)[-2000:]
+        if 'Detecting flash part' in self.bootBuf:
+            serCom.deviceDetected('')
+            self.bootBuf = self.bootBuf.split('Detecting flash part')[-1]
+        m = re.search(r'Part info:\s*(\S+)\s', self.bootBuf)  # whole word received
+        if m:
+            serCom.deviceDetected(m.group(1))
+            self.bootBuf = ''
 
     def displayText(self, text):
         self.txt.insert(END, '\n' + text)
@@ -929,8 +964,16 @@ class Terminal(LabelFrame):
         return None                      # navigation and modifier keys
 
     def onPaste(self, _event):
+        """Pastes onto the prompt line as ONE clean command line: no '>>>', no
+        line breaks, no invisible characters (see run_cmd_script.clean_pasted)"""
+        try:
+            text = self.txt.clipboard_get()
+        except Exception:               # empty clipboard or not text
+            return 'break'
         self.ensureActiveLine()
-        return None
+        self.txt.insert(INSERT, run_cmd_script.clean_pasted(text))
+        self.txt.see(INSERT)
+        return 'break'
 
     def onBackSpace(self, _event):
         if self.ensureActiveLine():
@@ -1407,6 +1450,37 @@ if __name__ == "__main__":
     root.bind('<F1>', showHelp)
     help_menu.add_separator()
     help_menu.add_command(label="About", command=showAbout)
+
+    # Help > Documents: one entry for every file in the docs folder
+    # (see dubLibs/documents.py); rebuilt each time the submenu opens.
+    docs_menu = Menu(help_menu, tearoff=False,
+                     postcommand=lambda: refreshDocs())
+    help_menu.insert_cascade(1, label="Documents", menu=docs_menu)
+
+    def openDocument(path):
+        try:
+            os.startfile(path)
+        except OSError as e:
+            showerror('Documents', f'Could not open the file:\n{path}\n\n{e}')
+
+    def openDocsFolder():
+        folder = docsFolder()
+        if os.path.isdir(folder):
+            os.startfile(folder)
+        else:
+            showerror('Documents', f'The documents folder was not found:\n{folder}')
+
+    def refreshDocs():
+        docs_menu.delete(0, 'end')
+        found = documents.find_documents(docsFolder())
+        for label, path in found:
+            docs_menu.add_command(label=label,
+                                  command=lambda p=path: openDocument(p))
+        if not found:
+            docs_menu.add_command(label='(no documents found)', state='disabled')
+        docs_menu.add_separator()
+        docs_menu.add_command(label='Open Documents Folder',
+                              command=openDocsFolder)
 
     serCom.loadConfig()  # includes autoConnect and lastUsedPort
     syncTermTheme()

@@ -4,7 +4,7 @@ PC application for the **Dubrovnik** flash test board. It erases, programs and r
 board's socket, and gives you a terminal, scripts and ready-made tools for talking to the board's
 **Tiberias** firmware.
 
-Current version: **1.0** (see [changelist.txt](changelist.txt)).
+Current version: **1.1** (see [changelist.txt](changelist.txt)).
 
 ## Features
 
@@ -20,6 +20,9 @@ Current version: **1.0** (see [changelist.txt](changelist.txt)).
   values are saved only when you choose File > Parameters > Save.
 - Notices when the board is switched off or unplugged.
 - Built-in user guide: Help > Help (F1), source in [help/dubrovnik_help.html](help/dubrovnik_help.html).
+  It covers the panels, Terminal command rules, power measurement, probing signals and a glossary.
+- Help > Documents lists the files in the `docs` folder (board schematic, the searchable Dubrovnik Training Guide,
+  and anything else you drop there).
 
 ## Two editions
 
@@ -72,11 +75,13 @@ dubGui/      the applications
 dubLibs/     board communication, flash functions, settings, script runners, version number
 tools/       scripts shown in the Tools menu
 help/        user guide (HTML)
+docs/        documents shown in Help > Documents (kept locally, not tracked)
 changelist.txt, TODO List Dubrovnik.txt, requirements.txt, requirements-dev.txt
 ```
 
 Folders kept locally and not tracked by git (see `.gitignore`): `dubScripts/` (example and personal scripts),
-`dubUtils/` (older utilities such as `.srec` handling), `packaging/` (installer build).
+`dubUtils/` (older utilities such as `.srec` handling), `packaging/` (installer build), `docs/` (internal
+documents such as the schematic and the training guide).
 
 ## Versions and releases
 

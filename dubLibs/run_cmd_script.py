@@ -29,3 +29,21 @@ def parse(text):
 def is_error(reply):
     """True if the board's reply is an error message ('Error: ...')"""
     return reply.strip().lower().startswith('error')
+
+
+def clean_pasted(text):
+    """Turns pasted text into one Terminal command line.
+
+    Text copied from slides or documents often carries a leading '>>>' prompt,
+    line breaks and invisible characters. Each line loses its '>>>' prompt and
+    its unprintable characters, empty lines are dropped, and the remaining lines
+    are chained with '; ' (the board runs 'a; b' as two commands)."""
+    import re
+    parts = []
+    for line in text.splitlines():
+        line = line.replace(' ', ' ')
+        line = ''.join(ch for ch in line if ch.isprintable())
+        line = re.sub(r'^(\s*>>>\s*)+', '', line).strip()
+        if line:
+            parts.append(line.rstrip(';').strip())
+    return '; '.join(p for p in parts if p)

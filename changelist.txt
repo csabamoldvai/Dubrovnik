@@ -8,6 +8,38 @@ To release a new version: change VERSION in dubLibs\version.py, add an entry at
 the top of this file, commit, then tag the commit:  git tag v<VERSION>
 
 
+VERSION 1.1                                                        2026-10-09
+-----------------------------------------------------------------------------
+Adds the Documents menu, a much larger help guide and a training guide, and fixes
+found while testing on the board (started as 1.0.1; renamed 1.1 for its size).
+
+New:
+  * Help > Documents: a submenu that builds itself from the "docs" folder (any file
+    type: PDF, PNG, PPTX ...). Used for the board schematic and other reference
+    material; drop a file into the folder and it appears. "Open Documents Folder"
+    is the last entry. A leading number in the file name sets the order.
+  * Help guide: new "Power measurement" section: the eight power domains with their
+    shunt resistor, jumper (remove it to measure) and INA230 I2C address, and how to
+    measure the device with  pmon 5 start; ...; pmon 5 stop; pmon 5 calc.
+  * Help guide: command rules, useful board and flash commands, GPIO pins, pmon
+    measurement time and pmoncfg values, and the logic analyzer header pin table.
+    Also: About the board (configurations, boot switches), how a flash command is
+    built, read-mode notes, more troubleshooting entries and a short glossary.
+  * Dubrovnik Training Guide (docs folder, Help > Documents): a searchable
+    single-page guide adapted from the 2021 FAE training, with board pictures,
+    the system block diagram, SPI/Dual/Quad/QPI timing diagrams, power measurement,
+    logic analyzer use and a glossary. Internal material: docs is not tracked in git.
+
+Fixed:
+  * Workbench: the questions and messages of scripts and tools (for example
+    Icc Read Measurement) used small standard dialogs; they now use larger
+    dialogs that follow the screen scaling.
+  * After the board was switched off and on again (or RESET) the status bar did not
+    show the device until you disconnected and reconnected. It now follows the board's
+    detection message and shows or clears the device by itself.
+  * Pasting a command with ">>>", line breaks or invisible characters into the
+    Terminal no longer breaks the command line; it is cleaned up.
+
 VERSION 1.0                                                        2026-10-07
 -----------------------------------------------------------------------------
 First numbered release of both applications. They share the libraries in

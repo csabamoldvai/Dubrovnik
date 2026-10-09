@@ -71,12 +71,14 @@ configuration and raw flash commands).</p>
     <li><a href="#program">Program</a></li>
     <li><a href="#read">Read</a></li>
     <li><a href="#terminal">Terminal</a></li>
+    <li><a href="#power">Power measurement</a></li>
     <li><a href="#scripts">Scripts</a></li>
     <li><a href="#menus">Menus</a></li>
     <li><a href="#settings">Settings and saved values</a></li>
     <li><a href="#commands">Board command reference</a></li>
     <li><a href="#trouble">Troubleshooting</a></li>
     <li><a href="#shortcuts">Keyboard shortcuts</a></li>
+    <li><a href="#glossary">Glossary</a></li>
   </ol>
 </nav>
 
@@ -98,6 +100,30 @@ configuration and raw flash commands).</p>
 <div class="note">A flash device is <em>not</em> required to use the Terminal.
 Commands such as <code>volt</code>, <code>freq</code> and <code>config</code>
 work with an empty socket.</div>
+
+<h3 id="aboutboard">1.1 About the board</h3>
+<p><strong>Dubrovnik</strong> is the flash test board. Its firmware, <strong>Tiberias</strong>, runs on the NXP
+i.MX RT1052 microcontroller (it boots from the SD card) and gives a command line over the USB serial connection. The
+Workbench is a PC application that sends Tiberias commands: every button is a command you could type in the Terminal.</p>
+<ul>
+  <li>Sockets for a 24-ball BGA device and for wide/narrow SOIC devices; an expansion port for a load board or an
+      external device</li>
+  <li>Programmable, software-controlled supply for the device (<code>volt</code>)</li>
+  <li>In-system power measurement of eight supply domains (see <a href="#power">Power measurement</a>)</li>
+  <li>Supports SPI, Dual, Quad and (BGA socket) Octal transfers; QPI through the Terminal</li>
+  <li>USB serial connection to the PC, an SD card slot, SDRAM, 1 user button and 6 LEDs; powered from USB or a 5&nbsp;V supply</li>
+</ul>
+<p>The board has three configurations, set by a 0&nbsp;&Omega; resistor installation option:</p>
+<table>
+  <tr><th>Configuration</th><th>Device</th><th>Transfers</th></tr>
+  <tr><td>#1 BGA</td><td>24-ball BGA socket / footprint</td><td>SPI, Dual, Quad, Octal</td></tr>
+  <tr><td>#2 SOIC</td><td>Wide/narrow SOIC socket / footprint (Standard Flash and DataFlash pinouts)</td><td>SPI, Dual, Quad</td></tr>
+  <tr><td>#3 Expansion</td><td>External device or load board via the expansion port</td><td>Full xSPI interface</td></tr>
+</table>
+<p>The DIP switches (SW5) select the boot source: <code>XX00</code> boot from fuses, <code>XX01</code> serial downloader,
+<code>0010</code> serial NOR (EcoXiP), <code>1010</code> SD card (normal use).</p>
+<p>The <em>Dubrovnik Training Guide</em> under <em>Help &rarr; Documents</em> has pictures of the board and many
+more examples.</p>
 
 <!-- ------------------------------------------------------------------ -->
 <h2 id="window">2. The main window</h2>
@@ -180,7 +206,12 @@ what you programmed.</div>
   <tr><td>Quad (114)</td><td><code>6B</code></td><td>Fast read, quad output (1-1-4)</td></tr>
   <tr><td>Quad (144)</td><td><code>EB</code></td><td>Fast read, quad I/O (1-4-4). The workbench sends mode byte <code>00</code>.</td></tr>
 </table>
-<p>QPI (444) and Octal are greyed out: they are not supported yet.</p>
+<p>QPI (444) and Octal are greyed out: they are not supported yet. QPI can be used from the Terminal
+(<code>38; mode q</code>, back with <code>ff; mode s</code>).</p>
+<p>The numbers in the names are the data lines used by the opcode, address and data: 1-1-4 sends the opcode and address
+on one line and reads the data on four. More lines make a read faster: reading 0x2000 bytes took 1096&nbsp;&micro;s in
+SPI, 550&nbsp;&micro;s in Dual and 392&nbsp;&micro;s in Quad (1-1-4) in the training example. See
+<a href="#anatomy">How a flash command is built</a>.</p>
 <div class="note"><strong>Quad Enable is handled for you.</strong> Before a read,
 the Workbench sets the Quad Enable bit (bit 1 of status register 2) for the two
 Quad modes and clears it for SPI and Dual. It only writes the register when the
@@ -214,8 +245,211 @@ for the board. Type after the <code>&gt;&gt;&gt;</code> prompt and press
 opcode. <code>help &lt;opcode&gt;</code> shows its syntax, and
 <code>help &lt;command&gt;</code> works for the board commands.</p>
 
+<h3 id="cmdrules">7.1 Command rules</h3>
+<ul>
+  <li>Commands are not case sensitive.</li>
+  <li><strong>Flash opcodes and their arguments are hexadecimal</strong>; a leading 0 may be left out
+      (<code>6</code> = <code>06</code>). Board commands say in their help what they expect; the common ones are
+      decimal: <code>freq</code> (MHz), <code>volt</code> and <code>psset</code> (volts), <code>delay</code>
+      (&micro;s), <code>dummy</code> (cycles) and the pin numbers of the GPIO commands. The buffer commands
+      (<code>pattern</code>, <code>write</code>, <code>dump</code>, <code>cmp</code>) take hexadecimal values.</li>
+  <li>A <strong>flash command</strong> starts with an opcode: opcode, address, data. A <strong>board
+      command</strong> starts with a name (<code>freq</code>, <code>pmon</code>, <code>wait</code>, &hellip;).</li>
+  <li>Separate several commands on one line with <code>;</code>. The board reads the whole line first and then runs
+      the commands with the least possible delay in between, which is what you want for timing and power
+      measurements. A semicolon at the end of the line is ignored.</li>
+  <li>The command line has <strong>no comments</strong>. (<code>#</code> comments work only in command script
+      files.) Do not paste text with explanations.</li>
+  <li>If you paste text that starts with <code>&gt;&gt;&gt;</code>, or that has line breaks or invisible characters
+      (from a presentation, for example), the Terminal removes them and joins the lines with semicolons.</li>
+</ul>
+<pre>&gt;&gt;&gt; 5; 6; 5; 4; 5      status, write enable, status, write disable, status: three replies (00, 02, 00)</pre>
+
+<h3 id="usingcmds">7.2 Useful board commands</h3>
+<table>
+  <tr><th style="width:250px">Command</th><th>What it does</th></tr>
+  <tr><td><code>config</code></td><td>Part number, voltage, SPI clock, dummy cycles, drive strength and power monitor settings.</td></tr>
+  <tr><td><code>freq 70</code></td><td>Sets the SPI clock. The board uses the closest value it can make and prints it (for example 69.68 MHz).</td></tr>
+  <tr><td><code>volt 1.7</code>, <code>psset 0 1.7</code>, <code>psget 0</code></td><td>Sets and reads the device voltage (the board uses the closest value it can make).</td></tr>
+  <tr><td><code>dispmode b</code> / <code>dispmode w</code></td><td>Shows read data as bytes or as 32-bit words.</td></tr>
+  <tr><td><code>echo off</code> / <code>echo on</code></td><td>Hides or shows the data of flash reads. Printing is slow, so use <code>echo off</code> for timing and power measurements. The data is still in the read buffer (<code>dump r 0 40</code>).</td></tr>
+  <tr><td><code>delay 50000</code></td><td>Waits 50&nbsp;ms (the value is in &micro;s).</td></tr>
+  <tr><td><code>timer start</code> / <code>timer stop</code>, then <code>dvar elapsed_time</code></td><td>Measures the time between the two.</td></tr>
+  <tr><td><code>wait 0</code>, then <code>dvar wait_time</code></td><td>Waits until the device has finished an erase or program (RDY/BSY = 0), then shows how long it took. <code>wait 1</code> waits for the start.</td></tr>
+  <tr><td><code>pattern caba0000 2</code></td><td>Fills the 16&nbsp;KB write buffer with 32-bit words, each one larger by the second number (it can be 0 or negative).</td></tr>
+  <tr><td><code>write 0 abcdef</code></td><td>Puts bytes into the write buffer at an offset (up to 16 bytes).</td></tr>
+  <tr><td><code>dump w 0 40</code> / <code>dump r 0 40</code></td><td>Shows the write / read buffer.</td></tr>
+  <tr><td><code>cmp 0 100</code></td><td>Compares the read buffer with the write buffer and lists the differences.</td></tr>
+  <tr><td><code>jrst</code>, <code>hwrst</code></td><td>Resets the flash: JEDEC reset (no reset pin needed), or with the reset pin.</td></tr>
+  <tr><td><code>38; mode q</code> / <code>ff; mode s</code></td><td>Enters and leaves QPI (<code>mode</code> tells the board which format the flash expects).</td></tr>
+</table>
+<div class="warn">If you leave <code>echo off</code> set, reads in the Terminal and in the Read panel show no data until you
+type <code>echo on</code>.</div>
+
+<h3 id="flashcmds">7.3 Flash command examples</h3>
+<pre>&gt;&gt;&gt; 9f 3                                  JEDEC ID: manufacturer, device ID (3 bytes)
+&gt;&gt;&gt; 05                                    status register 1 (35 = register 2, 15 = register 3)
+&gt;&gt;&gt; 06; 31 02                             write enable, then write status register 2 (non-volatile)
+&gt;&gt;&gt; 50; 31 02                             volatile write (lost at power-up or reset)
+&gt;&gt;&gt; 65 4                                  read any register (some devices); 71 4 9 writes it
+&gt;&gt;&gt; pattern 01234567 0
+&gt;&gt;&gt; 06; 2 3000 100; wait 0                program 0x100 bytes at 0x3000 from the write buffer
+&gt;&gt;&gt; 0b 3000 100                           read them back
+&gt;&gt;&gt; cmp 0 100                             compare (prints Equal! or the differences)
+&gt;&gt;&gt; 06; 20 0; wait 0                      erase the 4 kB sector at 0 (52 = 32 kB, d8 = 64 kB, 60 = chip)
+&gt;&gt;&gt; b9                                    deep power down (ab wakes the device up)
+&gt;&gt;&gt; 06; 2 9000 100; delay 100; 75         start a program and suspend it after 100 &micro;s (7a resumes)</pre>
+<ul>
+  <li>Write enable (<code>06</code>) must come before every erase and program. Status register 1 shows
+      RDY/BSY (bit 0), WEL (bit 1) and EPE.</li>
+  <li>Register writes: <code>50</code> before the write makes it volatile, <code>06</code> makes it non-volatile
+      (the Workbench uses <code>06; 31</code> for the Quad Enable bit).</li>
+  <li>Reads with more data lines: <code>0b</code> fast read, <code>3b</code> Dual, <code>6b</code> Quad (1-1-4),
+      <code>eb &lt;addr&gt; &lt;mode&gt; &lt;count&gt;</code> Quad I/O (1-4-4). Quad needs QE = 1 in status register 2.
+      With a mode byte that starts continuous mode, the next read is sent <em>without</em> an opcode:
+      <code>ebc &lt;addr&gt; &lt;mode&gt; &lt;count&gt;</code>.</li>
+</ul>
+
+<h3 id="anatomy">7.4 How a flash command is built</h3>
+<p>A flash command has up to four parts, in this order: the <strong>OpCode</strong> (what to do; every command has one),
+the <strong>Address</strong> (where), <strong>dummy clocks</strong> (idle clocks that some reads need) and the
+<strong>Data</strong> (read from or written to the flash). The commands are named after the parts they have:</p>
+<table>
+  <tr><th>Type</th><th>Parts</th><th>Examples</th></tr>
+  <tr><td>C-0-0</td><td>OpCode only</td><td><code>06</code> write enable, <code>04</code> write disable, <code>b9</code> deep power down</td></tr>
+  <tr><td>C-A-0</td><td>OpCode and Address</td><td><code>20 &lt;addr&gt;</code> erase a 4 kB block</td></tr>
+  <tr><td>C-0-D</td><td>OpCode and Data</td><td><code>05</code> read status, <code>9f 3</code> read the ID, <code>01 &lt;data&gt;</code> write the status register</td></tr>
+  <tr><td>C-A-D</td><td>OpCode, Address and Data</td><td><code>0b &lt;addr&gt; &lt;count&gt;</code> read, <code>02 &lt;addr&gt; &lt;count&gt;</code> program</td></tr>
+</table>
+<p>The number of data lines used by each part is written after the type: <strong>1-4-4</strong> is one line for the opcode, four
+for the address and four for the data (Single = 1, Dual = 2, Quad = 4, Octal = 8). With a <em>single</em> transfer rate (SDR)
+data moves on one clock edge; with a <em>dual</em> transfer rate (DDR) it moves on both.</p>
+
+<h3 id="gpio">7.5 GPIO pins</h3>
+<p>Configure a pin before using it: <code>gpiocfg &lt;pin&gt; i|o</code> (the letter o), then
+<code>gpiowr &lt;pin&gt; 1|0</code> or <code>gpiord &lt;pin&gt;</code>. Pin numbers are decimal.</p>
+<table>
+  <tr><th>Pin</th><th>Function</th><th>Pin</th><th>Function</th></tr>
+  <tr><td>0, 1</td><td>ADC inputs (TP24, TP44)</td><td>9, 10, 11</td><td>RGB LED (red, blue, green)</td></tr>
+  <tr><td>2, 3</td><td>PWM (TP22, TP23)</td><td>12, 13, 14</td><td>LEDs (blue, green, red)</td></tr>
+  <tr><td>4</td><td>Load board (TP45)</td><td>15</td><td>User button</td></tr>
+  <tr><td>5, 6</td><td>I2C SDA, SCL for the load board (J19)</td><td>16 &ndash; 21</td><td>Bit-bang: CS#, SCK, IO0 &ndash; IO3</td></tr>
+  <tr><td>7, 8</td><td>I2C SCL, SDA (J20); pin 7 is used for triggering</td><td></td><td></td></tr>
+</table>
+<pre>&gt;&gt;&gt; gpiocfg 7 o
+&gt;&gt;&gt; gpiowr 7 0
+&gt;&gt;&gt; 06; gpiowr 7 1; 20 0; wait 0; gpiowr 7 0     pin 7 is high during the whole erase: trigger a scope on it</pre>
+
 <!-- ------------------------------------------------------------------ -->
-<h2 id="scripts">8. Scripts</h2>
+<h2 id="power">8. Power measurement</h2>
+<p>The board measures the current and voltage of eight power domains. Each domain has its own INA230 power
+monitor, which reads the voltage across a small shunt resistor in the supply line. You choose a domain with its
+number in the <code>pmon</code> command. You can probe the signals at the shunt resistor or at the jumper pins.</p>
+<table>
+  <tr><th>pmon domain</th><th>Rail</th><th>Shunt resistor</th><th>Jumper</th><th>I2C address (7-bit)</th></tr>
+  <tr><td>0</td><td>FLASH_VCC (on-board flash supply)</td><td>RS3 (1R0)</td><td>J15</td><td>0x40</td></tr>
+  <tr><td>1</td><td>DUT_VCC_ADJ (adjustable 0&ndash;5 V supply)</td><td>RS5 (1R0)</td><td>J22</td><td>0x41</td></tr>
+  <tr><td>2</td><td>NVCC_SD1</td><td>RS4 (1R0)</td><td>J14</td><td>0x42</td></tr>
+  <tr><td>3</td><td>3V3_MAIN</td><td>RS1 (0R300)</td><td>J4</td><td>0x43</td></tr>
+  <tr><td>4</td><td>3V3_ALWAYS_ON</td><td>RS2 (0R300)</td><td>J5</td><td>0x44</td></tr>
+  <tr><td>5</td><td>FLASH_SOIC_VCC (SOIC socket, the DUT)</td><td>RS7 (1R0)</td><td>J16</td><td>0x45</td></tr>
+  <tr><td>6</td><td>DUT_VCC_EXP (expansion connector)</td><td>RS8 (0R300)</td><td>J24</td><td>0x46</td></tr>
+  <tr><td>7</td><td>PMON_7 (spare)</td><td>none on the board</td><td>TP8(+) and TP9(-)</td><td>0x47</td></tr>
+</table>
+<div class="warn"><strong>Remove the jumper</strong> of the domain you want to measure. An installed jumper shorts
+the shunt resistor, and the measurement reads 0 V.</div>
+<p>The schematic of the board and the <em>Dubrovnik Training Guide</em> are under <em>Help &rarr; Documents</em>. The training guide is searchable and has many more examples.</p>
+
+<h3>Measuring the device (DUT)</h3>
+<p>The device under test sits in domain 5. To measure what an operation draws, put the operation between
+<code>pmon 5 start</code> and <code>pmon 5 stop</code> on one command line, so that the delays of the PC do not
+count, and finish with <code>pmon 5 calc</code>:</p>
+<pre>&gt;&gt;&gt; pmoncfg meas iv                                      what <code>pmon calc</code> prints
+&gt;&gt;&gt; pmon 5 start; 0b 0 1000; pmon 5 stop; pmon 5 calc    current and voltage while reading 0x1000 bytes</pre>
+<p><code>pmon ... calc</code> prints whatever was set with <code>pmoncfg meas</code>:</p>
+<table>
+  <tr><th>pmoncfg meas</th><th>pmon calc prints</th></tr>
+  <tr><td><code>i</code></td><td>current</td></tr>
+  <tr><td><code>v</code></td><td>voltage</td></tr>
+  <tr><td><code>p</code></td><td>power</td></tr>
+  <tr><td><code>iv</code></td><td>current and voltage</td></tr>
+</table>
+<p>Set it once before measuring; it stays in effect until you change it.</p>
+<p>The pattern is <code>pmon 5 start; ...; pmon 5 stop; pmon 5 calc</code>, where <code>...</code> is the operation
+you want to measure: one or several commands, for example a read or a program. For the idle current, use a wait
+instead of an operation, for example <code>delay 100000</code> (100&nbsp;ms).</p>
+<p><strong>Another example: the current of an erase, and how long it took.</strong></p>
+<pre>&gt;&gt;&gt; 06; pmon 5 start; 20 0; wait 0; pmon 5 stop; pmon 5 calc
+&gt;&gt;&gt; dvar wait_time                                       how long the erase took (in &micro;s)</pre>
+<ul>
+  <li><code>06</code> is write enable. It comes before <code>pmon 5 start</code>, so it is not part of the
+      measurement.</li>
+  <li><code>20 0</code> erases the 4&nbsp;kB sector at address 0 (opcode <code>52</code> erases 32&nbsp;kB and
+      <code>d8</code> 64&nbsp;kB).</li>
+  <li><code>wait 0</code> waits until the device has finished, so the measurement covers the whole erase. It also
+      measures the time the device was busy: <code>dvar wait_time</code> shows it afterwards, as the Erase panel
+      does.</li>
+  <li><code>pmon 5 stop; pmon 5 calc</code> stops the measurement and prints the quantity selected with
+      <code>pmoncfg meas</code> (for example the current). The erase time is not part of that printout; get it
+      with <code>dvar wait_time</code>.</li>
+</ul>
+<h3 id="pmoncfg">The measurement time</h3>
+<p>The power monitor needs at least one finished conversion. <code>config</code> shows the shortest event as
+<em>min meas time (us)</em> (9344&nbsp;&micro;s with the default settings). A shorter event gives an error:</p>
+<pre>&gt;&gt;&gt; pmon 3 start; delay 5000; pmon 3 stop; pmon 3 calc
+Error: 0 samples collected
+Min time for measurement in current config: 9344us</pre>
+<p>Make the event longer, or make the monitor faster with <code>pmoncfg</code>. It applies to the next measurement:</p>
+<table>
+  <tr><th>Category</th><th>Meaning</th><th>Allowed values</th></tr>
+  <tr><td><code>avg</code></td><td>samples averaged</td><td>1, 4, 16, 64, 128, 256, 512, 1024</td></tr>
+  <tr><td><code>vst</code></td><td>shunt (current) conversion time, &micro;s</td><td>140, 204, 332, 588, 1100, 2116, 4156, 8244</td></tr>
+  <tr><td><code>vbt</code></td><td>bus (voltage) conversion time, &micro;s</td><td>140, 204, 332, 588, 1100, 2116, 4156, 8244</td></tr>
+  <tr><td><code>mode</code></td><td>conversion mode</td><td>svt, bvt, sbt (triggered); svc, bvc, sbc (continuous)</td></tr>
+  <tr><td><code>meas</code></td><td>what calc prints</td><td>i, v, p, iv</td></tr>
+</table>
+<p>Defaults: avg 1, vst 8244, vbt 1100, mode sbc, meas i. The time is about avg &times; vst for current only,
+avg &times; vbt for voltage only, and avg &times; (vst + vbt) when both are measured.</p>
+<p><strong>The current of a short operation</strong> such as a page program: find out how long it takes, then make the
+monitor faster than that and start the measurement after the command, so only the busy time counts:</p>
+<pre>&gt;&gt;&gt; 06; 2 25000 100; timer start; wait 0; timer stop
+&gt;&gt;&gt; dvar wait_time                          2154 &micro;s
+&gt;&gt;&gt; pmoncfg vst 1100                        shorter conversion
+&gt;&gt;&gt; pmoncfg mode svc                        current only
+&gt;&gt;&gt; 06; 2 25000 100; pmon 5 start; wait 0; pmon 5 stop; pmon 5 calc</pre>
+<p><strong>The current of a read:</strong> use <code>echo off</code>. A read of 0x4000 bytes (the maximum) is long
+enough in SPI mode. A Quad read is shorter than the minimum time, so repeat it in the same line:
+<code>pmon 5 start; eb 0 0 4000; eb 0 0 4000; pmon 5 stop; pmon 5 calc</code>.</p>
+<div class="note">The INA230 is made for larger currents. Its inputs carry up to &plusmn;10&nbsp;&micro;A, so it
+cannot measure deep power down currents (the error is about 20&nbsp;&micro;A). Use a precision multimeter for those.</div>
+<ul>
+  <li>Use a different number for another domain, for example <code>pmon 1 ...</code> for the adjustable supply.
+      The BGA socket is domain 0, the SOIC socket is domain 5.</li>
+  <li>The Tools entry <em>Icc Read Measurement</em> uses domain 5 and repeats this measurement for several read
+      modes, voltages and clock frequencies.</li>
+</ul>
+
+<h3 id="probing">Probing signals</h3>
+<p>To look at the SPI signals with a logic analyzer or oscilloscope, use the 2-column header next to the BGA socket
+(L = left column, R = right column, numbered from the top). The same header serves Quad and QPI.</p>
+<table>
+  <tr><th>Pin</th><th>Signal</th><th>Pin</th><th>Signal</th></tr>
+  <tr><td>L.1</td><td>GND</td><td>R.1</td><td>VCC</td></tr>
+  <tr><td>L.3</td><td>SCK</td><td>R.2</td><td>CS#</td></tr>
+  <tr><td>L.4</td><td>GND</td><td>R.3</td><td>DQS</td></tr>
+  <tr><td>L.5</td><td>IO0 / MOSI</td><td>R.5, R.6</td><td>IO4, IO5 (octal devices)</td></tr>
+  <tr><td>L.6</td><td>IO1 / MISO</td><td>R.8, R.9</td><td>IO6, IO7 (octal devices)</td></tr>
+  <tr><td>L.8, L.9</td><td>IO2, IO3</td><td>L.10, R.10</td><td>GND</td></tr>
+</table>
+<ul>
+  <li>Set the logic threshold to about half of VCC.</li>
+  <li>Make sure the sample rate suits the SPI clock. At power-up the clock is 60&nbsp;MHz; if the ID reads wrongly on
+      the analyzer, lower it (<code>freq 8</code>) or raise the sample rate.</li>
+  <li>To trigger on an operation, frame it with GPIO 7 (see 7.5) and trigger on its rising edge.</li>
+</ul>
+
+<!-- ------------------------------------------------------------------ -->
+<h2 id="scripts">9. Scripts</h2>
 <p>Scripts repeat a series of operations without clicking. Two kinds are
 available under <strong>File &rarr; Scripts</strong>:</p>
 <table>
@@ -231,7 +465,7 @@ dialog starts in the folder of the last script you ran.</p>
 without asking. A Python script can also do anything else the user can do on
 the PC. Read a script from somebody else before you run it.</div>
 
-<h3 id="cmdscripts">8.1 Command scripts</h3>
+<h3 id="cmdscripts">9.1 Command scripts</h3>
 <p>One Terminal command per line:</p>
 <pre># set up the device
 config
@@ -252,7 +486,7 @@ b 0 100             # read 0x100 bytes from address 0</pre>
       line and the Terminal says which line it was.</li>
 </ul>
 
-<h3 id="pyscripts">8.2 Python scripts</h3>
+<h3 id="pyscripts">9.2 Python scripts</h3>
 <p>A Python script is an ordinary <code>.py</code> file. The app gives it an
 object called <code>dub</code> &ndash; there is nothing to import &ndash; and
 everything you <code>print()</code> appears in the Terminal.</p>
@@ -289,7 +523,7 @@ if "caba0000" not in data:
 <code>example_device_check.txt</code> and <code>example_python_script.py</code>.</p>
 
 <!-- ------------------------------------------------------------------ -->
-<h2 id="menus">9. Menus</h2>
+<h2 id="menus">10. Menus</h2>
 <h3>File</h3>
 <ul>
   <li><strong>Open...</strong> &ndash; choose a <code>.bin</code> file to program and switch the Program panel to <em>Load from File</em>.</li>
@@ -338,11 +572,16 @@ rebuilt every time it opens, so the new entry appears at once. Optional header l
 <h3>Help</h3>
 <ul>
   <li><strong>Help</strong> (<kbd>F1</kbd>) &ndash; opens this guide in your web browser.</li>
+  <li><strong>Documents</strong> &ndash; the board schematic and other files from the <code>docs</code> folder of the
+      program. Each opens in the program Windows uses for that file type. To add one, put a PDF, picture or
+      presentation into the folder; it appears the next time you open the menu. The menu text is the file name
+      with underscores shown as spaces, and a leading number such as <code>01_</code> sets the order and is not
+      shown. <em>Open Documents Folder</em> takes you there.</li>
   <li><strong>About</strong> &ndash; version and authors.</li>
 </ul>
 
 <!-- ------------------------------------------------------------------ -->
-<h2 id="settings">10. Settings and saved values</h2>
+<h2 id="settings">11. Settings and saved values</h2>
 <table>
   <tr><th style="width:290px">Remembered automatically</th><th>Saved only with Parameters &rarr; Save</th></tr>
   <tr><td>
@@ -374,7 +613,7 @@ the file to return to the factory settings. The uninstaller offers to remove the
 folder.</p>
 
 <!-- ------------------------------------------------------------------ -->
-<h2 id="commands">11. Board command reference</h2>
+<h2 id="commands">12. Board command reference</h2>
 <p>These commands can be typed in the Terminal. The list comes from the board's
 <code>help all</code> and depends on the board firmware, so run
 <code>help all</code> for the list of your board. Use <code>help &lt;command&gt;</code>
@@ -446,7 +685,7 @@ for details of one command.</p>
 0x1000, wait until the device is ready).</p>
 
 <!-- ------------------------------------------------------------------ -->
-<h2 id="trouble">12. Troubleshooting</h2>
+<h2 id="trouble">13. Troubleshooting</h2>
 <table>
   <tr><th style="width:36%">Symptom</th><th>What to do</th></tr>
   <tr><td>"Serial COM Port Not Found"</td>
@@ -461,6 +700,16 @@ for details of one command.</p>
       <td>Correct the entry box it names. Address, length, pattern and increment are hexadecimal; the number of erase blocks is decimal. The command is not sent until all entries are valid.</td></tr>
   <tr><td>A Quad or Dual read returns shifted or wrong data</td>
       <td>The number of dummy cycles probably does not match the flash. Set it with <code>dummy &lt;n&gt;</code> and check the device's data sheet.</td></tr>
+  <tr><td>Reads show no data (nothing, or only the time)</td>
+      <td><code>echo off</code> is still set. Type <code>echo on</code>.</td></tr>
+  <tr><td>A Quad read returns garbage (for example <code>cc cc cc ...</code>) but the SPI read is fine</td>
+      <td>The Quad Enable bit is 0. Read status register 2 with <code>35</code>; the Read panel sets it for you, but a Terminal command (or a reset after a volatile write) can clear it.</td></tr>
+  <tr><td>The ID reads <code>00 00 00</code></td>
+      <td>The device may be in deep power down: send <code>ab</code> (exit deep power down), or press RESET. Otherwise check that the device sits in the socket correctly.</td></tr>
+  <tr><td>A logic analyzer shows a wrong ID</td>
+      <td>Set the logic threshold to about half VCC, and use a sample rate well above the SCK frequency (at power-up SCK is 60&nbsp;MHz; try <code>freq 8</code>).</td></tr>
+  <tr><td>"0 samples collected" from <code>pmon calc</code></td>
+      <td>The measured event is shorter than the minimum time shown by <code>config</code>. Make it longer, or make the monitor faster with <code>pmoncfg</code> (see <a href="#pmoncfg">The measurement time</a>).</td></tr>
   <tr><td>"Quad Enable could not be set"</td>
       <td>The flash did not accept the status-register write, or keeps its Quad Enable bit elsewhere. Use <code>help 31</code> and <code>help 01</code> to see the write commands, and the data sheet to find the bit.</td></tr>
   <tr><td>A script stops with "error at line N"</td>
@@ -474,7 +723,7 @@ for details of one command.</p>
 </table>
 
 <!-- ------------------------------------------------------------------ -->
-<h2 id="shortcuts">13. Keyboard shortcuts</h2>
+<h2 id="shortcuts">14. Keyboard shortcuts</h2>
 <table>
   <tr><th style="width:240px">Keys</th><th>Action</th></tr>
   <tr><td><kbd>F1</kbd></td><td>Open this guide</td></tr>
@@ -484,6 +733,27 @@ for details of one command.</p>
   <tr><td><kbd>Ctrl</kbd>+<kbd>C</kbd></td><td>Copy the selected Terminal text</td></tr>
   <tr><td><kbd>Ctrl</kbd>+<kbd>V</kbd></td><td>Paste at the prompt</td></tr>
 </table>
+
+<!-- ------------------------------------------------------------------ -->
+<h2 id="glossary">15. Glossary</h2>
+<table>
+  <tr><th style="width:190px">Term</th><th>Meaning</th></tr>
+  <tr><td>Address (A)</td><td>Where in the memory (or which register) a command works.</td></tr>
+  <tr><td>CS#, SCK, SI / SO</td><td>Chip select (active low), serial clock, data in, data out of the SPI bus. In Dual and Quad modes the data uses IO0 to IO3.</td></tr>
+  <tr><td>Dummy clocks</td><td>Idle clocks between the address and the data of a read, so the flash can prepare the data.</td></tr>
+  <tr><td>DUT</td><td>Device under test, the flash in the socket.</td></tr>
+  <tr><td>EPE, WEL, RDY#/BSY</td><td>Status register 1 bits: erase/program error, write enable latch (set by <code>06</code>), and ready/busy (bit 0).</td></tr>
+  <tr><td>JEDEC ID</td><td>Manufacturer and device identification bytes returned by <code>9f</code>.</td></tr>
+  <tr><td>JEDEC reset (<code>jrst</code>)</td><td>Reset of a flash that has no reset pin, with a special pattern on two SPI pins.</td></tr>
+  <tr><td>OpCode (C)</td><td>The first byte of every flash command; it says what to do.</td></tr>
+  <tr><td>QE</td><td>Quad Enable bit (bit 1 of status register 2 on most devices); it frees IO2 and IO3 for quad transfers.</td></tr>
+  <tr><td>QPI</td><td>A mode where every part of a command, the opcode included, uses four lines.</td></tr>
+  <tr><td>SDR / DDR</td><td>Single / dual transfer rate: data on one clock edge / on both clock edges.</td></tr>
+  <tr><td>Tiberias</td><td>The firmware of the board that executes the commands.</td></tr>
+  <tr><td>Volatile / non-volatile write</td><td>A register write that is lost at the next reset or power-up (<code>50</code> before it) / is kept (<code>06</code> before it).</td></tr>
+  <tr><td>XiP</td><td>Execute in place: a processor runs code directly from the flash.</td></tr>
+</table>
+<p>A longer glossary is in the Training Guide under <em>Help &rarr; Documents</em>.</p>
 
 <footer>Dubrovnik Workbench @VERSION@ &ndash; Csaba Moldvai (System/Board design, GUI),
 Eyal Barzilay (Tiberias flash support software).</footer>
