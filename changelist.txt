@@ -34,6 +34,7 @@ Fixed:
   * Workbench: the questions and messages of scripts and tools (for example
     Icc Read Measurement) used small standard dialogs; they now use larger
     dialogs that follow the screen scaling.
+  * Auto connect at start-up did not show the device in the status bar; it does now.
   * After the board was switched off and on again (or RESET) the status bar did not
     show the device until you disconnected and reconnected. It now follows the board's
     detection message and shows or clears the device by itself.

@@ -825,7 +825,7 @@ class Terminal(LabelFrame):
     def showContextMenu(self, event):
         try:
             # one entry only: make it easy to hit
-            self.ctxMenu.configure(font=('Segoe UI', 14))
+            self.ctxMenu.configure(font=('Segoe UI', 11))
             self.ctxMenu.tk_popup(event.x_root, event.y_root)
         finally:
             self.ctxMenu.grab_release()
@@ -1515,6 +1515,11 @@ if __name__ == "__main__":
             if comm.isFlashPresent() == 0:
                 showwarning(
                     'Warning', 'No flash device detected\nInstall a device and RESET the board')
+            else:                   # show the device in the status bar
+                try:
+                    serCom.deviceDetected(du.get_part_number(comm))
+                except Exception:
+                    pass            # the status bar just shows no device
 
     elif serCom.autoConnect:     # Auto connect is on, but no board was found
         showwarning(

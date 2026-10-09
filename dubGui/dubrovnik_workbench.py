@@ -1770,6 +1770,11 @@ if __name__ == "__main__":
             if comm.isFlashPresent() == 0:
                 showwarning(
                     'Warning', 'No flash device detected\nInstall a device and RESET the board')
+            else:                   # show the device in the status bar
+                try:
+                    serCom.deviceDetected(du.get_part_number(comm))
+                except Exception:
+                    pass            # the status bar just shows no device
 
     elif serCom.autoConnect:     # Auto connect is on, but no board was found
         showwarning(
