@@ -1079,7 +1079,7 @@ if __name__ == "__main__":
         showinfo('About', aboutMsg)
 
     root = Tk()
-    root.title('Dubrovnik Workbench (Classic)')
+    root.title(f'Dubrovnik Workbench (Classic) {APP_VERSION}')
 
     comm = boardcom.BoardComm()   # create an instance of class Comm
     du = dubrovnik.Dubrovnik()

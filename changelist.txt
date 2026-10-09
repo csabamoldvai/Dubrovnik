@@ -28,7 +28,7 @@ New:
   * Dubrovnik Training Guide (docs folder, Help > Documents): a searchable
     single-page guide adapted from the 2021 FAE training, with board pictures,
     the system block diagram, SPI/Dual/Quad/QPI timing diagrams, power measurement,
-    logic analyzer use and a glossary. Internal material: docs is not tracked in git.
+    logic analyzer use and a glossary. The docs folder is now tracked in git.
 
 Fixed:
   * Workbench: the questions and messages of scripts and tools (for example

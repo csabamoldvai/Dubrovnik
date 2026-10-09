@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dubrovnik Workbench - How it works</title>
+<style>
+:root { --bg:#fff; --fg:#22262b; --muted:#5b6470; --accent:#2f6fb5; --card:#eef0f3; --border:#c5cbd3;
+        --code-bg:#1f2329; --code-fg:#dfe4ea; --warn-bg:#fff4d6; --warn-bd:#e0b84c; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg:#1e2126; --fg:#e3e6ea; --muted:#9aa3ae; --accent:#6aa5e8; --card:#2a2e35; --border:#3a3f47;
+          --code-bg:#14171b; --warn-bg:#3b3420; --warn-bd:#8a742c; }
+}
+body { margin:0 auto; max-width:900px; padding:18px 26px 70px; background:var(--bg); color:var(--fg);
+       font:15px/1.55 "Segoe UI", system-ui, sans-serif; }
+h1 { font-size:26px; margin:10px 0 2px; }
+h2 { font-size:21px; margin:36px 0 8px; padding-bottom:5px; border-bottom:1px solid var(--border); }
+h3 { font-size:16.5px; margin:22px 0 4px; }
+.sub { color:var(--muted); }
+a { color:var(--accent); }
+code { font-family:Consolas, "Cascadia Mono", monospace; font-size:13.5px; background:var(--card); border-radius:4px; padding:1px 5px; }
+pre { background:var(--code-bg); color:var(--code-fg); border-radius:6px; padding:10px 14px; overflow-x:auto;
+      font:13px/1.5 Consolas, "Cascadia Mono", monospace; margin:8px 0; }
+pre .f { color:#7fb685; user-select:none; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; }
+th, td { border:1px solid var(--border); padding:5px 9px; text-align:left; vertical-align:top; }
+th { background:var(--card); }
+.box { border-left:4px solid var(--accent); background:var(--card); padding:8px 14px; border-radius:0 6px 6px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn-bd); background:var(--warn-bg); }
+nav ol { margin:6px 0; }
+@media print { pre { background:#f3f3f3; color:#000; border:1px solid #bbb; } }
+</style>
+</head>
+<body>
+<h1>Dubrovnik Workbench &ndash; how it works</h1>
+<div class="sub">A short description of how the program talks to the board, what happens at start-up with and without a
+device, and how it notices that the board went away. Written for people who maintain or extend the program;
+the code snippets are shortened copies of the real code.</div>
+
+<nav>
+<ol>
+  <li><a href="#overview">The pieces</a></li>
+  <li><a href="#startup">Start-up scenarios</a></li>
+  <li><a href="#connect">Connecting by hand</a></li>
+  <li><a href="#running">While the program runs</a></li>
+  <li><a href="#restart">The board is switched off and on</a></li>
+  <li><a href="#lost">The connection is lost</a></li>
+  <li><a href="#limits">Known limits</a></li>
+</ol>
+</nav>
+
+<h2 id="overview">1. The pieces</h2>
+<p>The PC application is a front end. Everything it does is a text command sent over a USB serial connection to
+<strong>Tiberias</strong>, the firmware on the Dubrovnik board. A button such as <em>Erase</em> only builds a command
+line, sends it and shows the reply.</p>
+<table>
+  <tr><th style="width:230px">File</th><th>Role</th></tr>
+  <tr><td><code>dubGui/dubrovnik_workbench.py</code></td><td>The Workbench window (CustomTkinter): panels, Terminal, menus, start-up logic. <code>dubrovnik_workbench_classic.py</code> is the same program with the original tkinter look.</td></tr>
+  <tr><td><code>dubLibs/boardcom.py</code></td><td>The serial link: finds the COM port, connects, <code>send()</code> a command and <code>response()</code>.</td></tr>
+  <tr><td><code>dubLibs/dubrovnik.py</code></td><td>Flash functions built from commands: erase, program, read, Quad Enable, part number.</td></tr>
+  <tr><td><code>dubLibs/run_cmd_script.py</code>, <code>run_py_script.py</code></td><td>Command scripts and Python scripts (the <code>dub</code> object).</td></tr>
+  <tr><td><code>dubLibs/cfgfile.py</code>, <code>tools.py</code>, <code>documents.py</code></td><td>Settings file, Tools menu, Help &rarr; Documents.</td></tr>
+</table>
+<p>One window object per concern: <code>serCom</code> (the Serial Connection panel and the connection state),
+<code>term</code> (the Terminal) and the Erase, Program and Read panels. <code>serCom.portStatus</code> is either
+<code>'connected'</code> or <code>'disconnected'</code>, and everything else asks that.</p>
+
+<h2 id="startup">2. Start-up scenarios</h2>
+<p>At start the program lists the serial ports made by FTDI (the USB-serial chip of the board), then looks at the
+<em>Auto connect</em> setting.</p>
+<pre><span class="f"># boardcom.py</span>
+def getPortList(self):
+    ports = serial.tools.list_ports.comports()
+    return [p.device for p in ports if p.manufacturer == 'FTDI']</pre>
+<table>
+  <tr><th style="width:26%">Situation</th><th>What happens</th><th style="width:24%">Status bar</th></tr>
+  <tr><td><strong>A.</strong> Board on, device in the socket, Auto connect on</td>
+      <td>Connects to the last used port (or the only port). Sends <code>ver</code> to wake the processor, clears the Terminal, sends <code>config</code> and finds a part number, then reads it for the status bar.</td>
+      <td><code>Connected: COM5 (...)    Device: AT25XE321D</code></td></tr>
+  <tr><td><strong>B.</strong> Board on, <em>no</em> device, Auto connect on</td>
+      <td>Same, but <code>config</code> reports <code>Part# = unknown</code>. A warning asks you to install a device and press RESET. After you click OK the Terminal is still fully usable: <code>volt</code>, <code>freq</code> and <code>config</code> do not need a device.</td>
+      <td><code>Connected: COM5 (...)</code> (no device)</td></tr>
+  <tr><td><strong>C.</strong> Board on, Auto connect off</td>
+      <td>Nothing is connected. The port list is filled; choose a port and click <em>Connect</em> (see section 3).</td>
+      <td>empty (nothing connected)</td></tr>
+  <tr><td><strong>D.</strong> Board off or unplugged (no COM port), Auto connect on</td>
+      <td>A warning says that no board was found: connect the cable, switch on, press RESET. The program keeps running; the port list is refreshed when you click <em>Connect</em>.</td>
+      <td>empty (nothing connected)</td></tr>
+  <tr><td><strong>E.</strong> Board off, Auto connect off</td>
+      <td>No message at start. Clicking <em>Connect</em> looks for a port again and, if there is none, shows the same warning.</td>
+      <td>empty; <code>No COM port found: ...</code> once the port list has been refreshed</td></tr>
+</table>
+<p>The start-up code for scenarios A and B:</p>
+<pre><span class="f"># dubrovnik_workbench.py, end of start-up</span>
+if serCom.autoConnect and portList:
+    serCom.connectPort(serCom.lastUsedPort, checkIsFlashPresent=False)
+    if serCom.portStatus == 'connected':
+        comm.connectToMCU()               <span class="f"># 'ver': the processor may need a RESET to boot</span>
+        term.clear()
+        if comm.isFlashPresent() == 0:    <span class="f"># 'config' says Part# = unknown</span>
+            showwarning('Warning', 'No flash device detected\nInstall a device and RESET the board')
+        else:
+            serCom.deviceDetected(du.get_part_number(comm))   <span class="f"># show it in the status bar</span></pre>
+<div class="box"><strong>Why the part number is not read inside <code>connectPort</code> here:</strong> at this point the
+USB-serial chip is connected but the processor behind it may not be running yet. <code>connectToMCU</code> is the
+first command that needs an answer from it.</div>
+
+<h2 id="connect">3. Connecting by hand</h2>
+<p>When you click <em>Connect</em>, <code>connectPort</code> opens the port, sets the button to <em>Disconnect</em> and,
+unless told not to, reads the part number straight away:</p>
+<pre><span class="f"># dubrovnik_workbench.py, SerComFrame.connectPort (shortened)</span>
+self.portHandle = self.comm.connect(self.selPort)
+if self.portHandle is None:                 <span class="f"># could not open: another program has it?</span>
+    stsBarComm.configure(text=f'Could not open {self.selPort}')
+    return
+self.portStatus = 'connected'
+self.serParams = f'Connected: {self.comPort} (...)'
+if checkIsFlashPresent and self.comm.isFlashPresent():
+    self.serParams += '    Device: ' + du.get_part_number(self.comm)
+stsBarComm.configure(text=self.serParams)</pre>
+<p>If the board is on but its processor does not answer, the first command waits two seconds and then a
+<em>Retry / Cancel</em> dialog asks you to switch the board on or press RESET.</p>
+
+<h2 id="running">4. While the program runs</h2>
+<h3>How a command goes</h3>
+<p><code>boardcom.send()</code> empties the input buffer, writes the command plus a carriage return and then reads until
+the prompt <code>&gt;&gt;&gt; </code> arrives. The text before the prompt is the reply.</p>
+<pre><span class="f"># boardcom.py, BoardComm.send (shortened)</span>
+self.handle.reset_input_buffer()
+self.handle.write((cmdstr + '\r').encode('utf-8'))
+self.raw = self.handle.read_until(expected=self.prompt).decode('utf-8')
+while self.raw == "":                      <span class="f"># nothing came back within the timeout</span>
+    if not askretrycancel('Communication Error: Serial Port Timeout',
+                          'Is the board turned ON?\nPress the RESET button'):
+        sys.exit()</pre>
+<p>The serial timeout is 2 seconds while connecting and is raised to 200 seconds after the processor answers, so a chip
+erase that takes minutes does not time out.</p>
+<h3>Text the board sends by itself</h3>
+<p>Besides replies, the board prints messages on its own, for example after RESET. The Terminal checks for them every
+100&nbsp;ms, but only while no command is in progress, so it never steals the reply of a command:</p>
+<pre><span class="f"># dubrovnik_workbench.py, Terminal.pollSerial (shortened)</span>
+if handle is not None and handle.is_open and not self.cmdInProgress:
+    n = handle.in_waiting                  <span class="f"># raises if the port has vanished</span>
+    if n &gt; 0:
+        data = handle.read(n).decode('utf-8', errors='replace')
+        self.txt.insert(END, data)
+        self.watchBootMessage(data)        <span class="f"># keeps the status bar in step (section 5)</span>
+self.after(100, self.pollSerial)</pre>
+<h3>Scripts</h3>
+<p>Command scripts and Python scripts run on the window thread. After every command they call <code>root.update()</code>,
+so the window stays alive and <kbd>Esc</kbd> is noticed. While a script runs the panels and the Terminal command line are
+blocked (<code>serCom.scriptRunning</code>). Dialogs asked by a script come from <code>dialogBox</code>.</p>
+
+<h2 id="restart">5. The board is switched off and on</h2>
+<p>Often the USB-serial chip stays powered from USB when only the board's own supply is switched off. The COM port then
+never disappears, so the program stays connected. When the board comes back it detects its device and prints a banner:</p>
+<pre>Detecting flash part...
+Manufacturer Id: 1f (location 0) - Adesto/Atmel
+Part info:       AT25XE321D 32Mbit 1.65V-3.60V</pre>
+<p>The same banner appears after the RESET button. <code>pollSerial</code> passes every chunk it reads to
+<code>watchBootMessage</code>, which keeps a small text buffer and looks for two phrases:</p>
+<pre><span class="f"># dubrovnik_workbench.py, Terminal.watchBootMessage (shortened)</span>
+self.bootBuf = (self.bootBuf + data)[-2000:]
+if 'Detecting flash part' in self.bootBuf:
+    serCom.deviceDetected('')              <span class="f"># the old device is gone until the board says otherwise</span>
+    self.bootBuf = self.bootBuf.split('Detecting flash part')[-1]
+m = re.search(r'Part info:\s*(\S+)\s', self.bootBuf)   <span class="f"># the whole word has arrived</span>
+if m:
+    serCom.deviceDetected(m.group(1))
+    self.bootBuf = ''</pre>
+<table>
+  <tr><th>Event</th><th>Result</th></tr>
+  <tr><td>Board off, then on, device in the socket</td><td>The device disappears from the status bar, then returns with its part number.</td></tr>
+  <tr><td>Board on, device removed, then RESET</td><td>The banner has no <code>Part info</code> line: the status bar shows no device.</td></tr>
+  <tr><td>Device inserted, then RESET</td><td>The banner has <code>Part info</code>: the status bar shows it.</td></tr>
+  <tr><td>Device inserted or removed <em>without</em> a RESET</td><td>Not noticed. The board only detects its device at power-up or RESET.</td></tr>
+</table>
+
+<h2 id="lost">6. The connection is lost</h2>
+<p>If the USB cable is unplugged, or the USB-serial chip loses power, the COM port disappears. Two checks notice it:</p>
+<table>
+  <tr><th style="width:30%">Check</th><th>How</th></tr>
+  <tr><td><code>Terminal.pollSerial</code>, every 100&nbsp;ms</td><td><code>handle.in_waiting</code> raises an exception when the port is gone.</td></tr>
+  <tr><td><code>SerComFrame.checkLink</code>, every 2&nbsp;s</td><td>Compares the connected port with the list of ports Windows reports. A backup for the first check.</td></tr>
+</table>
+<pre><span class="f"># dubrovnik_workbench.py, SerComFrame (shortened)</span>
+def checkLink(self):
+    if self.portStatus == 'connected':
+        if self.selPort not in self.comm.getPortList():
+            self.connectionLost()
+    self.after(2000, self.checkLink)
+
+def connectionLost(self):
+    if self.portStatus != 'connected':
+        return
+    self.comm.disconnect(self.selPort, echo=0)    <span class="f"># close the dead port</span>
+    self.portStatus = 'disconnected'
+    self.btn2.configure(text='Connect')
+    stsBarComm.configure(text='Connection to ... lost: the board was switched off or unplugged')
+    term.displayText('*** Connection to ... lost ... Switch it on, press RESET and click Connect. ***')
+    if self.scriptRunning:
+        scriptStop[0] = True                      <span class="f"># a script cannot go on without the board</span></pre>
+<p>After this the window is in the same state as in scenario C. Switch the board on, press RESET and click
+<em>Connect</em>; with Auto connect on it is not repeated automatically.</p>
+<div class="box warn"><strong>Cases the two checks cannot see:</strong> the board loses power but the USB-serial chip keeps
+the port alive (that is section 5, not a lost connection), and the board hangs without answering. In the second case the
+next command times out after two seconds and the <em>Retry / Cancel</em> dialog appears.</div>
+
+<h2 id="limits">7. Known limits</h2>
+<ul>
+  <li><strong>Cancel</strong> in the timeout dialog ends the program (<code>sys.exit()</code> in <code>boardcom.py</code>). A cleaner exit is on the TODO list.</li>
+  <li>The device is read at connect and from the board's own banner; it is not polled.</li>
+  <li>Only ports whose manufacturer is <code>FTDI</code> are offered. A board with a different USB-serial chip would not be found.</li>
+  <li>A script blocks the window while it runs; a long erase inside a script keeps the Terminal unusable until it finishes.</li>
+  <li>The Classic edition has the same logic with tkinter widgets; its status bar and menus differ only in how they are drawn.</li>
+</ul>
+</body>
+</html>

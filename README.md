@@ -75,13 +75,12 @@ dubGui/      the applications
 dubLibs/     board communication, flash functions, settings, script runners, version number
 tools/       scripts shown in the Tools menu
 help/        user guide (HTML)
-docs/        documents shown in Help > Documents (kept locally, not tracked)
+docs/        documents shown in Help > Documents (schematic, training guide, how it works)
 changelist.txt, TODO List Dubrovnik.txt, requirements.txt, requirements-dev.txt
 ```
 
 Folders kept locally and not tracked by git (see `.gitignore`): `dubScripts/` (example and personal scripts),
-`dubUtils/` (older utilities such as `.srec` handling), `packaging/` (installer build), `docs/` (internal
-documents such as the schematic and the training guide).
+`dubUtils/` (older utilities such as `.srec` handling) and `packaging/` (installer build).
 
 ## Versions and releases
 

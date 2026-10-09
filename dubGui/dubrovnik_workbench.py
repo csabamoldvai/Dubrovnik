@@ -1272,7 +1272,7 @@ if __name__ == "__main__":
         return result[0]
 
     root = ctk.CTk()
-    root.title('Dubrovnik Workbench')
+    root.title(f'Dubrovnik Workbench {APP_VERSION}')
 
     comm = boardcom.BoardComm()   # create an instance of class Comm
     du = dubrovnik.Dubrovnik()

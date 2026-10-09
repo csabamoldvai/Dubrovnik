@@ -16,6 +16,3 @@ packaging/*
 .vscode/
 *.code-workspace
 tempCodeRunnerFile.py
-
-# documents shown in Help > Documents (internal schematics etc.)
-docs/*
