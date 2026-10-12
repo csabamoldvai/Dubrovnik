@@ -13,6 +13,8 @@ from tkinter import (
     SUNKEN, Tk, W, mainloop)
 from tkinter import ttk
 from tkinter import scrolledtext
+import tkinter as tk
+from tkinter.colorchooser import askcolor
 # Use the dubLibs next to this project, not another copy found on PYTHONPATH
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dubLibs import boardcom
@@ -20,7 +22,9 @@ from dubLibs import cfgfile
 from dubLibs import run_cmd_script
 from dubLibs import run_py_script
 from dubLibs import tools
+from dubLibs import datasheet
 from dubLibs import documents
+from dubLibs import termstyle
 from dubLibs.version import VERSION as APP_VERSION
 from dubLibs import dubrovnik  # instead of "from dubLibs import Dubrovnik as du"
 from tkinter.filedialog import askopenfilename, asksaveasfilename
@@ -96,7 +100,16 @@ CFG_DEFAULTS = dict(
     progLength='100',
     readSpiMode='SPI', readStartAddr='0', readLength='100',
     terminalTheme='light', showPanels=True,
-    displayMode='Binary (b)', scriptFolder='')
+    displayMode='Binary (b)', scriptFolder='',
+    # Terminal look (View > Terminal...), as in the Workbench. terminalTheme is
+    # one of TERM_CHOICES; the three colours are used by the 'custom' theme.
+    terminalBg='#FFFFFF', terminalFg='#000000', terminalSelect='#B5D5FF',
+    terminalFont='Consolas', terminalFontSize=11,
+    datasheetUrl=datasheet.DEFAULT_URL)     # Help > Datasheet Source...
+
+TERM_CHOICES = ('light', 'dark', 'custom')
+TERM_SIZE_MIN, TERM_SIZE_MAX = termstyle.SIZE_MIN, termstyle.SIZE_MAX
+HEX_COLOR = termstyle.HEX_COLOR
 
 # Terminal colour themes: background, text and selection colours
 TERM_THEMES = {
@@ -139,7 +152,13 @@ class SerComFrame(LabelFrame):
         self.scriptRunning = False   # True while File > Run Script is running
         self.scriptDir = ''          # folder of the last script that was run
         self.winPos = None    # (x, y) of the window's top-left corner
-        self.termTheme = 'light'   # Terminal colours: a key of TERM_THEMES
+        self.termTheme = 'light'   # Terminal colours: one of TERM_CHOICES
+        self.termBg = CFG_DEFAULTS['terminalBg']       # colours of 'custom'
+        self.termFg = CFG_DEFAULTS['terminalFg']
+        self.termSelect = CFG_DEFAULTS['terminalSelect']
+        self.termFont = CFG_DEFAULTS['terminalFont']
+        self.termFontSize = CFG_DEFAULTS['terminalFontSize']
+        self.datasheetUrl = datasheet.DEFAULT_URL   # Help > Datasheet
         self.dispMode = 'Binary (b)'   # Read panel display mode (a key of dispmodeOptions)
         self.showPanels = True     # Erase, Program and Read panels shown/hidden
 
@@ -337,6 +356,12 @@ class SerComFrame(LabelFrame):
         cfg.update({'autoConnect': self.chk_var.get(),
                     'lastUsedPort': self.selPort,
                     'terminalTheme': self.termTheme,
+                    'terminalBg': self.termBg,
+                    'terminalFg': self.termFg,
+                    'terminalSelect': self.termSelect,
+                    'terminalFont': self.termFont,
+                    'terminalFontSize': self.termFontSize,
+                    'datasheetUrl': self.datasheetUrl,
                     'showPanels': self.showPanels,
                     'displayMode': self.dispMode,
                     'scriptFolder': self.scriptDir})
@@ -376,15 +401,21 @@ class SerComFrame(LabelFrame):
         for key, allowed in (('eraseBlkSize', erase.blockSizes),
                              ('readSpiMode', read.spiModes),
                              ('displayMode', tuple(read.dispmodeOptions)),
-                             ('terminalTheme', tuple(TERM_THEMES))):
+                             ('terminalTheme', TERM_CHOICES)):
             if v[key] not in allowed:
                 v[key] = CFG_DEFAULTS[key]
+        termstyle.repair(v, CFG_DEFAULTS)
         if prefs:
             self.autoConnect = v['autoConnect']
             self.chk_var.set(self.autoConnect)
             self.selPort = v['lastUsedPort']
             self.lastUsedPort = self.selPort
             self.termTheme = v['terminalTheme']
+            self.termBg, self.termFg = v['terminalBg'], v['terminalFg']
+            self.termSelect = v['terminalSelect']
+            self.termFont = v['terminalFont']
+            self.termFontSize = v['terminalFontSize']
+            self.datasheetUrl = datasheet.clean_url(v['datasheetUrl'])
             self.showPanels = v['showPanels']
             self.dispMode = v['displayMode']
             read.applyDispMode(self.dispMode)
@@ -790,7 +821,8 @@ class Terminal(LabelFrame):
             self, wrap=CHAR, width=80, height=24, font=("Consolas", 11))
         self.txt.grid(row=1, column=0, columnspan=99,
                       pady=10, padx=10, sticky="NSEW")
-        self.applyTheme('light')
+        self.onZoom = None       # set by the app: onZoom(+1 or -1), Ctrl + wheel
+        self.applyColors(TERM_THEMES['light'])
 
         self.clear()
         self.txt.focus()      # placing cursor in text area
@@ -806,6 +838,8 @@ class Terminal(LabelFrame):
         self.txt.bind('<Key>', self.onKeyPress)
         self.txt.bind('<<Paste>>', self.onPaste)
         self.txt.bind('<<Cut>>', lambda _e: 'break')
+        # Ctrl + mouse wheel changes the text size instead of scrolling
+        self.txt.bind('<Control-MouseWheel>', self.onCtrlWheel)
 
         # Right-click context menu
         self.ctxMenu = Menu(self.txt, tearoff=False)
@@ -816,9 +850,16 @@ class Terminal(LabelFrame):
         # port isn't open or a synchronous command is in progress.
         self.after(self.pollIntervalMs, self.pollSerial)
 
-    def applyTheme(self, name):
-        """Sets the Terminal colours to one of TERM_THEMES ('dark'/'light')"""
-        t = TERM_THEMES[name]
+    def onCtrlWheel(self, event):
+        if self.onZoom and event.delta:
+            self.onZoom(1 if event.delta > 0 else -1)
+        return 'break'          # no scrolling
+
+    def setFont(self, family, size):
+        self.txt.configure(font=(family, size))
+
+    def applyColors(self, t):
+        """Sets the Terminal colours; t has the keys bg, fg and select"""
         self.txt.configure(bg=t['bg'], fg=t['fg'], insertbackground=t['fg'],
                            selectbackground=t['select'], selectforeground=t['fg'])
 
@@ -1203,13 +1244,12 @@ if __name__ == "__main__":
     view_menu = Menu(my_menu, tearoff=False)
     my_menu.add_cascade(label="View", menu=view_menu)
     panels_menu = Menu(view_menu, tearoff=False)
-    theme_menu = Menu(view_menu, tearoff=False)
     view_menu.add_cascade(label="Panels (Erase/Program/Read)", menu=panels_menu)
     view_menu.add_separator()
-    view_menu.add_cascade(label="Terminal theme", menu=theme_menu)
+    view_menu.add_command(label="Terminal...",
+                          command=lambda: showTerminalDialog())
 
     panelsVar = StringVar(value='show' if serCom.showPanels else 'hide')
-    termThemeVar = StringVar(value=serCom.termTheme)
 
     def layoutPanels():
         """Shows or hides the three panels together (serCom.showPanels).
@@ -1243,23 +1283,233 @@ if __name__ == "__main__":
         root.geometry(f'{max(minW, curW)}x{h}')
         serCom.saveConfig()
 
-    def setTermTheme():
-        serCom.termTheme = termThemeVar.get()
-        term.applyTheme(serCom.termTheme)
-        serCom.saveConfig()
+    def termColors():
+        """The Terminal colours (bg, fg, select) of the chosen theme"""
+        if serCom.termTheme == 'custom':
+            return dict(bg=serCom.termBg, fg=serCom.termFg,
+                        select=serCom.termSelect)
+        return TERM_THEMES[serCom.termTheme]
 
-    def syncTermTheme():
-        """Applies serCom.termTheme (e.g. just loaded from the config file)"""
-        termThemeVar.set(serCom.termTheme)
-        term.applyTheme(serCom.termTheme)
+    def applyTerminal():
+        """Applies the Terminal look (e.g. just loaded from the config file)"""
+        term.applyColors(termColors())
+        term.setFont(serCom.termFont, serCom.termFontSize)
+
+    zoomState = dict(save=None, restore=None, old=None)
+
+    def zoomTerminal(step):
+        """Ctrl + mouse wheel: bigger or smaller Terminal text. The setting is
+        saved shortly after the wheel stops."""
+        size = termstyle.clamp_size(serCom.termFontSize + step)
+        if size != serCom.termFontSize:
+            serCom.termFontSize = size
+            applyTerminal()
+            if zoomState['save']:
+                root.after_cancel(zoomState['save'])
+            zoomState['save'] = root.after(600, serCom.saveConfig)
+        # show the size in the status bar, then put the old text back
+        if zoomState['restore']:
+            root.after_cancel(zoomState['restore'])
+        else:
+            zoomState['old'] = stsBarComm.cget('text')
+        stsBarComm.configure(text=f'Terminal text size {size}')
+
+        def restore():
+            stsBarComm.configure(text=zoomState['old'])
+            zoomState['restore'] = None
+        zoomState['restore'] = root.after(1500, restore)
+
+    term.onZoom = zoomTerminal
+
+    fontCache = []
+    termDialog = {}
+
+    def showTerminalDialog():
+        """View > Terminal...: theme, colours, font and size with a preview.
+        Changes show in the Terminal at once; Cancel puts the old look back."""
+        if termDialog.get('win') is not None and termDialog['win'].winfo_exists():
+            termDialog['win'].lift()
+            termDialog['win'].focus_set()
+            return
+        saved = (serCom.termTheme, serCom.termBg, serCom.termFg,
+                 serCom.termSelect, serCom.termFont, serCom.termFontSize)
+        dlg = tk.Toplevel(root)
+        termDialog['win'] = dlg
+        dlg.title('Terminal')
+        dlg.resizable(False, False)
+        dlg.transient(root)
+        themes = (('Light', 'light'), ('Dark', 'dark'), ('Custom', 'custom'))
+        if not fontCache:
+            fontCache.extend(termstyle.monospaced_fonts(root))
+        fonts = list(fontCache)
+        if serCom.termFont not in fonts:
+            fonts.insert(0, serCom.termFont)
+
+        def label(row, text):
+            ttk.Label(dlg, text=text).grid(row=row, column=0, padx=(16, 8),
+                                           pady=5, sticky='w')
+
+        label(0, 'Theme')
+        themeBox = ttk.Combobox(dlg, values=[t[0] for t in themes],
+                                state='readonly', width=26)
+        themeBox.grid(row=0, column=1, columnspan=3, padx=(0, 16), pady=5,
+                      sticky='w')
+        themeBox.bind('<<ComboboxSelected>>',
+                      lambda _e: pickTheme(themeBox.get()))
+
+        swatches = {}
+        hexEntries = {}
+        for row, (key, text, attr) in enumerate((
+                ('bg', 'Background', 'termBg'), ('fg', 'Text', 'termFg'),
+                ('select', 'Selection', 'termSelect')), start=1):
+            label(row, text)
+            swatches[key] = tk.Button(
+                dlg, width=6, relief='solid', bd=1,
+                command=lambda k=key, a=attr: chooseColour(k, a))
+            swatches[key].grid(row=row, column=1, padx=(0, 8), pady=5,
+                               sticky='w')
+            entry = ttk.Entry(dlg, width=12)
+            entry.grid(row=row, column=2, columnspan=2, padx=(0, 16), pady=5,
+                       sticky='w')
+            entry.bind('<Return>', lambda _e, a=attr, k=key: typedColour(k, a))
+            entry.bind('<FocusOut>', lambda _e, a=attr, k=key: typedColour(k, a))
+            hexEntries[key] = entry
+
+        label(4, 'Font')
+        fontBox = ttk.Combobox(dlg, values=fonts, state='readonly', width=26)
+        fontBox.grid(row=4, column=1, columnspan=3, padx=(0, 16), pady=5,
+                     sticky='w')
+        fontBox.bind('<<ComboboxSelected>>', lambda _e: pickFont(fontBox.get()))
+
+        label(5, 'Size')
+        ttk.Button(dlg, text='-', width=3,
+                   command=lambda: setSize(serCom.termFontSize - 1)
+                   ).grid(row=5, column=1, padx=(0, 4), pady=5, sticky='w')
+        sizeEntry = ttk.Entry(dlg, width=5, justify='center')
+        sizeEntry.grid(row=5, column=2, pady=5, sticky='w')
+        ttk.Button(dlg, text='+', width=3,
+                   command=lambda: setSize(serCom.termFontSize + 1)
+                   ).grid(row=5, column=3, padx=(4, 16), pady=5, sticky='w')
+        sizeEntry.bind('<Return>', lambda _e: typedSize())
+        sizeEntry.bind('<FocusOut>', lambda _e: typedSize())
+
+        preview = tk.Text(dlg, height=5, width=44, wrap='none', bd=1,
+                          relief='solid')
+        preview.grid(row=6, column=0, columnspan=4, padx=16, pady=(10, 4),
+                     sticky='ew')
+        preview.insert('1.0', '>>> freq 64\nFrequency set to 64 MHz\n'
+                       '0000: CA FE 00 00 ')
+        preview.insert('end', 'DE AD BE EF', 'picked')
+        preview.configure(state='disabled', cursor='arrow')
+
+        def refresh():
+            if not dlg.winfo_exists():
+                return
+            colours = termColors()
+            for key, swatch in swatches.items():
+                swatch.configure(bg=colours[key], activebackground=colours[key])
+                hexEntries[key].delete(0, END)
+                hexEntries[key].insert(0, colours[key].upper())
+            themeBox.set(next(n for n, v in themes if v == serCom.termTheme))
+            fontBox.set(serCom.termFont)
+            sizeEntry.delete(0, END)
+            sizeEntry.insert(0, str(serCom.termFontSize))
+            preview.configure(bg=colours['bg'], fg=colours['fg'],
+                              font=(serCom.termFont, serCom.termFontSize))
+            preview.tag_configure('picked', background=colours['select'],
+                                  foreground=colours['fg'])
+            applyTerminal()
+
+        def pickTheme(name):
+            serCom.termTheme = dict(themes)[name]
+            refresh()
+
+        def setColour(attr, value):
+            # editing any colour switches to the Custom theme, starting from
+            # the colours that are shown now
+            colours = termColors()
+            serCom.termBg, serCom.termFg = colours['bg'], colours['fg']
+            serCom.termSelect = colours['select']
+            setattr(serCom, attr, value.lower())
+            serCom.termTheme = 'custom'
+            refresh()
+
+        def chooseColour(key, attr):
+            _rgb, value = askcolor(color=termColors()[key], parent=dlg,
+                                   title='Terminal colour')
+            if value:
+                setColour(attr, value)
+
+        def typedColour(key, attr):
+            if not dlg.winfo_exists():
+                return
+            text = hexEntries[key].get().strip()
+            if re.fullmatch(r'[0-9a-fA-F]{6}', text):
+                text = '#' + text
+            if (HEX_COLOR.fullmatch(text)
+                    and text.lower() != termColors()[key].lower()):
+                setColour(attr, text)
+            else:
+                refresh()      # unchanged or not a colour: show the real value
+
+        def pickFont(name):
+            serCom.termFont = name
+            refresh()
+
+        def setSize(value):
+            serCom.termFontSize = termstyle.clamp_size(value)
+            refresh()
+
+        def typedSize():
+            if not dlg.winfo_exists():
+                return
+            try:
+                setSize(int(sizeEntry.get().strip()))
+            except ValueError:
+                refresh()
+
+        def reset():
+            serCom.termTheme = 'light'
+            serCom.termBg = CFG_DEFAULTS['terminalBg']
+            serCom.termFg = CFG_DEFAULTS['terminalFg']
+            serCom.termSelect = CFG_DEFAULTS['terminalSelect']
+            serCom.termFont = CFG_DEFAULTS['terminalFont']
+            serCom.termFontSize = CFG_DEFAULTS['terminalFontSize']
+            refresh()
+
+        def ok():
+            serCom.saveConfig()
+            dlg.destroy()
+
+        def cancel():
+            (serCom.termTheme, serCom.termBg, serCom.termFg, serCom.termSelect,
+             serCom.termFont, serCom.termFontSize) = saved
+            applyTerminal()
+            dlg.destroy()
+
+        bar = ttk.Frame(dlg)
+        bar.grid(row=7, column=0, columnspan=4, padx=16, pady=(8, 14),
+                 sticky='ew')
+        bar.grid_columnconfigure(0, weight=1)
+        ttk.Button(bar, text='Reset to defaults', command=reset
+                   ).grid(row=0, column=0, sticky='w')
+        ttk.Button(bar, text='OK', width=9, command=ok
+                   ).grid(row=0, column=1, padx=(8, 0))
+        ttk.Button(bar, text='Cancel', width=9, command=cancel
+                   ).grid(row=0, column=2, padx=(8, 0))
+        dlg.bind('<Escape>', lambda _e: cancel())
+        dlg.protocol('WM_DELETE_WINDOW', cancel)
+
+        refresh()
+        dlg.update_idletasks()
+        x = root.winfo_x() + (root.winfo_width() - dlg.winfo_width()) // 2
+        y = root.winfo_y() + (root.winfo_height() - dlg.winfo_height()) // 2
+        dlg.geometry(f'+{max(x, 0)}+{max(y, 0)}')
+        dlg.after(100, lambda: (dlg.grab_set(), dlg.focus_set()))
 
     for label, value in (('Show', 'show'), ('Hide', 'hide')):
         panels_menu.add_radiobutton(label=label, value=value, variable=panelsVar,
                                     command=onPanelToggle)
-    theme_menu.add_radiobutton(label="Light Terminal", value='light',
-                               variable=termThemeVar, command=setTermTheme)
-    theme_menu.add_radiobutton(label="Dark Terminal", value='dark',
-                               variable=termThemeVar, command=setTermTheme)
 
     # File > Parameters: save / load / reset the entry-box values of the Erase,
     # Program and Read panels (the only settings that are NOT saved automatically)
@@ -1456,12 +1706,60 @@ if __name__ == "__main__":
     docs_menu = Menu(help_menu, tearoff=False,
                      postcommand=lambda: refreshDocs())
     help_menu.insert_cascade(1, label="Documents", menu=docs_menu)
+    help_menu.insert_command(2, label="Datasheet", command=lambda: openDatasheet())
+    help_menu.insert_command(3, label="Datasheet Source...",
+                             command=lambda: editDatasheetUrl())
 
     def openDocument(path):
         try:
             os.startfile(path)
         except OSError as e:
             showerror('Documents', f'Could not open the file:\n{path}\n\n{e}')
+
+    def openDatasheet():
+        """Help > Datasheet: the datasheet of the device in the status bar"""
+        part = (datasheet.part_from_status(serCom.serParams)
+                if serCom.portStatus == 'connected' else '')
+        if not part:
+            showinfo('Datasheet', 'No device is shown in the status bar.\n\n'
+                     'Connect the board with a device in the socket first.')
+            return
+        # the docs folder, then %APPDATA%\Dubrovnik\Datasheets (also searched
+        # in a "datasheets" subfolder of docs); no admin rights needed there
+        local = datasheet.find_local(
+            (docsFolder(), serCom.dubrovnikConfigPath), part)
+        if local:
+            openDocument(local)
+            showStatus(f'Datasheet for {part}: {os.path.basename(local)}', 6000)
+            return
+        url = datasheet.build_url(serCom.datasheetUrl, part)
+        try:
+            webbrowser.open(url)
+        except Exception as e:
+            showerror('Datasheet', f'Could not open the browser:\n{url}\n\n{e}')
+            return
+        showStatus(f'Datasheet for {part}: opened {url}', 8000)
+
+    def editDatasheetUrl():
+        """Help > Datasheet Source...: where to look when there is no local file"""
+        text = simpledialog.askstring(
+            'Datasheet Source',
+            'Web address used by Help > Datasheet when no datasheet file is in '
+            'the docs folder.\n{part} is replaced by the part number of the '
+            'device. An address without {part} is opened as it is.\n\n'
+            'Clear the box to go back to the default (Renesas search).',
+            initialvalue=serCom.datasheetUrl, parent=root)
+        if text is None:            # Cancel
+            return
+        text = text.strip()
+        url = datasheet.clean_url(text) if text else datasheet.DEFAULT_URL
+        if text and url != text:
+            showerror('Datasheet Source', 'The address must start with http:// '
+                      'or https://')
+            return
+        serCom.datasheetUrl = url
+        serCom.saveConfig()
+        showStatus('Datasheet source saved', 4000)
 
     def openDocsFolder():
         folder = docsFolder()
@@ -1483,7 +1781,7 @@ if __name__ == "__main__":
                               command=openDocsFolder)
 
     serCom.loadConfig()  # includes autoConnect and lastUsedPort
-    syncTermTheme()
+    applyTerminal()
     syncPanels()   # before the window size is worked out below
 
     # Save the connection settings whenever they change, so they survive even

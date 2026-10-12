@@ -8,6 +8,42 @@ To release a new version: change VERSION in dubLibs\version.py, add an entry at
 the top of this file, commit, then tag the commit:  git tag v<VERSION>
 
 
+VERSION 1.1.2                                                      2026-10-12
+-----------------------------------------------------------------------------
+Terminal and menu customization, a datasheet shortcut, and a matching Display
+Mode box. Both editions get the Terminal dialog and the datasheet entries.
+
+New:
+  * View > Terminal... (both editions): a dialog for the Terminal look. Theme
+    (Auto, Light, Dark, Custom; the classic edition has no Auto), background, text
+    and selection colours (colour picker or hex value), a font chosen from the
+    installed fixed-width fonts, and the text size (8 to 32), with a live preview.
+    Cancel puts the old look back; Reset to defaults restores the standard one.
+    It replaces the old "Terminal theme" submenu.
+  * Ctrl + mouse wheel over the Terminal changes the text size (both editions); the
+    size is shown briefly in the status bar and remembered.
+  * View > Menu text size (Workbench): Small, Normal or Large menus, for PCs where
+    the menus looked too big or too small. Remembered.
+  * Help > Datasheet (both editions): opens the datasheet of the device shown in the
+    status bar. A file whose name contains the part number in the docs folder (or in
+    %APPDATA%\Dubrovnik\Datasheets) is opened first; otherwise the web address from
+    Help > Datasheet Source... is opened in the browser. The default is the Renesas
+    website search; the address is saved with the settings, so it can be changed if
+    the website moves.
+  * Experimental AI assistant (Workbench): Help > Assistant appears only when an
+    ANTHROPIC_API_KEY, a gateway (ANTHROPIC_AUTH_TOKEN + ANTHROPIC_BASE_URL) or
+    DUB_ASSISTANT_PROVIDER (bedrock or vertex) is set, and needs the "anthropic"
+    package, which the installer does not include. Untested against a live model.
+
+Changed:
+  * A light Terminal is no longer forced to dark in a dark window; the new "Auto"
+    theme follows the window, and Light, Dark and Custom stay as chosen.
+  * Display Mode is now the same kind of box as the COM port list (same arrow).
+  * The COM port list text uses exactly the size of the widgets next to it.
+  * The settings file gains Terminal colour, font and size, menu size and datasheet
+    address entries; bad values fall back to the defaults.
+
+
 VERSION 1.1                                                        2026-10-09
 -----------------------------------------------------------------------------
 Adds the Documents menu, a much larger help guide and a training guide, and fixes

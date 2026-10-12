@@ -232,7 +232,7 @@ for the board. Type after the <code>&gt;&gt;&gt;</code> prompt and press
   <li>Messages the board sends by itself, for example after you press RESET, are
       shown automatically.</li>
   <li><strong>File &rarr; Save Terminal Log</strong> writes the whole Terminal to a text file.</li>
-  <li>The Terminal colours can be changed under <em>View &rarr; Terminal theme</em>.</li>
+  <li>The Terminal colours, font and text size can be changed under <em>View &rarr; Terminal</em>. To change the text size quickly, hold <kbd>Ctrl</kbd> and turn the mouse wheel over the Terminal.</li>
 </ul>
 <h3>Examples</h3>
 <pre>&gt;&gt;&gt; config           show the board configuration
@@ -566,8 +566,15 @@ rebuilt every time it opens, so the new entry appears at once. Optional header l
 <h3>View</h3>
 <ul>
   <li><strong>Panels (Erase/Program/Read)</strong> &ndash; <em>Show</em> or <em>Hide</em> all three panels together. Hiding them gives the Terminal more room, which suits users who work mainly with commands.</li>
-  <li><strong>Appearance</strong> &ndash; <em>Light</em>, <em>Dark</em> or <em>System</em> (follow Windows). In a dark window the Terminal is always dark. This option is not available in the classic edition of the tool.</li>
-  <li><strong>Terminal theme</strong> &ndash; <em>Light Terminal</em> or <em>Dark Terminal</em>.</li>
+  <li><strong>Appearance</strong> &ndash; <em>Light</em>, <em>Dark</em> or <em>System</em> (follow Windows). This option is not available in the classic edition of the tool.</li>
+  <li><strong>Terminal</strong> &ndash; opens a dialog for the Terminal look. <em>Theme</em> is <em>Auto</em> (light or dark like the window),
+      <em>Light</em>, <em>Dark</em> or <em>Custom</em>; changing a colour switches to <em>Custom</em>. Pick the
+      <em>Background</em>, <em>Text</em> and <em>Selection</em> colours with the colour button or type a hex value such as
+      <code>#1B1F24</code>. <em>Font</em> lists the fixed-width fonts installed on the PC and <em>Size</em> sets the text size
+      (8 to 32). The preview and the Terminal change as you go; <em>Cancel</em> puts the old look back and
+      <em>Reset to defaults</em> restores the dark theme with Consolas 15 (the classic edition: light theme, Consolas 11). The classic edition has the same dialog but no <em>Auto</em> theme, because its window has no light or dark setting.</li>
+  <li><strong>Menu text size</strong> &ndash; <em>Small</em>, <em>Normal</em> or <em>Large</em> text in the menu bar and the menus.
+      Use it if the menus look too big or too small on your screen. This option is not available in the classic edition, whose menus use the Windows menu font.</li>
 </ul>
 <h3>Help</h3>
 <ul>
@@ -577,6 +584,13 @@ rebuilt every time it opens, so the new entry appears at once. Optional header l
       presentation into the folder; it appears the next time you open the menu. The menu text is the file name
       with underscores shown as spaces, and a leading number such as <code>01_</code> sets the order and is not
       shown. <em>Open Documents Folder</em> takes you there.</li>
+  <li><strong>Datasheet</strong> &ndash; opens the datasheet of the device shown in the status bar. If a PDF whose name contains the
+      part number is in the <code>docs</code> folder (or in <code>%APPDATA%\Dubrovnik\Datasheets</code>) it is opened;
+      otherwise the web address from <em>Datasheet Source</em> is opened in your browser. It needs a connected board with a device.</li>
+  <li><strong>Datasheet Source</strong> &ndash; the web address used when there is no local file. <code>{part}</code> is replaced by the
+      part number. The default is the Renesas website search
+      (<code>https://www.renesas.com/en/search?keywords={part}</code>); an address without <code>{part}</code> is opened as it is.
+      The address is saved with the other settings, so you can change it if the website moves.</li>
   <li><strong>About</strong> &ndash; version and authors.</li>
 </ul>
 
@@ -588,7 +602,7 @@ rebuilt every time it opens, so the new entry appears at once. Optional header l
     <ul>
       <li>Window size and position</li>
       <li>Panels shown or hidden</li>
-      <li>Appearance and Terminal theme</li>
+      <li>Appearance, Terminal look and menu text size</li>
       <li>Last COM port and Auto connect</li>
       <li>Display Mode</li>
     </ul></td>
