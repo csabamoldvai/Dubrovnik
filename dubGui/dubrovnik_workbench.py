@@ -12,7 +12,6 @@ from tkinter import (
     DISABLED, E, END, EW, INSERT, IntVar, Menu,
     NORMAL, NSEW, NW, S, SW, StringVar, W)
 from tkinter import ttk
-from tkinter.colorchooser import askcolor
 from tkinter.filedialog import askopenfilename, asksaveasfilename
 from tkinter.messagebox import showerror, showwarning, showinfo
 import customtkinter as ctk
@@ -36,6 +35,7 @@ from dubGui.dialogs import messages
 from dubGui.dialogs.file_viewer import FileViewer
 from dubGui.dialogs.hex_dialog import HexDialog
 from dubGui.dialogs.progress import ProgramCancelled, ProgressDialog
+from dubGui.dialogs.terminal_dialog import TerminalDialog
 from dubGui.look import (
     CHECKBOX_STYLE, ENTRY_HEIGHT, PAL, PANEL_BORDER, RADIO_STYLE, TERM_THEMES,
     styleCombobox, styleMenus)
@@ -117,7 +117,6 @@ CFG_DEFAULTS = dict(
 
 TERM_CHOICES = ('auto', 'light', 'dark', 'custom')   # 'auto' follows the window
 TERM_SIZE_MIN, TERM_SIZE_MAX = termstyle.SIZE_MIN, termstyle.SIZE_MAX
-HEX_COLOR = termstyle.HEX_COLOR
 
 # View > Menu text size: size in unscaled px of the menu bar and the pop-up
 # menus (multiplied by the Windows display scaling)
@@ -1507,7 +1506,7 @@ class App:
 
         self.fontCache = []
 
-        self.termDialog = {}
+        self.termDialog = None
 
         help_menu = Menu(self.root, tearoff=False, font=self.menuFont)
         my_menu.add_cascade(label="Help", menu=help_menu)
@@ -2048,187 +2047,12 @@ class App:
     def showTerminalDialog(self):
         """View > Terminal...: theme, colours, font and size with a preview.
         Changes show in the Terminal at once; Cancel puts the old look back."""
-        if self.termDialog.get('win') is not None and self.termDialog['win'].winfo_exists():
-            self.termDialog['win'].focus_set()
+        if self.termDialog is not None and self.termDialog.win.winfo_exists():
+            self.termDialog.win.focus_set()
             return
-        saved = (self.serCom.termTheme, self.serCom.termBg, self.serCom.termFg,
-                 self.serCom.termSelect, self.serCom.termFont, self.serCom.termFontSize)
-        dlg = ctk.CTkToplevel(self.root)
-        self.termDialog['win'] = dlg
-        dlg.title('Terminal')
-        dlg.resizable(False, False)
-        dlg.transient(self.root)
-        font = ctk.CTkFont(size=14)
-        themes = (('Auto (follow window)', 'auto'), ('Light', 'light'),
-                  ('Dark', 'dark'), ('Custom', 'custom'))
-        fonts = self.monospacedFonts()
-        if self.serCom.termFont not in fonts:
-            fonts.insert(0, self.serCom.termFont)
-
-        def label(row, text):
-            ctk.CTkLabel(dlg, text=text, font=font, anchor='w'
-                         ).grid(row=row, column=0, padx=(24, 12), pady=6,
-                                sticky='w')
-
-        label(0, 'Theme')
-        themeMenu = ctk.CTkOptionMenu(
-            dlg, values=[t[0] for t in themes], font=font, dropdown_font=font,
-            width=240, command=lambda name: pickTheme(name))
-        themeMenu.grid(row=0, column=1, columnspan=3, padx=(0, 24), pady=6,
-                       sticky='w')
-
-        swatches = {}
-        hexEntries = {}
-        for row, (key, text, attr) in enumerate((
-                ('bg', 'Background', 'termBg'), ('fg', 'Text', 'termFg'),
-                ('select', 'Selection', 'termSelect')), start=1):
-            label(row, text)
-            swatches[key] = ctk.CTkButton(
-                dlg, text='', width=60, height=28, border_width=1,
-                border_color=PAL['control_border'],
-                command=lambda k=key, a=attr: chooseColour(k, a))
-            swatches[key].grid(row=row, column=1, padx=(0, 8), pady=6, sticky='w')
-            entry = ctk.CTkEntry(dlg, width=100, font=font)
-            entry.grid(row=row, column=2, columnspan=2, padx=(0, 24), pady=6,
-                       sticky='w')
-            entry.bind('<Return>', lambda _e, a=attr, k=key: typedColour(k, a))
-            entry.bind('<FocusOut>', lambda _e, a=attr, k=key: typedColour(k, a))
-            hexEntries[key] = entry
-
-        label(4, 'Font')
-        fontMenu = ctk.CTkOptionMenu(
-            dlg, values=fonts, font=font, dropdown_font=font, width=240,
-            command=lambda name: pickFont(name))
-        fontMenu.grid(row=4, column=1, columnspan=3, padx=(0, 24), pady=6,
-                      sticky='w')
-
-        label(5, 'Size')
-        ctk.CTkButton(dlg, text='-', width=32, font=font,
-                      command=lambda: setSize(self.serCom.termFontSize - 1)
-                      ).grid(row=5, column=1, padx=(0, 4), pady=6, sticky='w')
-        sizeEntry = ctk.CTkEntry(dlg, width=56, font=font, justify='center')
-        sizeEntry.grid(row=5, column=2, padx=0, pady=6, sticky='w')
-        ctk.CTkButton(dlg, text='+', width=32, font=font,
-                      command=lambda: setSize(self.serCom.termFontSize + 1)
-                      ).grid(row=5, column=3, padx=(4, 24), pady=6, sticky='w')
-        sizeEntry.bind('<Return>', lambda _e: typedSize())
-        sizeEntry.bind('<FocusOut>', lambda _e: typedSize())
-
-        preview = ctk.CTkTextbox(dlg, height=110, width=420, wrap='none',
-                                 border_width=0)
-        preview.grid(row=6, column=0, columnspan=4, padx=24, pady=(10, 4),
-                     sticky='ew')
-        preview.insert('1.0', '>>> freq 64\nFrequency set to 64 MHz\n'
-                       '0000: CA FE 00 00 ')
-        preview.insert('end', 'DE AD BE EF', 'picked')
-        preview.configure(state='disabled')
-
-        def refresh():
-            if not dlg.winfo_exists():
-                return
-            colours = self.termColors()
-            for key, swatch in swatches.items():
-                swatch.configure(fg_color=colours[key],
-                                 hover_color=colours[key])
-                hexEntries[key].delete(0, END)
-                hexEntries[key].insert(0, colours[key].upper())
-            themeMenu.set(next(n for n, v in themes if v == self.serCom.termTheme))
-            fontMenu.set(self.serCom.termFont)
-            sizeEntry.delete(0, END)
-            sizeEntry.insert(0, str(self.serCom.termFontSize))
-            preview.configure(fg_color=colours['bg'], text_color=colours['fg'],
-                              font=ctk.CTkFont(family=self.serCom.termFont,
-                                               size=self.serCom.termFontSize))
-            preview._textbox.tag_configure(
-                'picked', background=colours['select'], foreground=colours['fg'])
-            self.applyTerminal()
-
-        def pickTheme(name):
-            self.serCom.termTheme = dict(themes)[name]
-            refresh()
-
-        def setColour(attr, value):
-            # editing any colour switches to the Custom theme, starting from
-            # the colours that are shown now
-            colours = self.termColors()
-            self.serCom.termBg, self.serCom.termFg = colours['bg'], colours['fg']
-            self.serCom.termSelect = colours['select']
-            setattr(self.serCom, attr, value.lower())
-            self.serCom.termTheme = 'custom'
-            refresh()
-
-        def chooseColour(key, attr):
-            _rgb, value = askcolor(color=self.termColors()[key], parent=dlg,
-                                   title='Terminal colour')
-            if value:
-                setColour(attr, value)
-
-        def typedColour(key, attr):
-            if not dlg.winfo_exists():
-                return
-            text = hexEntries[key].get().strip()
-            if re.fullmatch(r'[0-9a-fA-F]{6}', text):
-                text = '#' + text
-            if (HEX_COLOR.fullmatch(text)
-                    and text.lower() != self.termColors()[key].lower()):
-                setColour(attr, text)
-            else:
-                refresh()      # unchanged or not a colour: show the real value
-
-        def pickFont(name):
-            self.serCom.termFont = name
-            refresh()
-
-        def setSize(value):
-            self.serCom.termFontSize = min(max(value, TERM_SIZE_MIN), TERM_SIZE_MAX)
-            refresh()
-
-        def typedSize():
-            if not dlg.winfo_exists():
-                return
-            try:
-                setSize(int(sizeEntry.get().strip()))
-            except ValueError:
-                refresh()
-
-        def reset():
-            self.serCom.termTheme = 'dark'
-            self.serCom.termBg = CFG_DEFAULTS['terminalBg']
-            self.serCom.termFg = CFG_DEFAULTS['terminalFg']
-            self.serCom.termSelect = CFG_DEFAULTS['terminalSelect']
-            self.serCom.termFont = CFG_DEFAULTS['terminalFont']
-            self.serCom.termFontSize = CFG_DEFAULTS['terminalFontSize']
-            refresh()
-
-        def ok():
-            self.serCom.saveConfig()
-            dlg.destroy()
-
-        def cancel():
-            (self.serCom.termTheme, self.serCom.termBg, self.serCom.termFg, self.serCom.termSelect,
-             self.serCom.termFont, self.serCom.termFontSize) = saved
-            self.applyTerminal()
-            dlg.destroy()
-
-        bar = ctk.CTkFrame(dlg, fg_color='transparent')
-        bar.grid(row=7, column=0, columnspan=4, padx=24, pady=(8, 20),
-                 sticky='ew')
-        bar.grid_columnconfigure(0, weight=1)
-        ctk.CTkButton(bar, text='Reset to defaults', width=140, font=font,
-                      command=reset).grid(row=0, column=0, sticky='w')
-        ctk.CTkButton(bar, text='OK', width=90, font=font, command=ok
-                      ).grid(row=0, column=1, padx=(8, 0))
-        ctk.CTkButton(bar, text='Cancel', width=90, font=font, command=cancel
-                      ).grid(row=0, column=2, padx=(8, 0))
-        dlg.bind('<Escape>', lambda _e: cancel())
-        dlg.protocol('WM_DELETE_WINDOW', cancel)
-
-        refresh()
-        dlg.update_idletasks()
-        x = self.root.winfo_x() + (self.root.winfo_width() - dlg.winfo_width()) // 2
-        y = self.root.winfo_y() + (self.root.winfo_height() - dlg.winfo_height()) // 2
-        dlg.geometry(f'+{max(x, 0)}+{max(y, 0)}')
-        dlg.after(150, lambda: (dlg.grab_set(), dlg.focus_set()))
+        self.termDialog = TerminalDialog(
+            self.root, self.serCom, self.termColors, self.applyTerminal,
+            self.monospacedFonts(), CFG_DEFAULTS)
 
     def assistantFolder(self):
         folder = os.path.join(run_py_script.documents_dir(), 'Dubrovnik',
