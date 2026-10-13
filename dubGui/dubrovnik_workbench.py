@@ -394,21 +394,21 @@ class App:
         self.root.grid_columnconfigure(0, minsize=round(self.erase.winfo_reqwidth() + margins))
 
     def panelsLabel(self):
-        """Text of the first View item: the action it will do"""
+        """Text of the Hide / Show Panels item of the View menu: the action it will do"""
         return ('Hide Panels (Erase/Program/Read)' if self.settings.showPanels
                 else 'Show Panels (Erase/Program/Read)')
 
     def syncPanels(self):
         """Applies settings.showPanels to the menu text and the layout"""
-        self.view_menu.entryconfigure(0, label=self.panelsLabel())
+        self.menus['view'].configure('panels', label=self.panelsLabel())
         self.layoutPanels()
 
     def onPanelToggle(self):
-        """The first View item was clicked: show or hide the panels, then
+        """The Hide / Show Panels item was clicked: show or hide the panels, then
         change the window height by the height gained or lost so the Terminal
         keeps its size"""
         self.settings.showPanels = not self.settings.showPanels
-        self.view_menu.entryconfigure(0, label=self.panelsLabel())
+        self.menus['view'].configure('panels', label=self.panelsLabel())
         self.root.update_idletasks()
         before = self.root.winfo_reqheight()
         self.layoutPanels()
@@ -695,11 +695,12 @@ class App:
         line says which one is loaded"""
         image = self.program.image
         state = NORMAL if image is not None else DISABLED
-        for index in (1, 2, 4):        # View File, Program, Close File
-            self.firmware_menu.entryconfigure(index, state=state)
-        self.firmware_menu.entryconfigure(
-            3, label=(f'Loaded: {self.program.imageName} ({image.size} bytes)'
-                      if image is not None else 'No file loaded'))
+        firmware = self.menus['file'].sub('firmware')
+        for key in ('view_file', 'program', 'close_file'):
+            firmware.configure(key, state=state)
+        firmware.configure(
+            'loaded', label=(f'Loaded: {self.program.imageName} ({image.size} bytes)'
+                             if image is not None else 'No file loaded'))
 
     def fileShortcut(self, action):
         """Runs a menu action from a key; 'break' keeps the Terminal's own
