@@ -9,16 +9,20 @@ Current released version: 1.2. Read `README.md` (overview), `FOLDERS.md` (what e
 - **Versions:** never change the version, tag, build an installer or create a release unless the user says so.
   The next release that changes code is 1.2.1. A later release after the refactoring and removal of Classic may
   be called 2.0 (user's choice, decide then).
-- **Git:** during the refactoring, commit after every green step (both test sets pass) and push the branch
-  `refactor-app-class` right after (standing permission). Never push to `main`, never push tags, never amend or
-  force-push pushed commits (fix forward or `git revert`). Outside the refactoring, commit and push only when asked.
-  Never move or delete a pushed tag. Commit messages end with the Co-Authored-By line given by the harness.
-- **Version during the refactoring:** `dubLibs/version.py` stays at 1.2.1 (already set, not tagged). Do not bump it
-  per commit; tag `v1.2.1` only when the user says so.
+- **Git:** commit only when both test sets pass (check the exit code, not just the output). Add files by name or with
+  `git add -u`, never `git add -A` (personal files lie around, e.g. in `tools/`). Never push to `main` or push tags
+  without being asked. Never amend or force-push pushed commits (fix forward or `git revert`). Never move or delete
+  a pushed tag. The branch `refactor-app-class` was pushed after every step (standing permission for that branch);
+  for new work ask which branch to use. Commit messages end with the Co-Authored-By line given by the harness.
+- **Version:** `dubLibs/version.py` is 1.2.1 (set, not tagged, no installer built yet). Tag `v1.2.1` and build the
+  installer only when the user says so. The tags `tested-on-board-1..5` mark commits the user tried on the real board.
 - **Classic edition** was removed (first step of the refactoring). It lives on in tag `v1.2`; do not bring it back or
   add features for it. There is one program now: `dubGui/dubrovnik_workbench.py`.
-- **Refactoring** is done on a separate branch (`refactor-app-class`), in small steps, one commit per step, and
-  merged to `main` only when everything works and the user has tried it on a real board.
+- **Refactoring** (Classic removed, `App` class, dialogs and panels in their own modules, `Settings` object, menu
+  tables) was done on branch `refactor-app-class` in small steps and merged into `main` after the user tried it on a
+  real board. Same method for the next big change: a branch, one small step per commit, board test, then merge.
+  Still open: give the panels explicit arguments instead of `self.app`; split the long constructors (see
+  `TODO_refactoring.md`).
 - **Do not mix** structure changes and behaviour changes in one commit.
 - **Audience:** only the author and one coworker use the program today, with about 50 internal boards. Wider
   release is planned for early next year. No need for deprecation notices, code signing or settings migration.
