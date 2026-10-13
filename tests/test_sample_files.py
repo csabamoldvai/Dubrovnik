@@ -60,10 +60,15 @@ class OtherSampleTests(unittest.TestCase):
         self.assertEqual(data[1024:], b'\xff' * 1024)        # erased half
 
 
+UTILS = os.path.join(os.path.dirname(HERE), 'dubUtils')
+
+
+@unittest.skipUnless(os.path.isfile(os.path.join(UTILS, 'text2bin_file.py')),
+                     'dubUtils is a personal folder: the converter is not in a clone')
 class Text2BinTests(unittest.TestCase):
     def test_converter(self):
         import tempfile
-        sys.path.insert(0, os.path.join(os.path.dirname(HERE), 'dubUtils'))
+        sys.path.insert(0, UTILS)
         import text2bin_file
         with tempfile.TemporaryDirectory() as folder:
             out = text2bin_file.text_to_bin(sample('a_text_file.txt'),
