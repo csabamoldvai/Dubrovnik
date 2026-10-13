@@ -43,8 +43,10 @@ the project's. The window checks never touch the user's real settings (`%APPDATA
 
 ## Things that are easy to get wrong here
 
-- `runpy.run_path` returns a COPY of the program's globals; patch `program.openFile.__globals__` (see
-  `dubScripts/gui_tests/harness.py`). Moving code out of the main block will change this: update the harness.
+- The program is a module with an `App` class (`App()` builds the window, `App().run()` starts the main loop). The
+  test harness imports the module and builds an `App`: replace a method by assigning it on `app.workbench`, replace a
+  plain module name (`askopenfilename`, `showerror`) in `app.live` (= the module's `__dict__`). The panels reach
+  the rest of the program through `self.app` (e.g. `self.app.serCom`, `self.app.term`).
 - Menus are built by index (`insert_cascade(5, ...)`). Adding an item shifts the numbers below it.
 - A window opened by the program takes the keyboard focus about 150 ms later: tests must `app.settle()` first.
 - `tests/data` must stay byte-for-byte (`.gitattributes`); the sample files are used by tests.

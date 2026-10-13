@@ -1,6 +1,7 @@
 # TODO: refactoring and design lessons
 
-**Written for version 1.2** (commit `7bf6a87` on `main`, 2026-10-12). Status: step 1 (item 5 below, removal of Classic) was done on branch `refactor-app-class`; the rest is open.
+**Written for version 1.2** (commit `7bf6a87` on `main`, 2026-10-12). Status on branch `refactor-app-class`: Classic removed (item 5 below) and the main block moved into an `App` class
+(item 1 below; the panels get the app as an argument). The rest is open.
 The numbers below describe the code as it was at that version; the commands in
 [How to measure again](#how-to-measure-again) let you compare later.
 
