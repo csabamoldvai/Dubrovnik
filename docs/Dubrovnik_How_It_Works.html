@@ -55,7 +55,7 @@ the code snippets are shortened copies of the real code.</div>
 line, sends it and shows the reply.</p>
 <table>
   <tr><th style="width:230px">File</th><th>Role</th></tr>
-  <tr><td><code>dubGui/dubrovnik_workbench.py</code></td><td>The Workbench window (CustomTkinter): panels, Terminal, menus, start-up logic. <code>dubrovnik_workbench_classic.py</code> is the same program with the original tkinter look.</td></tr>
+  <tr><td><code>dubGui/dubrovnik_workbench.py</code></td><td>The Workbench window (CustomTkinter): panels, Terminal, menus, start-up logic.</td></tr>
   <tr><td><code>dubLibs/boardcom.py</code></td><td>The serial link: finds the COM port, connects, <code>send()</code> a command and <code>response()</code>.</td></tr>
   <tr><td><code>dubLibs/dubrovnik.py</code></td><td>Flash functions built from commands: erase, program, read, Quad Enable, part number.</td></tr>
   <tr><td><code>dubLibs/run_cmd_script.py</code>, <code>run_py_script.py</code></td><td>Command scripts and Python scripts (the <code>dub</code> object).</td></tr>
@@ -212,7 +212,6 @@ next command times out after two seconds and the <em>Retry / Cancel</em> dialog 
   <li>The device is read at connect and from the board's own banner; it is not polled.</li>
   <li>Only ports whose manufacturer is <code>FTDI</code> are offered. A board with a different USB-serial chip would not be found.</li>
   <li>A script blocks the window while it runs; a long erase inside a script keeps the Terminal unusable until it finishes.</li>
-  <li>The Classic edition has the same logic with tkinter widgets; its status bar and menus differ only in how they are drawn.</li>
 </ul>
 </body>
 </html>

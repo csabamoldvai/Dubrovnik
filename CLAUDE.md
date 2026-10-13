@@ -11,8 +11,8 @@ Current released version: 1.2. Read `README.md` (overview), `FOLDERS.md` (what e
   be called 2.0 (user's choice, decide then).
 - **Git:** never commit or push without being asked. Never move or delete a pushed tag. Commit messages end with
   the Co-Authored-By line given by the harness.
-- **Classic edition** (`dubGui/dubrovnik_workbench_classic.py`) will probably be discontinued. Until the user says
-  so, features still go into both editions. Removing it is likely the first step of the refactoring.
+- **Classic edition** was removed (first step of the refactoring). It lives on in tag `v1.2`; do not bring it back or
+  add features for it. There is one program now: `dubGui/dubrovnik_workbench.py`.
 - **Refactoring** is done on a separate branch (`refactor-app-class`), in small steps, one commit per step, and
   merged to `main` only when everything works and the user has tried it on a real board.
 - **Do not mix** structure changes and behaviour changes in one commit.
@@ -28,8 +28,8 @@ Current released version: 1.2. Read `README.md` (overview), `FOLDERS.md` (what e
 
 ```
 python -m unittest discover -s tests            unit tests, no windows, about 1 second (38 tests, 1 skipped on a clone)
-python dubScripts\gui_tests\run_all.py          window checks of both editions, about 1 minute (personal folder)
-python dubScripts\gui_tests\check_menus.py wb   one check, one edition (wb = Workbench, cl = Classic)
+python dubScripts\gui_tests\run_all.py          window checks, about 30 seconds (personal folder)
+python dubScripts\gui_tests\check_menus.py wb   one check
 python dubGui\dubrovnik_workbench.py            run the Workbench from source
 packaging\build.bat                             build the installer (only when asked)
 ```
@@ -51,6 +51,6 @@ the project's. The window checks never touch the user's real settings (`%APPDATA
 
 ## Where things are
 
-- `dubGui/` the two programs; `dubLibs/` shared libraries without GUI code (`boardcom`, `dubrovnik`,
+- `dubGui/` the program (and a compact launcher); `dubLibs/` shared libraries without GUI code (`boardcom`, `dubrovnik`,
   `firmware_image`, `hexdump`, `run_py_script`, `cfgfile`, `termstyle`, `datasheet`, `assistant`)
 - `tools/` Tools-menu scripts; `tests/` unit tests and `tests/data/`; `help/` the F1 guide; `docs/` Help > Documents.

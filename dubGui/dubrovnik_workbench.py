@@ -555,7 +555,7 @@ class SerComFrame(LabeledFrame):
 
     def migrateOldConfig(self):
         """First run: start from the settings of the older app (dubrovnik.cfg,
-        shared with dubrovnik_workbench_classic.py), without that app's own window-size entries."""
+        written by the discontinued Classic edition), without that app's own window-size entries."""
         oldFile = os.path.join(self.dubrovnikConfigPath, 'dubrovnik.cfg')
         if os.path.isfile(self.cfgFile) or not os.path.isfile(oldFile):
             return

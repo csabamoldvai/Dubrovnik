@@ -1,6 +1,6 @@
 # TODO: refactoring and design lessons
 
-**Written for version 1.2** (commit `7bf6a87` on `main`, 2026-10-12). Nothing in this list has been done yet.
+**Written for version 1.2** (commit `7bf6a87` on `main`, 2026-10-12). Status: step 1 (item 5 below, removal of Classic) was done on branch `refactor-app-class`; the rest is open.
 The numbers below describe the code as it was at that version; the commands in
 [How to measure again](#how-to-measure-again) let you compare later.
 
@@ -96,8 +96,7 @@ remembers writing. Do it when the structure starts to slow you down:
 4. **Table-driven menus:** describe each menu as a list of `(key, label, shortcut, command)` and find entries by
    key, not by index.
 5. **A shared core for both editions.** The biggest saving and the biggest job, because the two use different widget
-   sets (CustomTkinter and plain tkinter). The simpler question to ask first: *is Classic still needed?* If not,
-   removing it removes the duplication.
+   sets (CustomTkinter and plain tkinter). The simpler question to ask first: *is Classic still needed?* It was not: removed, see the status line at the top.
 
 ### How to refactor safely
 

@@ -7,8 +7,8 @@ Read this first when you set up the project on a new PC or want to add something
 
 ```
 Dubrovnik/
-├── dubGui/        the two programs: Workbench and Classic              (shared)
-├── dubLibs/       libraries used by both programs and by scripts       (shared)
+├── dubGui/        the program: the Workbench                            (shared)
+├── dubLibs/       libraries used by the program and by scripts        (shared)
 ├── tools/         ready-made procedures shown in the Tools menu        (shared)
 ├── help/          the built-in user guide (F1)                         (shared)
 ├── docs/          documents of the Help > Documents menu               (shared)
@@ -37,7 +37,7 @@ every PC and explains itself, while the files you put in it stay on your PC.
 | A sample firmware image or dump that a test uses | `tests/data/` | Tracked, so tests work on every PC. |
 | A script's result files (logs, measurements) | `Documents\Dubrovnik\Results` | Use `dub.output_path("name.txt")` in the script. Never commit result files. |
 | A datasheet or other reference document | `docs/` | Appears in Help > Documents. Do not put confidential documents here: they are bundled in the installer. |
-| Code that several scripts or both programs need | `dubLibs/` | Add a test in `tests/` for it. |
+| Code that several scripts or the program and scripts need | `dubLibs/` | Add a test in `tests/` for it. |
 
 A quick test for **script or utility?**: if it needs the board, it is a script (`dubScripts`
 or `tools`); if it only works on files, it is a utility (`dubUtils`).

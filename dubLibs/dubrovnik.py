@@ -7,7 +7,7 @@ class Dubrovnik:
         self.wel = '06'
         self.led_dict = {'r1': '9', 'g1': '11', 'b1': '10',
                          'r2': '14', 'g2': '13', 'b2': '12'}
-        # used by other modules to display text(e.g. dubrovnik_workbench_classic)
+        # used by other modules to display text(e.g. the Workbench)
         self.textToDisplay = ""
         self.dispmode = 'b'
 
