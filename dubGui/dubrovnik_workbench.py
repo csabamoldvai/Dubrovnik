@@ -115,12 +115,6 @@ PREVIEW_FULL = 1024        # segments up to this size are shown in full
 PREVIEW_SEGMENTS = 8       # ... for the first few segments
 
 
-def hexOptions(settings):
-    """The View > Hex Dump settings as keyword arguments of hexdump"""
-    return dict(per_row=settings.hexRow, show_ascii=settings.hexAscii,
-                upper=settings.hexUpper, gap=settings.hexGap)
-
-
 class SerComFrame(LabeledFrame):
     def __init__(self, parent, app, DEBUG=False):
         LabeledFrame.__init__(self, parent, text='Serial Connection')
@@ -576,7 +570,7 @@ class ProgramFrame(LabeledFrame):
         preview, _rows = hexdump.format_segments(
             self.image.segments, offset, limit=PREVIEW_BYTES,
             full_if_at_most=PREVIEW_FULL, max_segments=PREVIEW_SEGMENTS,
-            **hexOptions(self.app.settings))
+            **self.app.settings.hexOptions())
         self.app.term.displayText(preview + '\n')
         self.app.term.displayText(f'Addresses are where the data will be written (file '
                          f'address + Offset 0x{offset:X}). Firmware > View File '
@@ -1403,7 +1397,7 @@ class App:
         self.fileViewer = FileViewer(
             self.root, image, self.program.imageName, offset, self.termColors(),
             self.settings.termFont, self.settings.termFontSize,
-            hexOptions(self.settings))
+            self.settings.hexOptions())
 
     def showHexDialog(self):
         """View > Hex Dump...: layout of the Hex Dump display mode of the Read

@@ -25,6 +25,11 @@ class SettingsTests(unittest.TestCase):
         with open(os.path.join(self.folder, 'dubrovnik_workbench.cfg'), encoding='utf-8') as fh:
             return json.load(fh)
 
+    def test_hex_options_are_the_keywords_of_hexdump(self):
+        s = Settings(self.folder)
+        s.hexRow, s.hexAscii, s.hexUpper, s.hexGap = 8, False, True, False
+        self.assertEqual(s.hexOptions(), dict(per_row=8, show_ascii=False, upper=True, gap=False))
+
     def test_creates_the_folder_and_starts_with_the_defaults(self):
         s = Settings(self.folder)
         self.assertTrue(os.path.isdir(self.folder))

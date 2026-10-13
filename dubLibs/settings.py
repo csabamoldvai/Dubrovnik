@@ -89,6 +89,11 @@ class Settings:
         self.cfgFile = os.path.join(self.folder, 'dubrovnik_workbench.cfg')
         self.migrateOldConfig()
 
+    def hexOptions(self):
+        """The Hex Dump layout as keyword arguments of the hexdump functions"""
+        return dict(per_row=self.hexRow, show_ascii=self.hexAscii,
+                    upper=self.hexUpper, gap=self.hexGap)
+
     def migrateOldConfig(self):
         """First run: start from the settings of the older app (dubrovnik.cfg,
         written by the discontinued Classic edition), without that app's own
