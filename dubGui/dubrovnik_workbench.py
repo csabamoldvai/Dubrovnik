@@ -145,6 +145,7 @@ def parseField(name, text, base=16, signed=False):
 
 
 from dubGui.dialogs import messages
+from dubGui.dialogs.hex_dialog import HexDialog
 from dubGui.dialogs.progress import ProgramCancelled, ProgressDialog
 from dubGui.look import (          # noqa: E402  (after the sys.path line above)
     CHECKBOX_STYLE, ENTRY_HEIGHT, PAL, PANEL_BORDER, RADIO_STYLE, TERM_THEMES,
@@ -1518,7 +1519,7 @@ class App:
 
         self.fileViewer = {}
 
-        self.hexDialog = {}
+        self.hexDialog = None
 
         self.fontCache = []
 
@@ -2087,84 +2088,11 @@ class App:
     def showHexDialog(self):
         """View > Hex Dump...: layout of the Hex Dump display mode of the Read
         panel, with a sample. Nothing changes until OK."""
-        if self.hexDialog.get('win') is not None and self.hexDialog['win'].winfo_exists():
-            self.hexDialog['win'].focus_set()
+        if self.hexDialog is not None and self.hexDialog.win.winfo_exists():
+            self.hexDialog.win.focus_set()
             return
-        dlg = ctk.CTkToplevel(self.root)
-        self.hexDialog['win'] = dlg
-        dlg.title('Hex Dump')
-        dlg.resizable(False, False)
-        dlg.transient(self.root)
-        font = ctk.CTkFont(size=14)
-        rows = tuple(str(n) for n in hexdump.ROW_SIZES)
-        rowVar = StringVar(value=str(self.serCom.hexRow))
-        asciiVar = IntVar(value=int(self.serCom.hexAscii))
-        upperVar = IntVar(value=int(self.serCom.hexUpper))
-        gapVar = IntVar(value=int(self.serCom.hexGap))
-        sample = b'Dubrovnik hex dump: \x00\x01\x7f\xff 0123456789'
-
-        ctk.CTkLabel(dlg, text='Bytes per row', font=font, anchor='w'
-                     ).grid(row=0, column=0, padx=(24, 12), pady=6, sticky='w')
-        ctk.CTkOptionMenu(dlg, values=rows, variable=rowVar, font=font,
-                          dropdown_font=font, width=100,
-                          command=lambda _v: refresh()
-                          ).grid(row=0, column=1, padx=(0, 24), pady=6, sticky='w')
-        for row, (text, var) in enumerate((
-                ('ASCII column', asciiVar),
-                ('Upper case hex digits', upperVar),
-                ('Extra space after every 8 bytes', gapVar)), start=1):
-            ctk.CTkCheckBox(dlg, **CHECKBOX_STYLE, text=text, variable=var,
-                            font=font, command=lambda: refresh()
-                            ).grid(row=row, column=0, columnspan=2, padx=24,
-                                   pady=6, sticky='w')
-        preview = ctk.CTkTextbox(dlg, height=130, width=660, wrap='none',
-                                 border_width=0)
-        preview.grid(row=4, column=0, columnspan=2, padx=24, pady=(10, 4),
-                     sticky='ew')
-
-        def current():
-            return dict(per_row=int(rowVar.get()), show_ascii=bool(asciiVar.get()),
-                        upper=bool(upperVar.get()), gap=bool(gapVar.get()))
-
-        def refresh():
-            colours = self.termColors()
-            preview.configure(
-                state='normal', fg_color=colours['bg'], text_color=colours['fg'],
-                font=ctk.CTkFont(family=self.serCom.termFont, size=self.serCom.termFontSize))
-            preview.delete('1.0', END)
-            preview.insert('1.0', hexdump.format_hexdump(sample, 0x2005, **current()))
-            preview.configure(state='disabled')
-
-        def reset():
-            rowVar.set(str(CFG_DEFAULTS['hexBytesPerRow']))
-            asciiVar.set(int(CFG_DEFAULTS['hexAscii']))
-            upperVar.set(int(CFG_DEFAULTS['hexUpper']))
-            gapVar.set(int(CFG_DEFAULTS['hexGap']))
-            refresh()
-
-        def ok():
-            values = current()
-            self.serCom.hexRow, self.serCom.hexAscii = values['per_row'], values['show_ascii']
-            self.serCom.hexUpper, self.serCom.hexGap = values['upper'], values['gap']
-            self.serCom.saveConfig()
-            dlg.destroy()
-
-        bar = ctk.CTkFrame(dlg, fg_color='transparent')
-        bar.grid(row=5, column=0, columnspan=2, padx=24, pady=(8, 20), sticky='ew')
-        bar.grid_columnconfigure(0, weight=1)
-        ctk.CTkButton(bar, text='Reset to defaults', width=140, font=font,
-                      command=reset).grid(row=0, column=0, sticky='w')
-        ctk.CTkButton(bar, text='OK', width=90, font=font, command=ok
-                      ).grid(row=0, column=1, padx=(8, 0))
-        ctk.CTkButton(bar, text='Cancel', width=90, font=font,
-                      command=dlg.destroy).grid(row=0, column=2, padx=(8, 0))
-        dlg.bind('<Escape>', lambda _e: dlg.destroy())
-        refresh()
-        dlg.update_idletasks()
-        x = self.root.winfo_x() + (self.root.winfo_width() - dlg.winfo_width()) // 2
-        y = self.root.winfo_y() + (self.root.winfo_height() - dlg.winfo_height()) // 2
-        dlg.geometry(f'+{max(x, 0)}+{max(y, 0)}')
-        dlg.after(150, lambda: (dlg.grab_set(), dlg.focus_set()))
+        self.hexDialog = HexDialog(self.root, self.serCom, self.termColors,
+                                   CFG_DEFAULTS)
 
     def monospacedFonts(self):
         """Installed fixed-width fonts (found once; see termstyle)"""
