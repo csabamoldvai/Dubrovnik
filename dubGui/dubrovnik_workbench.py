@@ -115,10 +115,10 @@ PREVIEW_FULL = 1024        # segments up to this size are shown in full
 PREVIEW_SEGMENTS = 8       # ... for the first few segments
 
 
-def hexOptions(serCom):
-    """The View > Hex Dump settings (kept by serCom) as keyword arguments of hexdump"""
-    return dict(per_row=serCom.hexRow, show_ascii=serCom.hexAscii,
-                upper=serCom.hexUpper, gap=serCom.hexGap)
+def hexOptions(settings):
+    """The View > Hex Dump settings as keyword arguments of hexdump"""
+    return dict(per_row=settings.hexRow, show_ascii=settings.hexAscii,
+                upper=settings.hexUpper, gap=settings.hexGap)
 
 
 class LabeledFrame(ctk.CTkFrame):
@@ -181,7 +181,7 @@ class SerComFrame(LabeledFrame):
 
         if self.STANDALONE:
             self.btn3 = ctk.CTkButton(self, text='Save Config', width=100,
-                                      command=self.saveConfig)
+                                      command=self.settings.save)
             self.btn3.grid(row=1, column=3, padx=10, pady=4, sticky=E)
 
         if self.DEBUG:
@@ -245,7 +245,7 @@ class SerComFrame(LabeledFrame):
             self.app.stsBarComm.configure(text='Disconnected')
         else:
             print('No such port. Try again!!!')
-        self.saveConfig()
+        self.settings.save()
 
     def disconnectPort(self, selPort):
         self.comm.disconnect(selPort)
@@ -319,19 +319,6 @@ class SerComFrame(LabeledFrame):
         self.comStopbits = self.portHandle.stopbits
         self.comXonXoff = self.portHandle.xonxoff
 
-    def loadDefaultParams(self):
-        """Resets the entry boxes of the Erase, Program and Read panels"""
-        self.app.erase.blockSize.set(self.app.erase.blockSizes[0])
-        self.app.erase.startAddr.set('0')
-        self.app.erase.numBlocks.set('1')
-        self.app.program.pattern.set('cafe0000')
-        self.app.program.increment.set('1')
-        self.app.program.start_addr.set('0')
-        self.app.program.length.set('100')
-        self.app.read.spiMode.set(self.app.read.spiModes[0])
-        self.app.read.startAddr.set('0')
-        self.app.read.readLength.set('100')
-
     @property
     def selPort(self):
         """The port chosen last. It is also what is remembered as lastUsedPort"""
@@ -341,81 +328,15 @@ class SerComFrame(LabeledFrame):
     def selPort(self, value):
         self.settings.lastUsedPort = value
 
-    def loadDefaultSettings(self):
-        """No usable settings file: the connection settings and the entry boxes
-        start from their defaults (Settings.load has reset the settings)"""
-        self.chk_var.set(0)
-        self.loadDefaultParams()
-
-    def paramValues(self):
-        """The entry-box values of the Erase, Program and Read panels, in the
-        form the settings file keeps them"""
-        return {'eraseBlkSize': str(self.app.erase.blockSize.get()),
-                'eraseStartAddr': str(self.app.erase.startAddr.get()),
-                'eraseNumBlocks': str(self.app.erase.numBlocks.get()),
-                'progPattern': self.app.program.pattern.get(),
-                'progIncrement': self.app.program.increment.get(),
-                'progStartAddr': self.app.program.start_addr.get(),
-                'progLength': self.app.program.length.get(),
-                'readSpiMode': self.app.read.spiMode.get(),
-                'readStartAddr': self.app.read.startAddr.get(),
-                'readLength': self.app.read.readLength.get()}
-
-    def setParams(self, v):
-        """Puts stored entry-box values (see paramValues) into the panels"""
-        self.app.erase.blockSize.set(v['eraseBlkSize'])
-        self.app.erase.startAddr.set(v['eraseStartAddr'])
-        self.app.erase.numBlocks.set(v['eraseNumBlocks'])
-        self.app.program.pattern.set(v['progPattern'])
-        self.app.program.increment.set(v['progIncrement'])
-        self.app.program.start_addr.set(v['progStartAddr'])
-        self.app.program.length.set(v['progLength'])
-        self.app.read.spiMode.set(v['readSpiMode'])
-        self.app.read.startAddr.set(v['readStartAddr'])
-        self.app.read.readLength.set(v['readLength'])
-
-    def saveConfig(self, params=False):
-        """Saves the settings that are remembered automatically (connection,
-        window, ...). The entry-box values of the Erase, Program and Read
-        panels are saved only when params=True (File > Parameters > Save);
-        otherwise the values already stored in the file are kept."""
+    def autoConnectChanged(self, *_args):
+        """The Auto connect check box was clicked: remember it at once"""
         self.settings.autoConnect = self.chk_var.get()
-        self.settings.save(self.paramValues() if params else None)
-
-    def loadConfig(self, prefs=True, params=True):
-        """Loads the settings file: the remembered settings (prefs) and/or the
-        stored entry-box values (params). A missing or damaged file, or a bad
-        value in it, falls back to defaults; this never stops the app."""
-        status, stored = self.settings.load(prefs=prefs, choices=dict(
-            eraseBlkSize=self.app.erase.blockSizes,
-            readSpiMode=self.app.read.spiModes,
-            displayMode=tuple(self.app.read.dispmodeOptions),
-            menuTextSize=tuple(MENU_SIZES)))
-        if status == 'defaults':     # first run, or unreadable (kept as .bad)
-            self.loadDefaultSettings()
-            self.saveConfig(params=True)
-            return
-        if prefs:
-            self.chk_var.set(self.settings.autoConnect)
-            self.app.read.applyDispMode(self.settings.dispMode)
-        if params:
-            self.setParams(stored)
+        self.settings.save()
 
     def testSerComm(self):
         serParams = '%s, baud=%d, bytes=%1d,\nparity=%s, stop=%1d, protocol=%s' \
             % (self.comPort, self.comBaudrate, self.comBytesize, self.comParity, self.comStopbits, self.comXonXoff)
         self.test_lbl.configure(text=serParams)
-
-
-def _forward(name):
-    return property(lambda self: getattr(self.settings, name),
-                    lambda self, value: setattr(self.settings, name, value))
-
-
-# TEMPORARY: serCom.<setting> still works while the call sites are converted
-for _name in ('appearance', 'autoConnect', 'datasheetUrl', 'dispMode', 'hexAscii', 'hexGap', 'hexRow', 'hexUpper', 'lastUsedPort', 'menuSize', 'programDir', 'scriptDir', 'showPanels', 'termBg', 'termFg', 'termFont', 'termFontSize', 'termSelect', 'termTheme', 'winPos', 'winSize', 'cfgFile'):
-    setattr(SerComFrame, _name, _forward(_name))
-SerComFrame.dubrovnikConfigPath = property(lambda self: self.settings.folder)
 
 
 class ProgramFrame(LabeledFrame):
@@ -631,15 +552,15 @@ class ProgramFrame(LabeledFrame):
         pass
 
     def openFile(self):
-        folder = self.app.serCom.programDir
+        folder = self.app.settings.programDir
         filename = askopenfilename(
             title='Select File to Program',
             initialdir=folder if os.path.isdir(folder) else os.getcwd(),
             filetypes=firmware_image.FILE_TYPES)
         if not filename:             # dialog cancelled
             return False
-        self.app.serCom.programDir = os.path.dirname(filename)   # start here next time
-        self.app.serCom.saveConfig()
+        self.app.settings.programDir = os.path.dirname(filename)   # start here next time
+        self.app.settings.save()
         try:
             self.image = firmware_image.load_image(filename)
         except OSError as e:
@@ -673,7 +594,7 @@ class ProgramFrame(LabeledFrame):
         preview, _rows = hexdump.format_segments(
             self.image.segments, offset, limit=PREVIEW_BYTES,
             full_if_at_most=PREVIEW_FULL, max_segments=PREVIEW_SEGMENTS,
-            **hexOptions(self.app.serCom))
+            **hexOptions(self.app.settings))
         self.app.term.displayText(preview + '\n')
         self.app.term.displayText(f'Addresses are where the data will be written (file '
                          f'address + Offset 0x{offset:X}). Firmware > View File '
@@ -863,8 +784,8 @@ class ReadFrame(LabeledFrame):
         mode = self.dispmodeOptions[dispModeSelKey]
         self.app.du.dispmode = mode  # update dispmode in class Dubrovnik
         self.dispmode_cb.set(dispModeSelKey)
-        self.app.serCom.dispMode = self.dispmode_cb.get()    # remembered automatically
-        self.app.serCom.saveConfig()
+        self.app.settings.dispMode = self.dispmode_cb.get()    # remembered automatically
+        self.app.settings.save()
 
     def readFlash(self):
         if self.app.serCom.scriptBusy():
@@ -892,9 +813,9 @@ class ReadFrame(LabeledFrame):
                 self.app.du.textToDisplay, getattr(self.comm, 'cmdline', ''))
             if len(data) == readLen:
                 text = hexdump.format_hexdump(
-                    data, readStartAddr, per_row=self.app.serCom.hexRow,
-                    show_ascii=self.app.serCom.hexAscii, upper=self.app.serCom.hexUpper,
-                    gap=self.app.serCom.hexGap)
+                    data, readStartAddr, per_row=self.app.settings.hexRow,
+                    show_ascii=self.app.settings.hexAscii, upper=self.app.settings.hexUpper,
+                    gap=self.app.settings.hexGap)
             else:
                 text = (f'(Hex Dump: expected {readLen} bytes, found '
                         f'{len(data)}; raw reply follows)\n' + text)
@@ -1292,7 +1213,7 @@ class App:
         # CTk buttons (row 0) that pop up regular menus, whose font can be set.
         self.scale = ScalingTracker.get_widget_scaling(self.root)
         self.menuFamily = ctk.ThemeManager.theme['CTkFont']['family']
-        self.menuFont = (self.menuFamily, -round(MENU_SIZES[self.serCom.menuSize] * self.scale))
+        self.menuFont = (self.menuFamily, -round(MENU_SIZES[self.settings.menuSize] * self.scale))
         self.menuButtons = []     # (button, font, label) of the menu bar, see applyMenuSize
         self.menuBar = ctk.CTkFrame(self.root, corner_radius=0, height=30)
         self.menuBar.grid(row=0, column=0, columnspan=4, sticky=EW)
@@ -1309,7 +1230,7 @@ class App:
                                       btn.winfo_rooty() + btn.winfo_height())
                     finally:
                         menu.grab_release()
-                font = ctk.CTkFont(size=MENU_SIZES[app.serCom.menuSize])
+                font = ctk.CTkFont(size=MENU_SIZES[app.settings.menuSize])
                 btn = ctk.CTkButton(
                     app.menuBar, text=label, width=font.measure(label) + 20, height=26,
                     corner_radius=4, fg_color='transparent',
@@ -1390,7 +1311,7 @@ class App:
         params_menu.add_command(label="Defaults", command=self.defaultParams)
 
         # Window appearance and Terminal colours (part of the View menu)
-        self.appearanceVar = StringVar(value=self.serCom.appearance)
+        self.appearanceVar = StringVar(value=self.settings.appearance)
         appearance_menu = Menu(self.view_menu, tearoff=False, font=self.menuFont)
         self.view_menu.add_separator()
         self.view_menu.add_cascade(label="Appearance", menu=appearance_menu)
@@ -1400,7 +1321,7 @@ class App:
                               command=lambda: self.showHexDialog())
         menuSizeMenu = Menu(self.view_menu, tearoff=False, font=self.menuFont)
         self.view_menu.add_cascade(label="Menu text size", menu=menuSizeMenu)
-        self.menuSizeVar = StringVar(value=self.serCom.menuSize)
+        self.menuSizeVar = StringVar(value=self.settings.menuSize)
 
         for label, value in (('Small', 'small'), ('Normal', 'normal'),
                              ('Large', 'large')):
@@ -1450,10 +1371,10 @@ class App:
         if assistantLib.configured():       # hidden unless a model is set up
             help_menu.insert_command(4, label="Assistant...", command=self.showAssistant)
 
-        self.serCom.loadConfig()  # includes autoConnect and lastUsedPort
+        self.loadSettings()  # includes autoConnect and lastUsedPort
         self.allMenus = (self.file_menu, self.firmware_menu, self.tools_menu, self.view_menu, params_menu, scripts_menu,
                     help_menu, self.docs_menu, appearance_menu, menuSizeMenu)
-        self.menuSizeVar.set(self.serCom.menuSize)
+        self.menuSizeVar.set(self.settings.menuSize)
         self.applyMenuSize()          # the size just loaded from the settings file
         self.syncTheme()
         self.watchSystemAppearance()
@@ -1462,16 +1383,16 @@ class App:
         # Save the connection settings whenever they change, so they survive even
         # if the app is killed instead of closed normally. The entry-box values are
         # saved only by File > Parameters > Save.
-        # (Traces are added after loadConfig so loading doesn't trigger a save.)
-        self.serCom.chk_var.trace_add('write', lambda *_args: self.serCom.saveConfig())
+        # (Traces are added after loadSettings so loading doesn't trigger a save.)
+        self.serCom.chk_var.trace_add('write', self.serCom.autoConnectChanged)
 
         # * At this point we have a list of valid COM ports.
         # * Next step is to connect to one of them.
-        if self.serCom.autoConnect and portList:  # auto connect, if a board was found
+        if self.settings.autoConnect and portList:  # auto connect, if a board was found
             if len(portList) > 1:  # no need to check if ==0. boardcom.py already does
-                if self.serCom.lastUsedPort in portList:  # if last used port is in the portList
+                if self.settings.lastUsedPort in portList:  # if last used port is in the portList
                     # connect to that port
-                    self.serCom.connectPort(self.serCom.lastUsedPort,
+                    self.serCom.connectPort(self.settings.lastUsedPort,
                                        checkIsFlashPresent=False)
             else:
                 # otherwise connect to the first in the list
@@ -1494,7 +1415,7 @@ class App:
                     except Exception:
                         pass            # the status bar just shows no device
 
-        elif self.serCom.autoConnect:     # Auto connect is on, but no board was found
+        elif self.settings.autoConnect:     # Auto connect is on, but no board was found
             showwarning(
                 'No board found',
                 'No Dubrovnik board was found.\n\n1. Connect the USB cable\n'
@@ -1537,16 +1458,16 @@ class App:
         # Restore the window size saved at the last exit, if it fits on this
         # display; otherwise (or on first run) use the default size.
         winW, winH = minW, startH
-        if self.serCom.winSize:
-            savedW, savedH = self.serCom.winSize
+        if self.settings.winSize:
+            savedW, savedH = self.settings.winSize
             if (savedW <= (self.scrW - self.marginW) / self.scale
                     and savedH <= (self.scrH - self.marginH) / self.scale):
                 winW, winH = max(int(savedW), minW), max(int(savedH), minH)
         geom = f'{winW}x{winH}'
-        if self.serCom.winPos:
+        if self.settings.winPos:
             # restore the position only if the window's title bar would still be
             # reachable on one of the monitors (a monitor may have been removed)
-            x, y = self.serCom.winPos
+            x, y = self.settings.winPos
             if (vx - 100 < x < vx + vw - 100 and vy - 10 <= y < vy + vh - 60):
                 geom += f'+{x}+{y}'
         self.root.geometry(geom)
@@ -1563,10 +1484,10 @@ class App:
     #     stsBarComm.config(text=statusMsg)
 
     def layoutPanels(self):
-        """Shows or hides the three panels together (serCom.showPanels). Shown
+        """Shows or hides the three panels together (settings.showPanels). Shown
         panels sit side by side from the left, with 10 px outer margins and
         3 px between neighbours."""
-        if not self.serCom.showPanels:
+        if not self.settings.showPanels:
             self.panelRow.grid_remove()
             self.root.grid_columnconfigure(0, minsize=0)
             return
@@ -1582,11 +1503,11 @@ class App:
 
     def panelsLabel(self):
         """Text of the first View item: the action it will do"""
-        return ('Hide Panels (Erase/Program/Read)' if self.serCom.showPanels
+        return ('Hide Panels (Erase/Program/Read)' if self.settings.showPanels
                 else 'Show Panels (Erase/Program/Read)')
 
     def syncPanels(self):
-        """Applies serCom.showPanels to the menu text and the layout"""
+        """Applies settings.showPanels to the menu text and the layout"""
         self.view_menu.entryconfigure(0, label=self.panelsLabel())
         self.layoutPanels()
 
@@ -1594,7 +1515,7 @@ class App:
         """The first View item was clicked: show or hide the panels, then
         change the window height by the height gained or lost so the Terminal
         keeps its size"""
-        self.serCom.showPanels = not self.serCom.showPanels
+        self.settings.showPanels = not self.settings.showPanels
         self.view_menu.entryconfigure(0, label=self.panelsLabel())
         self.root.update_idletasks()
         before = self.root.winfo_reqheight()
@@ -1607,7 +1528,7 @@ class App:
         h = max(minH, min(h, int((self.scrH - self.marginH) / self.scale)))
         w = max(minW, round(self.root.winfo_width() / self.scale))
         self.root.geometry(f'{w}x{h}')
-        self.serCom.saveConfig()
+        self.settings.save()
 
     def showAbout(self):
         messages.showAbout(self.root)
@@ -1623,27 +1544,88 @@ class App:
         self.root.after(ms, lambda: self.stsBarComm.configure(text=old)
                    if self.stsBarComm.cget('text') == msg else None)
 
+    def loadDefaultParams(self):
+        """Resets the entry boxes of the Erase, Program and Read panels"""
+        self.erase.blockSize.set(self.erase.blockSizes[0])
+        self.erase.startAddr.set('0')
+        self.erase.numBlocks.set('1')
+        self.program.pattern.set('cafe0000')
+        self.program.increment.set('1')
+        self.program.start_addr.set('0')
+        self.program.length.set('100')
+        self.read.spiMode.set(self.read.spiModes[0])
+        self.read.startAddr.set('0')
+        self.read.readLength.set('100')
+
+    def paramValues(self):
+        """The entry-box values of the Erase, Program and Read panels, in the
+        form the settings file keeps them"""
+        return {'eraseBlkSize': str(self.erase.blockSize.get()),
+                'eraseStartAddr': str(self.erase.startAddr.get()),
+                'eraseNumBlocks': str(self.erase.numBlocks.get()),
+                'progPattern': self.program.pattern.get(),
+                'progIncrement': self.program.increment.get(),
+                'progStartAddr': self.program.start_addr.get(),
+                'progLength': self.program.length.get(),
+                'readSpiMode': self.read.spiMode.get(),
+                'readStartAddr': self.read.startAddr.get(),
+                'readLength': self.read.readLength.get()}
+
+    def setParams(self, v):
+        """Puts stored entry-box values (see paramValues) into the panels"""
+        self.erase.blockSize.set(v['eraseBlkSize'])
+        self.erase.startAddr.set(v['eraseStartAddr'])
+        self.erase.numBlocks.set(v['eraseNumBlocks'])
+        self.program.pattern.set(v['progPattern'])
+        self.program.increment.set(v['progIncrement'])
+        self.program.start_addr.set(v['progStartAddr'])
+        self.program.length.set(v['progLength'])
+        self.read.spiMode.set(v['readSpiMode'])
+        self.read.startAddr.set(v['readStartAddr'])
+        self.read.readLength.set(v['readLength'])
+
+    def loadSettings(self, prefs=True, params=True):
+        """Loads the settings file: the remembered settings (prefs) and/or the
+        stored entry-box values (params) into the panels. A missing or damaged
+        file, or a bad value in it, falls back to defaults; this never stops
+        the app."""
+        status, stored = self.settings.load(prefs=prefs, choices=dict(
+            eraseBlkSize=self.erase.blockSizes,
+            readSpiMode=self.read.spiModes,
+            displayMode=tuple(self.read.dispmodeOptions),
+            menuTextSize=tuple(MENU_SIZES)))
+        if status == 'defaults':     # first run, or unreadable (kept as .bad)
+            self.serCom.chk_var.set(0)
+            self.loadDefaultParams()
+            self.settings.save(self.paramValues())
+            return
+        if prefs:
+            self.serCom.chk_var.set(self.settings.autoConnect)
+            self.read.applyDispMode(self.settings.dispMode)
+        if params:
+            self.setParams(stored)
+
     def saveParams(self):
-        self.serCom.saveConfig(params=True)
+        self.settings.save(self.paramValues())
         self.showStatus('Parameters saved')
 
     def loadParams(self):
-        self.serCom.loadConfig(prefs=False)
+        self.loadSettings(prefs=False)
         self.showStatus('Parameters loaded')
 
     def defaultParams(self):
-        self.serCom.loadDefaultParams()
+        self.loadDefaultParams()
         self.showStatus('Default parameters restored (File > Parameters > Save '
                    'to keep them)')
 
     def pickScript(self, title, filetypes):
         """Asks for a script file and remembers its folder; returns the path"""
         name = askopenfilename(
-            title=title, initialdir=self.serCom.scriptDir or defaultScriptDir(),
+            title=title, initialdir=self.settings.scriptDir or defaultScriptDir(),
             filetypes=filetypes)
         if name:
-            self.serCom.scriptDir = os.path.dirname(name)      # start here next time
-            self.serCom.saveConfig()
+            self.settings.scriptDir = os.path.dirname(name)      # start here next time
+            self.settings.save()
         return name
 
     def scriptReady(self):
@@ -1712,8 +1694,8 @@ class App:
                 'Script', question, [('Yes', True), ('No', False)]),
             notify=lambda text: self.dialogBox('Script', text, [('OK', None)]),
             hex_options=lambda: dict(
-                per_row=self.serCom.hexRow, show_ascii=self.serCom.hexAscii,
-                upper=self.serCom.hexUpper, gap=self.serCom.hexGap))
+                per_row=self.settings.hexRow, show_ascii=self.settings.hexAscii,
+                upper=self.settings.hexUpper, gap=self.settings.hexGap))
         self.serCom.scriptRunning = True
         self.scriptStop[0] = False
         self.term.scriptPrint(f'--- Running Python script {os.path.basename(path)} ---')
@@ -1776,7 +1758,7 @@ class App:
             return
         if not self.scriptReady():
             return
-        if self.serCom.showPanels:
+        if self.settings.showPanels:
             try:
                 offset = parseField('Offset', self.program.start_addr.get())
             except ValueError as e:
@@ -1849,8 +1831,8 @@ class App:
         self.showStatus('Terminal log saved')
 
     def applyMenuSize(self):
-        """Applies serCom.menuSize to the menu bar and all pop-up menus"""
-        size = MENU_SIZES[self.serCom.menuSize]
+        """Applies settings.menuSize to the menu bar and all pop-up menus"""
+        size = MENU_SIZES[self.settings.menuSize]
         self.menuFont = (self.menuFamily, -round(size * self.scale))
         for btn, font, label in self.menuButtons:
             font.configure(size=size)
@@ -1859,12 +1841,12 @@ class App:
             m.configure(font=self.menuFont)
 
     def setMenuSize(self):
-        self.serCom.menuSize = self.menuSizeVar.get()
+        self.settings.menuSize = self.menuSizeVar.get()
         self.applyMenuSize()
-        self.serCom.saveConfig()
+        self.settings.save()
 
     def applyAppearance(self):
-        ctk.set_appearance_mode(self.serCom.appearance)
+        ctk.set_appearance_mode(self.settings.appearance)
         styleCombobox(self.root)
         styleMenus(self.allMenus)
         self.applyTerminal()            # the 'auto' Terminal theme follows the window
@@ -1873,48 +1855,48 @@ class App:
         """In 'System' mode Windows can switch light/dark while the app runs;
         re-apply the appearance rules when that happens."""
         mode = ctk.get_appearance_mode()
-        if lastMode[0] not in (None, mode) and self.serCom.appearance == 'system':
+        if lastMode[0] not in (None, mode) and self.settings.appearance == 'system':
             self.applyAppearance()
-            self.serCom.saveConfig()
+            self.settings.save()
         lastMode[0] = mode
         self.root.after(2000, self.watchSystemAppearance)
 
     def setAppearance(self):
-        self.serCom.appearance = self.appearanceVar.get()
+        self.settings.appearance = self.appearanceVar.get()
         self.applyAppearance()
-        self.serCom.saveConfig()
+        self.settings.save()
 
     def syncTheme(self):
-        """Applies serCom.appearance and the Terminal look (e.g. just loaded
+        """Applies settings.appearance and the Terminal look (e.g. just loaded
         from the settings file)"""
-        self.appearanceVar.set(self.serCom.appearance)
+        self.appearanceVar.set(self.settings.appearance)
         self.applyAppearance()
 
     # ---- Terminal look: View > Terminal... and Ctrl + mouse wheel ----------
     def termColors(self):
         """The Terminal colours (bg, fg, select) of the chosen theme"""
-        theme = self.serCom.termTheme
+        theme = self.settings.termTheme
         if theme == 'auto':
             theme = 'dark' if ctk.get_appearance_mode() == 'Dark' else 'light'
         if theme == 'custom':
-            return dict(bg=self.serCom.termBg, fg=self.serCom.termFg,
-                        select=self.serCom.termSelect)
+            return dict(bg=self.settings.termBg, fg=self.settings.termFg,
+                        select=self.settings.termSelect)
         return TERM_THEMES[theme]
 
     def applyTerminal(self):
         self.term.applyColors(self.termColors())
-        self.term.setFont(self.serCom.termFont, self.serCom.termFontSize)
+        self.term.setFont(self.settings.termFont, self.settings.termFontSize)
 
     def zoomTerminal(self, step):
         """Ctrl + mouse wheel: bigger or smaller Terminal text. The setting is
         saved shortly after the wheel stops."""
-        size = min(max(self.serCom.termFontSize + step, TERM_SIZE_MIN), TERM_SIZE_MAX)
-        if size != self.serCom.termFontSize:
-            self.serCom.termFontSize = size
+        size = min(max(self.settings.termFontSize + step, TERM_SIZE_MIN), TERM_SIZE_MAX)
+        if size != self.settings.termFontSize:
+            self.settings.termFontSize = size
             self.applyTerminal()
             if self.zoomState['save']:
                 self.root.after_cancel(self.zoomState['save'])
-            self.zoomState['save'] = self.root.after(600, self.serCom.saveConfig)
+            self.zoomState['save'] = self.root.after(600, self.settings.save)
         # show the size in the status bar, then put the old text back
         if self.zoomState['restore']:
             self.root.after_cancel(self.zoomState['restore'])
@@ -1944,8 +1926,8 @@ class App:
             old.win.destroy()
         self.fileViewer = FileViewer(
             self.root, image, self.program.imageName, offset, self.termColors(),
-            self.serCom.termFont, self.serCom.termFontSize,
-            hexOptions(self.serCom))
+            self.settings.termFont, self.settings.termFontSize,
+            hexOptions(self.settings))
 
     def showHexDialog(self):
         """View > Hex Dump...: layout of the Hex Dump display mode of the Read
@@ -1953,7 +1935,7 @@ class App:
         if self.hexDialog is not None and self.hexDialog.win.winfo_exists():
             self.hexDialog.win.focus_set()
             return
-        self.hexDialog = HexDialog(self.root, self.serCom, self.termColors,
+        self.hexDialog = HexDialog(self.root, self.settings, self.termColors,
                                    CFG_DEFAULTS)
 
     def monospacedFonts(self):
@@ -1969,7 +1951,7 @@ class App:
             self.termDialog.win.focus_set()
             return
         self.termDialog = TerminalDialog(
-            self.root, self.serCom, self.termColors, self.applyTerminal,
+            self.root, self.settings, self.termColors, self.applyTerminal,
             self.monospacedFonts(), CFG_DEFAULTS)
 
     def assistantFolder(self):
@@ -2017,12 +1999,12 @@ class App:
         # the docs folder, then %APPDATA%\Dubrovnik\Datasheets (also searched
         # in a "datasheets" subfolder of docs); no admin rights needed there
         local = datasheet.find_local(
-            (docsFolder(), self.serCom.dubrovnikConfigPath), part)
+            (docsFolder(), self.settings.folder), part)
         if local:
             self.openDocument(local)
             self.showStatus(f'Datasheet for {part}: {os.path.basename(local)}', 6000)
             return
-        url = datasheet.build_url(self.serCom.datasheetUrl, part)
+        url = datasheet.build_url(self.settings.datasheetUrl, part)
         try:
             webbrowser.open(url)
         except Exception as e:
@@ -2038,7 +2020,7 @@ class App:
             'the docs folder. {part} is replaced by the part number of the '
             'device. An address without {part} is opened as it is.\n\n'
             'Clear the box to go back to the default (Renesas search).',
-            [('OK', None), ('Cancel', False)], self.serCom.datasheetUrl)
+            [('OK', None), ('Cancel', False)], self.settings.datasheetUrl)
         if text is False:           # Cancel
             return
         text = (text or '').strip()
@@ -2047,8 +2029,8 @@ class App:
             showerror('Datasheet Source', 'The address must start with http:// '
                       'or https://')
             return
-        self.serCom.datasheetUrl = url
-        self.serCom.saveConfig()
+        self.settings.datasheetUrl = url
+        self.settings.save()
         self.showStatus('Datasheet source saved', 4000)
 
     def openDocsFolder(self):
@@ -2115,10 +2097,10 @@ class App:
             return
         try:
             if self.root.state() == 'normal':      # not minimized / maximized
-                self.serCom.winSize = (round(self.root.winfo_width() / self.scale),
+                self.settings.winSize = (round(self.root.winfo_width() / self.scale),
                                   round(self.root.winfo_height() / self.scale))
-                self.serCom.winPos = (self.root.winfo_x(), self.root.winfo_y())
-            self.serCom.saveConfig()
+                self.settings.winPos = (self.root.winfo_x(), self.root.winfo_y())
+            self.settings.save()
         finally:
             self.root.destroy()
 

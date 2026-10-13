@@ -13,15 +13,15 @@ HEX_COLOR = termstyle.HEX_COLOR
 
 class TerminalDialog:
     """The window is built when the object is created; win is the window.
-    root: the parent window. serCom: holds the Terminal settings (termTheme,
+    root: the parent window. settings: holds the Terminal settings (termTheme,
     termBg, termFg, termSelect, termFont, termFontSize) and saves them.
     colors(): the Terminal colours of the chosen theme (bg, fg, select).
     apply(): shows the current settings in the Terminal. installedFonts: the
     fixed-width fonts to offer. defaults: the default settings."""
 
-    def __init__(self, root, serCom, colors, apply, installedFonts, defaults):
-        saved = (serCom.termTheme, serCom.termBg, serCom.termFg,
-                 serCom.termSelect, serCom.termFont, serCom.termFontSize)
+    def __init__(self, root, settings, colors, apply, installedFonts, defaults):
+        saved = (settings.termTheme, settings.termBg, settings.termFg,
+                 settings.termSelect, settings.termFont, settings.termFontSize)
         dlg = ctk.CTkToplevel(root)
         self.win = dlg
         dlg.title('Terminal')
@@ -31,8 +31,8 @@ class TerminalDialog:
         themes = (('Auto (follow window)', 'auto'), ('Light', 'light'),
                   ('Dark', 'dark'), ('Custom', 'custom'))
         fonts = list(installedFonts)
-        if serCom.termFont not in fonts:
-            fonts.insert(0, serCom.termFont)
+        if settings.termFont not in fonts:
+            fonts.insert(0, settings.termFont)
 
         def label(row, text):
             ctk.CTkLabel(dlg, text=text, font=font, anchor='w'
@@ -73,12 +73,12 @@ class TerminalDialog:
 
         label(5, 'Size')
         ctk.CTkButton(dlg, text='-', width=32, font=font,
-                      command=lambda: setSize(serCom.termFontSize - 1)
+                      command=lambda: setSize(settings.termFontSize - 1)
                       ).grid(row=5, column=1, padx=(0, 4), pady=6, sticky='w')
         sizeEntry = ctk.CTkEntry(dlg, width=56, font=font, justify='center')
         sizeEntry.grid(row=5, column=2, padx=0, pady=6, sticky='w')
         ctk.CTkButton(dlg, text='+', width=32, font=font,
-                      command=lambda: setSize(serCom.termFontSize + 1)
+                      command=lambda: setSize(settings.termFontSize + 1)
                       ).grid(row=5, column=3, padx=(4, 24), pady=6, sticky='w')
         sizeEntry.bind('<Return>', lambda _e: typedSize())
         sizeEntry.bind('<FocusOut>', lambda _e: typedSize())
@@ -101,29 +101,29 @@ class TerminalDialog:
                                  hover_color=colours[key])
                 hexEntries[key].delete(0, END)
                 hexEntries[key].insert(0, colours[key].upper())
-            themeMenu.set(next(n for n, v in themes if v == serCom.termTheme))
-            fontMenu.set(serCom.termFont)
+            themeMenu.set(next(n for n, v in themes if v == settings.termTheme))
+            fontMenu.set(settings.termFont)
             sizeEntry.delete(0, END)
-            sizeEntry.insert(0, str(serCom.termFontSize))
+            sizeEntry.insert(0, str(settings.termFontSize))
             preview.configure(fg_color=colours['bg'], text_color=colours['fg'],
-                              font=ctk.CTkFont(family=serCom.termFont,
-                                               size=serCom.termFontSize))
+                              font=ctk.CTkFont(family=settings.termFont,
+                                               size=settings.termFontSize))
             preview._textbox.tag_configure(
                 'picked', background=colours['select'], foreground=colours['fg'])
             apply()
 
         def pickTheme(name):
-            serCom.termTheme = dict(themes)[name]
+            settings.termTheme = dict(themes)[name]
             refresh()
 
         def setColour(attr, value):
             # editing any colour switches to the Custom theme, starting from
             # the colours that are shown now
             colours = colors()
-            serCom.termBg, serCom.termFg = colours['bg'], colours['fg']
-            serCom.termSelect = colours['select']
-            setattr(serCom, attr, value.lower())
-            serCom.termTheme = 'custom'
+            settings.termBg, settings.termFg = colours['bg'], colours['fg']
+            settings.termSelect = colours['select']
+            setattr(settings, attr, value.lower())
+            settings.termTheme = 'custom'
             refresh()
 
         def chooseColour(key, attr):
@@ -145,11 +145,11 @@ class TerminalDialog:
                 refresh()      # unchanged or not a colour: show the real value
 
         def pickFont(name):
-            serCom.termFont = name
+            settings.termFont = name
             refresh()
 
         def setSize(value):
-            serCom.termFontSize = min(max(value, TERM_SIZE_MIN), TERM_SIZE_MAX)
+            settings.termFontSize = min(max(value, TERM_SIZE_MIN), TERM_SIZE_MAX)
             refresh()
 
         def typedSize():
@@ -161,21 +161,21 @@ class TerminalDialog:
                 refresh()
 
         def reset():
-            serCom.termTheme = 'dark'
-            serCom.termBg = defaults['terminalBg']
-            serCom.termFg = defaults['terminalFg']
-            serCom.termSelect = defaults['terminalSelect']
-            serCom.termFont = defaults['terminalFont']
-            serCom.termFontSize = defaults['terminalFontSize']
+            settings.termTheme = 'dark'
+            settings.termBg = defaults['terminalBg']
+            settings.termFg = defaults['terminalFg']
+            settings.termSelect = defaults['terminalSelect']
+            settings.termFont = defaults['terminalFont']
+            settings.termFontSize = defaults['terminalFontSize']
             refresh()
 
         def ok():
-            serCom.saveConfig()
+            settings.save()
             dlg.destroy()
 
         def cancel():
-            (serCom.termTheme, serCom.termBg, serCom.termFg, serCom.termSelect,
-             serCom.termFont, serCom.termFontSize) = saved
+            (settings.termTheme, settings.termBg, settings.termFg, settings.termSelect,
+             settings.termFont, settings.termFontSize) = saved
             apply()
             dlg.destroy()
 

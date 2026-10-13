@@ -8,11 +8,11 @@ from dubLibs import hexdump
 
 class HexDialog:
     """The window is built when the object is created; win is the window.
-    root: the parent window. serCom: holds the settings (hexRow, hexAscii,
+    root: the parent window. settings: holds the settings (hexRow, hexAscii,
     hexUpper, hexGap and the Terminal font) and saves them. colors(): the
     Terminal colours (bg, fg, select). defaults: the default settings."""
 
-    def __init__(self, root, serCom, colors, defaults):
+    def __init__(self, root, settings, colors, defaults):
         dlg = ctk.CTkToplevel(root)
         self.win = dlg
         dlg.title('Hex Dump')
@@ -20,10 +20,10 @@ class HexDialog:
         dlg.transient(root)
         font = ctk.CTkFont(size=14)
         rows = tuple(str(n) for n in hexdump.ROW_SIZES)
-        rowVar = StringVar(value=str(serCom.hexRow))
-        asciiVar = IntVar(value=int(serCom.hexAscii))
-        upperVar = IntVar(value=int(serCom.hexUpper))
-        gapVar = IntVar(value=int(serCom.hexGap))
+        rowVar = StringVar(value=str(settings.hexRow))
+        asciiVar = IntVar(value=int(settings.hexAscii))
+        upperVar = IntVar(value=int(settings.hexUpper))
+        gapVar = IntVar(value=int(settings.hexGap))
         sample = b'Dubrovnik hex dump: \x00\x01\x7f\xff 0123456789'
 
         ctk.CTkLabel(dlg, text='Bytes per row', font=font, anchor='w'
@@ -53,7 +53,7 @@ class HexDialog:
             colours = colors()
             preview.configure(
                 state='normal', fg_color=colours['bg'], text_color=colours['fg'],
-                font=ctk.CTkFont(family=serCom.termFont, size=serCom.termFontSize))
+                font=ctk.CTkFont(family=settings.termFont, size=settings.termFontSize))
             preview.delete('1.0', END)
             preview.insert('1.0', hexdump.format_hexdump(sample, 0x2005, **current()))
             preview.configure(state='disabled')
@@ -67,9 +67,9 @@ class HexDialog:
 
         def ok():
             values = current()
-            serCom.hexRow, serCom.hexAscii = values['per_row'], values['show_ascii']
-            serCom.hexUpper, serCom.hexGap = values['upper'], values['gap']
-            serCom.saveConfig()
+            settings.hexRow, settings.hexAscii = values['per_row'], values['show_ascii']
+            settings.hexUpper, settings.hexGap = values['upper'], values['gap']
+            settings.save()
             dlg.destroy()
 
         bar = ctk.CTkFrame(dlg, fg_color='transparent')
