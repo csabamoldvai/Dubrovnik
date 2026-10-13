@@ -2,6 +2,7 @@
 # import sys
 # import time
 import datetime
+import time
 import os
 import pathlib
 import re
@@ -238,12 +239,11 @@ class ProgramCancelled(Exception):
 
 
 class ProgressDialog:
-    """Modal progress bar: update(text, done) from a long job, which also lets
-    the window repaint. Raises ProgramCancelled once Cancel was clicked."""
+    """Modal progress window: show(text, done) is called from a timer while the
+    job runs in a thread. cancelled becomes True when Cancel / Esc is used."""
 
     def __init__(self, title, total):
-        import time
-        self.total, self.cancelled, self.last = max(total, 1), False, 0.0
+        self.total, self.cancelled = max(total, 1), False
         self.start = time.time()
         self.win = ctk.CTkToplevel(root)
         self.win.title(title)
@@ -275,19 +275,14 @@ class ProgressDialog:
         self.cancelled = True
         self.label.configure(text='Cancelling...')
 
-    def update(self, text, done):
-        import time
-        now = time.time()
-        if now - self.last >= 0.1 or done >= self.total:     # repaint ~10x/s
-            self.last = now
-            pct = min(done / self.total, 1.0)
-            self.label.configure(text=text)
-            self.bar.set(pct)
-            self.info.configure(
-                text=f'{pct * 100:.0f} %    {now - self.start:.0f} s elapsed')
-            self.win.update()
+    def show(self, text, done):
+        pct = min(done / self.total, 1.0)
         if self.cancelled:
-            raise ProgramCancelled()
+            text = 'Cancelling...'
+        self.label.configure(text=text)
+        self.bar.set(pct)
+        self.info.configure(
+            text=f'{pct * 100:.0f} %    {time.time() - self.start:.0f} s elapsed')
 
     def close(self):
         try:
@@ -784,44 +779,80 @@ class ProgramFrame(LabeledFrame):
 
     def programFile(self, offset):
         """Programs the loaded image segment by segment (the gaps between
-        segments are left alone) at file address + offset, with a progress
-        dialog. Cancel stops between pages and leaves the device partly
-        programmed."""
-        segments = self.image.segments
+        segments are left alone) at file address + offset. The work runs in a
+        background thread so the window stays responsive; this method returns
+        at once and the progress window is fed from a timer. Cancel (or Esc)
+        stops between pages and leaves the device partly programmed."""
+        import queue
+        import threading
+        segments = list(self.image.segments)
         count = len(segments)
-        total = 2 * self.image.size     # download to the write buffer + program
+        total = self.image.size
+        state = dict(text='Starting...', done=0, cancel=False)
+        messages = queue.Queue()        # Terminal text, shown from the GUI thread
+        result = dict(finished=False, cancelled=False, error=None)
+        comm = self.comm
+
+        def work():
+            """Background thread: talks to the board, never touches widgets"""
+            try:
+                base = 0
+                for number, (address, data) in enumerate(segments, 1):
+                    target = address + offset
+                    where = f'segment {number} of {count}, ' if count > 1 else ''
+                    messages.put(('displayText', f'Programming at 0x{target:X} '
+                                  f'({len(data)} bytes)...\n'))
+
+                    def progress(n, b=base, w=where, t=target):
+                        if state['cancel']:
+                            raise ProgramCancelled()
+                        state['text'] = f'Programming, {w}address {t:X}'
+                        state['done'] = b + n
+                    du.data_program(comm, data, target, progress)
+                    messages.put(('tprint', du.textToDisplay[:-1]))
+                    base += len(data)
+                result['finished'] = True
+            except ProgramCancelled:
+                result['cancelled'] = True
+            except BaseException as e:      # incl. SystemExit from a comm error
+                result['error'] = f'{type(e).__name__}: {e}'
+
         dialog = ProgressDialog('Programming', total)
         serCom.scriptRunning = True     # blocks the panels and the Terminal
         term.cmdInProgress = True       # and the background serial reader
-        finished = False
-        base = 0                        # bytes already counted in the bar
-        try:
-            for number, (address, data) in enumerate(segments, 1):
-                target = address + offset
-                where = (f'segment {number} of {count}, ' if count > 1 else '')
-                term.displayText(f'Downloading data ({len(data)} bytes)...\n')
-                du.write_buf_write(
-                    self.comm, data, len(data),
-                    lambda n, b=base, w=where: dialog.update(
-                        f'Downloading data, {w}address {target:X}', b + n))
-                term.displayText(f'Programming at 0x{target:X}...\n')
-                du.data_program(
-                    self.comm, data, target,
-                    lambda n, b=base, w=where, s=len(data): dialog.update(
-                        f'Programming, {w}address {target:X}', b + s + n))
-                term.tprint(du.textToDisplay[:-1])
-                base += 2 * len(data)
-            finished = True
-        except ProgramCancelled:
-            term.displayText('*** Programming cancelled; the device may be '
-                             'partly programmed. ***\n')
-        finally:
+        scriptStop[0] = False           # Esc or a lost connection cancels too
+        worker = threading.Thread(target=work, daemon=True)
+        worker.start()
+
+        def poll():
+            while True:
+                try:
+                    kind, text = messages.get_nowait()
+                except queue.Empty:
+                    break
+                getattr(term, kind)(text)
+            if dialog.cancelled or scriptStop[0]:
+                state['cancel'] = True
+            dialog.show(state['text'], state['done'])
+            if worker.is_alive():
+                root.after(100, poll)
+                return
+            while not messages.empty():     # text posted just before the end
+                kind, text = messages.get_nowait()
+                getattr(term, kind)(text)
             term.cmdInProgress = False
             serCom.scriptRunning = False
             dialog.close()
-        if finished and count > 1:
-            term.displayText(f'Programmed {count} segments, '
-                             f'{self.image.size} bytes in total.\n')
+            if result['cancelled']:
+                term.displayText('*** Programming cancelled; the device may be '
+                                 'partly programmed. ***\n')
+            elif result['error']:
+                term.displayText(f'*** Programming stopped: {result["error"]}. '
+                                 'The device may be partly programmed. ***\n')
+            elif count > 1:
+                term.displayText(f'Programmed {count} segments, '
+                                 f'{self.image.size} bytes in total.\n')
+        root.after(100, poll)
 
     def progVerify(self):
         pass

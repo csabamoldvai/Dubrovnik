@@ -8,6 +8,22 @@ To release a new version: change VERSION in dubLibs\version.py, add an entry at
 the top of this file, commit, then tag the commit:  git tag v<VERSION>
 
 
+VERSION 1.1.6                                                      2026-10-13
+-----------------------------------------------------------------------------
+Faster, responsive file programming.
+
+Changed (both editions):
+  * Programming a file no longer sends the data to the board twice. The extra
+    download of the whole file before programming was redundant (every page is
+    sent again just before it is programmed), so a file now takes about one third
+    less time.
+  * Programming runs in a background thread. The window no longer freezes and goes
+    "Not Responding" during a long transfer, the progress bar keeps moving, and
+    Cancel / Esc react within a page. A communication error during programming is
+    reported in the Terminal ("Programming stopped: ...") instead of leaving the
+    program waiting.
+
+
 VERSION 1.1.5                                                      2026-10-13
 -----------------------------------------------------------------------------
 Programming a file from the File menu, also with the panels hidden.
