@@ -7,7 +7,7 @@ class Dubrovnik:
         self.wel = '06'
         self.led_dict = {'r1': '9', 'g1': '11', 'b1': '10',
                          'r2': '14', 'g2': '13', 'b2': '12'}
-        # used by other modules to display text(e.g. dubrovnik_workbench_classic)
+        # used by other modules to display text(e.g. the Workbench)
         self.textToDisplay = ""
         self.dispmode = 'b'
 
@@ -244,10 +244,8 @@ class Dubrovnik:
                 end_offst = offst + 16
             else:
                 end_offst = dsize
-            # cmdstr = "write " + format(offst, 'x') + " "
             cmdstr = f'write {offst:x} '
             while offst < end_offst:
-                # cmdstr += format(inp_arr[offst], '02x')
                 cmdstr += f'{inp_arr[offst]:02x}'
                 offst += 1
             comm.send(cmdstr)
@@ -293,22 +291,6 @@ class Dubrovnik:
 
         return self.get_wait_time_us(comm)
 
-        # ! ORGINAL (before adding the partial program time printouts)
-        # self.textToDisplay = ""
-        # idx = 0
-        # addr = start_addr
-        # end_addr = start_addr + len(data_array)
-        # while addr < end_addr:
-        #     pageEnd = addr - (addr % self.pageSize) + self.pageSize
-        #     if pageEnd > end_addr:
-        #         pageEnd = end_addr
-        #     progSize = pageEnd - addr
-        #     self.write_buf_write(comm, data_array[idx:idx+progSize], progSize)
-        #     cmdstr = f'06;02 {addr:x} {progSize:x};wait 0\n'
-        #     self.textToDisplay += cmdstr
-        #     comm.send(cmdstr)
-        #     addr = pageEnd
-        # return self.get_wait_time_us(comm)
 
     def page_program(self, comm, start_addr=0, length=0, pattern='cafe0000',
                      increment='0', echo=0):
@@ -430,8 +412,6 @@ class Dubrovnik:
         ibias = resp.split('\n')[1].split(' ')[-2]
         ibias_uA = int(1000 * float(ibias))
         ibias = str(ibias_uA)
-        # print(ibias)
-        # print(ibias_uA)
         addr = int(domain) * 2
         cmdstr = f'write {addr:x} {ibias_uA}'
         comm.send(cmdstr)
@@ -577,7 +557,6 @@ class Dubrovnik:
             start_addr = param[0]
             length = param[1]
             pattern = param[2]
-            # print(start_addr, length, pattern)
             prog_time += self.page_program(comm,
                                            start_addr, length, pattern, echo=0)
         return prog_time
@@ -611,7 +590,6 @@ if __name__ == '__main__':
 
     DBG = 1
     if DBG:
-        # comm.send('dispmode w')
         du.set_dispmode(comm, 'w')
         comm.send('b 0 40')
         print(comm.response())

@@ -1,6 +1,10 @@
 # TODO: refactoring and design lessons
 
-**Written for version 1.2** (commit `7bf6a87` on `main`, 2026-10-12). Nothing in this list has been done yet.
+**Written for version 1.2** (commit `7bf6a87` on `main`, 2026-10-12). Status on branch `refactor-app-class`: Classic removed (item 5 below), the main block moved into an `App` class
+(item 1 below), the big dialogs moved into `dubGui/dialogs/` (item 2), the settings made an object
+(`dubLibs/settings.py`, item 3) and the panels moved into `dubGui/panels/`. The menus became tables (`dubGui/menus.py`, item 4). The workbench file went from 2,861 to about 1,000 lines. Open:
+giving the panels what they need as arguments instead of `self.app`, and splitting the long constructors of the dialogs and
+of `App`.
 The numbers below describe the code as it was at that version; the commands in
 [How to measure again](#how-to-measure-again) let you compare later.
 
@@ -96,8 +100,7 @@ remembers writing. Do it when the structure starts to slow you down:
 4. **Table-driven menus:** describe each menu as a list of `(key, label, shortcut, command)` and find entries by
    key, not by index.
 5. **A shared core for both editions.** The biggest saving and the biggest job, because the two use different widget
-   sets (CustomTkinter and plain tkinter). The simpler question to ask first: *is Classic still needed?* If not,
-   removing it removes the duplication.
+   sets (CustomTkinter and plain tkinter). The simpler question to ask first: *is Classic still needed?* It was not: removed, see the status line at the top.
 
 ### How to refactor safely
 
@@ -162,26 +165,19 @@ Run these from the project folder to compare with the table in section 1 (Git Ba
 the Python part works anywhere).
 
 ```
-wc -l dubGui/dubrovnik_workbench.py dubGui/dubrovnik_workbench_classic.py dubLibs/*.py
-
-# where the main block starts, how long it is, how many functions are nested in it
-grep -n "^if __name__" dubGui/dubrovnik_workbench.py
-awk '/^if __name__/{s=NR} s && /^    def /{c++} END{print c, "nested functions"}' dubGui/dubrovnik_workbench.py
+wc -l dubGui/dubrovnik_workbench.py dubGui/*.py dubGui/panels/*.py dubGui/dialogs/*.py dubLibs/*.py
 ```
 
 ```python
-# longest functions, and how much of the Workbench is repeated in Classic
-import ast
-src = open('dubGui/dubrovnik_workbench.py', encoding='utf-8').read()
-funcs = [(n.end_lineno - n.lineno + 1, n.name) for n in ast.walk(ast.parse(src))
-         if isinstance(n, ast.FunctionDef)]
-print(sorted(funcs, reverse=True)[:6])
-
-a = {l.strip() for l in src.splitlines() if len(l.strip()) > 30}
-b = {l.strip() for l in open('dubGui/dubrovnik_workbench_classic.py', encoding='utf-8').read().splitlines()
-     if len(l.strip()) > 30}
-print(len(a & b), 'of', len(a), 'longer lines are identical in both editions')
+# the longest functions of the program (all of dubGui)
+import ast, glob
+funcs = []
+for path in glob.glob('dubGui/**/*.py', recursive=True):
+    for n in ast.walk(ast.parse(open(path, encoding='utf-8').read())):
+        if isinstance(n, ast.FunctionDef):
+            funcs.append((n.end_lineno - n.lineno + 1, path, n.name))
+print(sorted(funcs, reverse=True)[:8])
 ```
 
-If the main block shrinks, the longest function gets shorter and the duplicated share falls, the refactoring is
-working.
+If the files get shorter, the longest function gets shorter and the panels and dialogs stay free of `self.app`, the
+refactoring is working.

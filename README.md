@@ -4,7 +4,7 @@ PC application for the **Dubrovnik** flash test board. It erases, programs and r
 board's socket, and gives you a terminal, scripts and ready-made tools for talking to the board's
 **Tiberias** firmware.
 
-Current version: **1.2** (see [changelist.txt](changelist.txt)).
+Current version: **1.2.1** (see [changelist.txt](changelist.txt)).
 
 ## Features
 
@@ -33,19 +33,19 @@ Current version: **1.2** (see [changelist.txt](changelist.txt)).
 - Help > Documents lists the files in the `docs` folder (board schematic, the searchable Dubrovnik Training Guide,
   and anything else you drop there).
 
-## Two editions
+## The program
 
-| Edition | Program | Source |
-|---|---|---|
-| **Dubrovnik Workbench** | `DubrovnikWorkbench.exe` | [dubGui/dubrovnik_workbench.py](dubGui/dubrovnik_workbench.py) (CustomTkinter, light/dark appearance) |
-| **Dubrovnik Workbench (Classic)** | `DubrovnikClassic.exe` | [dubGui/dubrovnik_workbench_classic.py](dubGui/dubrovnik_workbench_classic.py) (the original look, tkinter) |
+**Dubrovnik Workbench**, `DubrovnikWorkbench.exe`, source [dubGui/dubrovnik_workbench.py](dubGui/dubrovnik_workbench.py)
+(CustomTkinter, light/dark appearance). It uses the libraries in [dubLibs](dubLibs), the tools and the help.
 
-They share the libraries in [dubLibs](dubLibs), the tools and the help. Each keeps its own settings file.
+The older Classic edition (plain tkinter) was discontinued after version 1.2. It stays available in the `v1.2` tag
+and in the 1.2 installer.
+
 `dubGui/dubrovnik_workbench_compact.py` starts the Workbench with everything about 12 % smaller.
 
 ## Install
 
-Run `Dubrovnik-Setup-<version>.exe`. It installs both editions for the current user (no administrator
+Run `Dubrovnik-Setup-<version>.exe`. It installs the program for the current user (no administrator
 rights) and adds Start-menu entries; desktop shortcuts are optional. No Python is needed.
 
 Requirements: Windows 10 or 11 (64-bit) and the USB driver of the board's FTDI serial chip, which Windows
@@ -60,8 +60,7 @@ Python 3.12 on Windows:
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
-python dubGui\dubrovnik_workbench.py          # Workbench
-python dubGui\dubrovnik_workbench_classic.py  # Classic edition
+python dubGui\dubrovnik_workbench.py
 ```
 
 ## Quick start
@@ -73,7 +72,7 @@ python dubGui\dubrovnik_workbench_classic.py  # Classic edition
 
 ## Settings
 
-Stored in `%APPDATA%\Dubrovnik`: `dubrovnik_workbench.cfg` (Workbench) and `dubrovnik.cfg` (Classic). A damaged
+Stored in `%APPDATA%\Dubrovnik`: `dubrovnik_workbench.cfg`. A damaged
 file is replaced by defaults and kept with `.bad` added to its name. The uninstaller asks whether to delete
 this folder.
 
@@ -92,7 +91,7 @@ What is in each folder:
 
 | Folder | Contents | In git |
 |---|---|---|
-| `dubGui/` | The two programs (Workbench and Classic) | yes |
+| `dubGui/` | The program (the Workbench) | yes |
 | `dubLibs/` | Shared libraries: board communication, firmware file reader, hex dump, script support | yes |
 | `tools/` | Scripts of the Tools menu (a `# TOOL:` header makes an entry) | yes |
 | `help/`, `docs/` | The built-in user guide; documents of the Help > Documents menu | yes |
@@ -124,8 +123,8 @@ version with a `v` in front.
 4. **Check the help guide** (`help/dubrovnik_help.html`): new menu items, settings and script calls are
    described, and nothing refers to things that were removed.
 5. **Build the installer.** Run `packaging\build.bat`. It creates
-   `packaging\installer\Dubrovnik-Setup-<version>.exe`. Start both programs from `packaging\dist\Dubrovnik`
-   once to see that they open, and check the version in the title bar.
+   `packaging\installer\Dubrovnik-Setup-<version>.exe`. Start the program from `packaging\dist\Dubrovnik`
+   once to see that it opens, and check the version in the title bar.
 6. **Commit and tag.**
    ```
    git add -A README.md changelist.txt dubGui dubLibs help tests
@@ -205,7 +204,7 @@ Do not move a tag that other people may already have downloaded; make a new fix 
 
 ## Building the installer
 
-`packaging\build.bat` builds both programs with PyInstaller (`pip install -r requirements-dev.txt`) and
+`packaging\build.bat` builds the program with PyInstaller (`pip install -r requirements-dev.txt`) and
 compiles the installer with Inno Setup 6 or 7. Output: `packaging\installer\Dubrovnik-Setup-<version>.exe`.
 The `packaging` folder is not currently tracked in git.
 

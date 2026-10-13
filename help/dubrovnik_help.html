@@ -591,16 +591,16 @@ rebuilt every time it opens, so the new entry appears at once. Optional header l
 <h3>View</h3>
 <ul>
   <li><strong>Hide Panels (Erase/Program/Read)</strong> / <strong>Show Panels</strong> &ndash; one item that does the opposite of the current state: it reads <em>Hide</em> while the three panels are shown and <em>Show</em> while they are hidden. Hiding them gives the Terminal more room, which suits users who work mainly with commands.</li>
-  <li><strong>Appearance</strong> &ndash; <em>Light</em>, <em>Dark</em> or <em>System</em> (follow Windows). This option is not available in the classic edition of the tool.</li>
+  <li><strong>Appearance</strong> &ndash; <em>Light</em>, <em>Dark</em> or <em>System</em> (follow Windows).</li>
   <li><strong>Terminal</strong> &ndash; opens a dialog for the Terminal look. <em>Theme</em> is <em>Auto</em> (light or dark like the window),
       <em>Light</em>, <em>Dark</em> or <em>Custom</em>; changing a colour switches to <em>Custom</em>. Pick the
       <em>Background</em>, <em>Text</em> and <em>Selection</em> colours with the colour button or type a hex value such as
       <code>#1B1F24</code>. <em>Font</em> lists the fixed-width fonts installed on the PC and <em>Size</em> sets the text size
       (8 to 32). The preview and the Terminal change as you go; <em>Cancel</em> puts the old look back and
-      <em>Reset to defaults</em> restores the dark theme with Consolas 15 (the classic edition: light theme, Consolas 11). The classic edition has the same dialog but no <em>Auto</em> theme, because its window has no light or dark setting.</li>
-  <li><strong>Hex Dump</strong> &ndash; the layout of the <em>Hex Dump (h)</em> Display Mode of the Read panel: <em>Bytes per row</em> (8, 16 or 32), the <em>ASCII column</em>, <em>upper case</em> hex digits and an <em>extra space after every 8 bytes</em>, with a sample. Nothing changes until <em>OK</em>. A row looks like <code>00002000&nbsp; 00 00 02 20 19 70 10 03&nbsp; 37 71 00 00 73 79 00 00&nbsp; |... .p..7q..sy..|</code>; a read that does not start on a row boundary is padded, so the addresses on the left are multiples of the row size. The board still sends plain bytes; the Workbench lays them out. Scripts (<code>dub.read</code>) are not affected. Use a Terminal font that is wide enough: lines that are wider than the Terminal wrap. Available in both editions.</li>
+      <em>Reset to defaults</em> restores the dark theme with Consolas 15.</li>
+  <li><strong>Hex Dump</strong> &ndash; the layout of the <em>Hex Dump (h)</em> Display Mode of the Read panel: <em>Bytes per row</em> (8, 16 or 32), the <em>ASCII column</em>, <em>upper case</em> hex digits and an <em>extra space after every 8 bytes</em>, with a sample. Nothing changes until <em>OK</em>. A row looks like <code>00002000&nbsp; 00 00 02 20 19 70 10 03&nbsp; 37 71 00 00 73 79 00 00&nbsp; |... .p..7q..sy..|</code>; a read that does not start on a row boundary is padded, so the addresses on the left are multiples of the row size. The board still sends plain bytes; the Workbench lays them out. Scripts (<code>dub.read</code>) are not affected. Use a Terminal font that is wide enough: lines that are wider than the Terminal wrap.</li>
   <li><strong>Menu text size</strong> &ndash; <em>Small</em>, <em>Normal</em> or <em>Large</em> text in the menu bar and the menus.
-      Use it if the menus look too big or too small on your screen. This option is not available in the classic edition, whose menus use the Windows menu font.</li>
+      Use it if the menus look too big or too small on your screen.</li>
 </ul>
 <h3>Help</h3>
 <ul>
@@ -646,7 +646,6 @@ rebuilt every time it opens, so the new entry appears at once. Optional header l
 <pre>%APPDATA%\Dubrovnik\</pre>
 <ul>
   <li><code>dubrovnik_workbench.cfg</code> &ndash; the Workbench</li>
-  <li><code>dubrovnik.cfg</code> &ndash; the classic edition</li>
 </ul>
 <p>You can edit these files, but you do not have to. If a file is damaged, or a
 value in it is not valid, the Workbench starts with default values instead and

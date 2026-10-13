@@ -8,6 +8,16 @@ To release a new version: change VERSION in dubLibs\version.py, add an entry at
 the top of this file, commit, then tag the commit:  git tag v<VERSION>
 
 
+VERSION 1.2.1                                                      2026-10-13
+-----------------------------------------------------------------------------
+The Classic edition is discontinued.
+
+  * The Classic edition (DubrovnikClassic.exe, dubrovnik_workbench_classic.py) is
+    discontinued and no longer built. Version 1.2 is its last release; it stays
+    available as tag v1.2. Its settings file dubrovnik.cfg is still read once, to
+    start the Workbench with the same settings, if the Workbench has none yet.
+
+
 VERSION 1.2                                                        2026-10-13
 -----------------------------------------------------------------------------
 Programming from firmware files, a hex dump view, Terminal and menu customization,
