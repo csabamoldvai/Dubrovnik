@@ -7,6 +7,11 @@ made object called ``dub`` for talking to the board:
     dub.erase(block=4, address=0, blocks=3)    # same as the Erase panel
     dub.program(address=0, length=0x100, pattern="caba0000", increment=1)
     data = dub.read(address=0, length=0x100, mode="Quad (144)")
+    raw = dub.read_bytes(0x2000, 0x400)        # the same, as a bytes object
+    print(dub.hexdump(raw, 0x2000))            # address / hex / ASCII layout
+    image = dub.load_image("fw.srec")          # .bin, S-record or Intel HEX
+    dub.program_image(image, offset=0)         # every segment at its address
+    bad = dub.verify(0x2000, raw)              # [] when the flash matches
     dub.sleep(0.5)
     name = dub.ask("Device number?", "01")      # dialogs for the user
     path = dub.output_path("results.txt")       # where result files belong
@@ -19,6 +24,8 @@ import contextlib
 import os
 import sys
 import traceback
+
+from dubLibs import firmware_image, hexdump
 
 
 def documents_dir():
@@ -67,12 +74,14 @@ class DubApi:
     """The ``dub`` object that Python scripts use to reach the board"""
 
     def __init__(self, term, du, pump, stopped, ask=None, confirm=None,
-                 notify=None):
+                 notify=None, hex_options=None):
         """term: the Terminal widget; du: the Dubrovnik library object;
         pump: function that lets the GUI update; stopped: returns True once
         the user asked to stop the script; ask(prompt, default) -> str or None,
-        confirm(question) -> bool and notify(text) show dialogs"""
+        confirm(question) -> bool and notify(text) show dialogs;
+        hex_options() -> the View > Hex Dump settings for hexdump()"""
         self._term, self.du, self._pump, self._stopped = term, du, pump, stopped
+        self._hex_options = hex_options
         self._ask, self._confirm, self._notify = ask, confirm, notify
 
     # -- housekeeping -----------------------------------------------------
@@ -184,7 +193,6 @@ class DubApi:
     def program_bytes(self, address, data):
         """Programs a bytes object at address. Returns the program time in us."""
         self._check()
-        self.du.write_buf_write(self.comm, data, len(data))
         elapsed = self.du.data_program(self.comm, data, address)
         self._show()
         self._check()
@@ -205,6 +213,81 @@ class DubApi:
         if cmd and text.startswith(cmd):
             text = text[len(cmd):].lstrip('\r\n')
         return text.strip()
+
+    # -- data helpers for script writers ----------------------------------------
+    def read_bytes(self, address, length, mode='SPI', chunk=0x1000):
+        """Reads like read() but returns a ``bytes`` object of exactly
+        ``length`` bytes (nothing is printed). Works whatever the Read panel's
+        Display Mode is. Long reads are done in pieces of ``chunk`` bytes, so Esc
+        still stops them. Raises ScriptError if the board returns another
+        number of bytes than asked for."""
+        out = bytearray()
+        saved = self.du.dispmode
+        self.du.dispmode = 'b'          # the parser needs plain bytes
+        try:
+            while len(out) < length:
+                self._check()
+                size = min(chunk, length - len(out))
+                start = address + len(out)
+                self.du.read_mode(self.comm, mode, start_addr=start,
+                                  length=size, echo=0)
+                part = hexdump.bytes_from_reply(
+                    self.du.textToDisplay, getattr(self.comm, 'cmdline', ''))
+                if len(part) != size:
+                    raise ScriptError(
+                        f'read of {size} bytes at 0x{start:X} returned '
+                        f'{len(part)} bytes')
+                out.extend(part)
+        finally:
+            self.du.dispmode = saved
+        self._check()
+        return bytes(out)
+
+    def hexdump(self, data, address=0, **options):
+        """Text dump of ``data`` like a hex editor: address, hex bytes, ASCII.
+        Uses the layout chosen in View > Hex Dump; options override it for this
+        call: per_row (8, 16 or 32), show_ascii, upper, gap (True/False)."""
+        settings = dict(self._hex_options()) if self._hex_options else {}
+        settings.update(options)
+        return hexdump.format_hexdump(bytes(data), address, **settings)
+
+    def load_image(self, path):
+        """Reads a .bin, S-record or Intel HEX file (format recognised from its
+        content) and returns the image: ``image.segments`` is a list of
+        ``(address, bytes)``, ``image.size``, ``image.start``, ``image.end``.
+        Raises ScriptError for a missing or invalid file."""
+        self._check()
+        try:
+            return firmware_image.load_image(path)
+        except OSError as e:
+            raise ScriptError(f'{path}: {e}') from None
+        except firmware_image.ImageError as e:
+            raise ScriptError(f'{path}: {e}') from None
+
+    def program_image(self, image, offset=0):
+        """Programs every segment of an image (or of the file at that path) at
+        its address plus ``offset``; the gaps between segments are not touched.
+        Nothing is erased first. Returns the total programming time in us."""
+        if isinstance(image, (str, os.PathLike)):
+            image = self.load_image(image)
+        total = 0
+        for address, data in image.segments:
+            total += self.program_bytes(address + offset, data)
+        return total
+
+    def verify(self, address, data, mode='SPI', limit=32):
+        """Compares the flash at ``address`` with ``data`` (bytes). Returns a
+        list of ``(address, expected, actual)`` for the first ``limit``
+        differing bytes; an empty list means the flash matches."""
+        data = bytes(data)
+        actual = self.read_bytes(address, len(data), mode)
+        bad = []
+        for offset, (want, got) in enumerate(zip(data, actual)):
+            if want != got:
+                bad.append((address + offset, want, got))
+                if len(bad) >= limit:
+                    break
+        return bad
 
 
 def run_file(path, api, term):

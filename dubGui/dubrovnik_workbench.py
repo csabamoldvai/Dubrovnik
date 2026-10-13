@@ -28,6 +28,7 @@ from dubLibs import tools
 from dubLibs import datasheet
 from dubLibs import documents
 from dubLibs import firmware_image
+from dubLibs import hexdump
 from dubLibs import termstyle
 from dubLibs.version import VERSION as APP_VERSION
 from dubLibs import dubrovnik  # instead of "from dubLibs import Dubrovnik as du"
@@ -103,7 +104,9 @@ CFG_DEFAULTS = dict(
     # the three colours are used by the 'custom' theme.
     terminalBg='#1B1F24', terminalFg='#D6DBE1', terminalSelect='#34506E',
     terminalFont='Consolas', terminalFontSize=15,
-    datasheetUrl=datasheet.DEFAULT_URL)     # Help > Datasheet Source...
+    datasheetUrl=datasheet.DEFAULT_URL,     # Help > Datasheet Source...
+    # View > Hex Dump...: layout of the Read panel's Hex Dump display mode
+    hexBytesPerRow=16, hexAscii=True, hexUpper=True, hexGap=True)
 
 TERM_CHOICES = ('auto', 'light', 'dark', 'custom')   # 'auto' follows the window
 TERM_SIZE_MIN, TERM_SIZE_MAX = termstyle.SIZE_MIN, termstyle.SIZE_MAX
@@ -114,6 +117,17 @@ HEX_COLOR = termstyle.HEX_COLOR
 MENU_SIZES = {'small': 12, 'normal': 14, 'large': 17}
 
 TERM_MIN_LINES = 8   # minimum visible terminal lines when resizing the window
+
+PREVIEW_BYTES = 64         # Terminal preview of a loaded file: bytes per segment
+PREVIEW_FULL = 1024        # segments up to this size are shown in full
+PREVIEW_SEGMENTS = 8       # ... for the first few segments
+
+
+def hexOptions():
+    """The View > Hex Dump settings as keyword arguments of hexdump"""
+    return dict(per_row=serCom.hexRow, show_ascii=serCom.hexAscii,
+                upper=serCom.hexUpper, gap=serCom.hexGap)
+
 
 def parseField(name, text, base=16, signed=False):
     """Validates an entry-box string and returns it as an int.
@@ -339,6 +353,10 @@ class SerComFrame(LabeledFrame):
         self.termFontSize = CFG_DEFAULTS['terminalFontSize']
         self.menuSize = 'normal'     # View > Menu text size: a key of MENU_SIZES
         self.datasheetUrl = datasheet.DEFAULT_URL   # Help > Datasheet
+        self.hexRow = CFG_DEFAULTS['hexBytesPerRow']    # View > Hex Dump...
+        self.hexAscii = CFG_DEFAULTS['hexAscii']
+        self.hexUpper = CFG_DEFAULTS['hexUpper']
+        self.hexGap = CFG_DEFAULTS['hexGap']
 
         # Check if %AppData%\Dubrovnik folder exists. If not create one
         appData = os.getenv('APPDATA') or ''
@@ -565,6 +583,10 @@ class SerComFrame(LabeledFrame):
                     'terminalFontSize': self.termFontSize,
                     'menuTextSize': self.menuSize,
                     'datasheetUrl': self.datasheetUrl,
+                    'hexBytesPerRow': self.hexRow,
+                    'hexAscii': self.hexAscii,
+                    'hexUpper': self.hexUpper,
+                    'hexGap': self.hexGap,
                     'showPanels': self.showPanels,
                     'displayMode': self.dispMode,
                     'scriptFolder': self.scriptDir,
@@ -605,6 +627,8 @@ class SerComFrame(LabeledFrame):
             if v[key] not in allowed:
                 v[key] = CFG_DEFAULTS[key]
         termstyle.repair(v, CFG_DEFAULTS)
+        if v['hexBytesPerRow'] not in hexdump.ROW_SIZES:
+            v['hexBytesPerRow'] = CFG_DEFAULTS['hexBytesPerRow']
         if prefs:
             self.autoConnect = v['autoConnect']
             self.chk_var.set(self.autoConnect)
@@ -618,6 +642,8 @@ class SerComFrame(LabeledFrame):
             self.termFontSize = v['terminalFontSize']
             self.menuSize = v['menuTextSize']
             self.datasheetUrl = datasheet.clean_url(v['datasheetUrl'])
+            self.hexRow, self.hexAscii = v['hexBytesPerRow'], v['hexAscii']
+            self.hexUpper, self.hexGap = v['hexUpper'], v['hexGap']
             self.showPanels = v['showPanels']
             self.dispMode = v['displayMode']
             read.applyDispMode(self.dispMode)
@@ -890,13 +916,21 @@ class ProgramFrame(LabeledFrame):
         return '\n'.join(lines)
 
     def announce(self):
-        """Tells the user what was loaded (Terminal and status bar)"""
+        """Tells the user what was loaded: a summary and a short preview in the
+        Terminal (everything is in File > Firmware > View File...)"""
+        try:
+            offset = parseField('Offset', self.start_addr.get())
+        except ValueError:
+            offset = 0
         term.displayText(f'Loaded {self.imageName}: {self.image.describe()}\n')
-        if len(self.image.segments) > 1:
-            term.displayText(self.rangesText() + '\n')
-        term.displayText('Addresses are used as in the file, plus the Offset '
-                         '(File > Program Loaded File, or the Program panel). '
-                         'Erase first if needed.\n')
+        preview, _rows = hexdump.format_segments(
+            self.image.segments, offset, limit=PREVIEW_BYTES,
+            full_if_at_most=PREVIEW_FULL, max_segments=PREVIEW_SEGMENTS,
+            **hexOptions())
+        term.displayText(preview + '\n')
+        term.displayText(f'Addresses are where the data will be written (file '
+                         f'address + Offset 0x{offset:X}). Firmware > View File '
+                         'shows everything. Erase first if needed.\n')
         showStatus(f'Loaded {self.imageName}: {self.image.describe()}', 8000)
 
     def closeFile(self):
@@ -1045,7 +1079,8 @@ class ReadFrame(LabeledFrame):
         dispmode_lbl.grid(row=5, column=1, padx=5, sticky="E")
 
         # add "HexView (h)": 'h'}
-        self.dispmodeOptions = {"Binary (b)": 'b', "DWord (w)": 'w'}
+        self.dispmodeOptions = {"Binary (b)": 'b', "DWord (w)": 'w',
+                                "Hex Dump (h)": 'h'}
         options = list(self.dispmodeOptions.keys())
         # Same kind of box as the COM port list (ttk, styled by styleCombobox),
         # so both have the same arrow, colours and font.
@@ -1078,14 +1113,7 @@ class ReadFrame(LabeledFrame):
         # assign the associated value to dispmode
         mode = self.dispmodeOptions[dispModeSelKey]
         du.dispmode = mode  # update dispmode in class Dubrovnik
-        self.modeKeys = list(self.dispmodeOptions.keys())
-        if mode == 'b':
-            self.dispmode_cb.set(self.modeKeys[0])
-        elif mode == 'w':
-            self.dispmode_cb.set(self.modeKeys[1])
-        else:
-            # change it to [2] once hexView 'h' is implemented
-            self.dispmode_cb.set(self.modeKeys[0])
+        self.dispmode_cb.set(dispModeSelKey)
         serCom.dispMode = self.dispmode_cb.get()    # remembered automatically
         serCom.saveConfig()
 
@@ -1109,7 +1137,19 @@ class ReadFrame(LabeledFrame):
         except ValueError as e:
             showerror('Read', str(e))
             return
-        term.tprint(du.textToDisplay[:-1], printOn='guiConsole')
+        text = du.textToDisplay[:-1]
+        if du.dispmode == 'h':          # laid out here, like a hex editor
+            data = hexdump.bytes_from_reply(
+                du.textToDisplay, getattr(self.comm, 'cmdline', ''))
+            if len(data) == readLen:
+                text = hexdump.format_hexdump(
+                    data, readStartAddr, per_row=serCom.hexRow,
+                    show_ascii=serCom.hexAscii, upper=serCom.hexUpper,
+                    gap=serCom.hexGap)
+            else:
+                text = (f'(Hex Dump: expected {readLen} bytes, found '
+                        f'{len(data)}; raw reply follows)\n' + text)
+        term.tprint(text, printOn='guiConsole')
 
 
 class Terminal(LabeledFrame):
@@ -1634,13 +1674,18 @@ if __name__ == "__main__":
 
     file_menu = Menu(root, tearoff=False, font=menuFont)
     my_menu.add_cascade(label="File", menu=file_menu)
-    file_menu.add_command(label="Open Firmware File...", accelerator="Ctrl+O",
-                          command=lambda: openForProgramming())
-    file_menu.add_command(label="Program Loaded File", accelerator="Ctrl+P",
-                          command=lambda: programLoadedFile())
-    file_menu.add_command(label="No file loaded", state=DISABLED)
-    file_menu.add_command(label="Close File", command=lambda: closeLoadedFile())
-    file_menu.add_separator()
+    # File > Firmware: open a firmware file and program it (like Scripts below)
+    firmware_menu = Menu(file_menu, tearoff=False, font=menuFont)
+    file_menu.add_cascade(label="Firmware", menu=firmware_menu)
+    firmware_menu.add_command(label="Open File...", accelerator="Ctrl+O",
+                              command=lambda: openForProgramming())
+    firmware_menu.add_command(label="View File...",
+                              command=lambda: showFileViewer())
+    firmware_menu.add_command(label="Program Loaded File", accelerator="Ctrl+P",
+                              command=lambda: programLoadedFile())
+    firmware_menu.add_command(label="No file loaded", state=DISABLED)
+    firmware_menu.add_command(label="Close File",
+                              command=lambda: closeLoadedFile())
     scripts_menu = Menu(file_menu, tearoff=False, font=menuFont)
     file_menu.add_cascade(label="Scripts", menu=scripts_menu)
     scripts_menu.add_command(label="Run Command Script...",
@@ -1650,6 +1695,7 @@ if __name__ == "__main__":
     scripts_menu.add_separator()
     scripts_menu.add_command(label="Stop Script  (Esc)",
                              command=lambda: stopScript())
+    file_menu.add_separator()
     file_menu.add_command(label="Save Terminal Log...",
                           command=lambda: saveTerminalLog())
     file_menu.add_separator()
@@ -1663,22 +1709,25 @@ if __name__ == "__main__":
     # (Radio items mark the current choice.)
     view_menu = Menu(root, tearoff=False, font=menuFont)
     my_menu.add_cascade(label="View", menu=view_menu)
-    panels_menu = Menu(view_menu, tearoff=False, font=menuFont)
-    view_menu.add_cascade(label="Panels (Erase/Program/Read)", menu=panels_menu)
-    panelsVar = StringVar(value='show' if serCom.showPanels else 'hide')
-    for label, value in (('Show', 'show'), ('Hide', 'hide')):
-        panels_menu.add_radiobutton(label=label, value=value, variable=panelsVar,
-                                    command=lambda: onPanelToggle())
+    view_menu.add_command(label='Hide Panels (Erase/Program/Read)',
+                          command=lambda: onPanelToggle())
+
+    def panelsLabel():
+        """Text of the first View item: the action it will do"""
+        return ('Hide Panels (Erase/Program/Read)' if serCom.showPanels
+                else 'Show Panels (Erase/Program/Read)')
 
     def syncPanels():
-        """Applies serCom.showPanels to the menu mark and the layout"""
-        panelsVar.set('show' if serCom.showPanels else 'hide')
+        """Applies serCom.showPanels to the menu text and the layout"""
+        view_menu.entryconfigure(0, label=panelsLabel())
         layoutPanels()
 
     def onPanelToggle():
-        """The View menu item was clicked: re-layout, then change the window
-        height by the height gained or lost so the Terminal keeps its size"""
-        serCom.showPanels = panelsVar.get() == 'show'
+        """The first View item was clicked: show or hide the panels, then
+        change the window height by the height gained or lost so the Terminal
+        keeps its size"""
+        serCom.showPanels = not serCom.showPanels
+        view_menu.entryconfigure(0, label=panelsLabel())
         root.update_idletasks()
         before = root.winfo_reqheight()
         layoutPanels()
@@ -1695,8 +1744,8 @@ if __name__ == "__main__":
     # File > Parameters: save / load / reset the entry-box values of the Erase,
     # Program and Read panels (the only settings that are NOT saved automatically)
     params_menu = Menu(file_menu, tearoff=False, font=menuFont)
-    file_menu.insert_cascade(8, label="Parameters", menu=params_menu)
-    file_menu.insert_separator(9)                    # before "Exit"
+    file_menu.insert_cascade(5, label="Parameters", menu=params_menu)
+    file_menu.insert_separator(6)                    # before "Exit"
 
     def showStatus(msg, ms=3000):
         """Shows msg in the status bar for a few seconds"""
@@ -1800,7 +1849,10 @@ if __name__ == "__main__":
                 'Script', prompt, [('OK', None), ('Cancel', None)], default),
             confirm=lambda question: dialogBox(
                 'Script', question, [('Yes', True), ('No', False)]),
-            notify=lambda text: dialogBox('Script', text, [('OK', None)]))
+            notify=lambda text: dialogBox('Script', text, [('OK', None)]),
+            hex_options=lambda: dict(
+                per_row=serCom.hexRow, show_ascii=serCom.hexAscii,
+                upper=serCom.hexUpper, gap=serCom.hexGap))
         serCom.scriptRunning = True
         scriptStop[0] = False
         term.scriptPrint(f'--- Running Python script {os.path.basename(path)} ---')
@@ -1848,14 +1900,14 @@ if __name__ == "__main__":
     root.bind('<Escape>', lambda _e: stopScript())
 
     def openForProgramming():
-        """File > Open Firmware File: pick a .bin, S-record or Intel HEX file and
+        """File > Firmware > Open File: pick a .bin, S-record or Intel HEX file and
         set the Program panel up for it ("Load from File" mode)"""
         if program.openFile():
             program.progModeVar.set('file')
             program.grayOutEntry()
 
     def programLoadedFile():
-        """File > Program Loaded File: with the panels shown it asks for a
+        """File > Firmware > Program Loaded File: with the panels shown it asks for a
         confirmation (the Offset is the one in the Program panel); with the
         panels hidden the question also asks for the Offset."""
         image = program.image
@@ -1897,22 +1949,22 @@ if __name__ == "__main__":
         program.program()
 
     def closeLoadedFile():
-        """File > Close File: forget the loaded file"""
+        """File > Firmware > Close File: forget the loaded file"""
         program.closeFile()
         showStatus('File closed')
 
     def refreshFileMenu():
-        """File menu opens: Program and Close need a loaded file; the grey
+        """Firmware menu opens: Program and Close need a loaded file; the grey
         line says which one is loaded"""
         image = program.image
         state = NORMAL if image is not None else DISABLED
-        file_menu.entryconfigure(1, state=state)
-        file_menu.entryconfigure(3, state=state)
-        file_menu.entryconfigure(
-            2, label=(f'Loaded: {program.imageName} ({image.size} bytes)'
+        for index in (1, 2, 4):        # View File, Program, Close File
+            firmware_menu.entryconfigure(index, state=state)
+        firmware_menu.entryconfigure(
+            3, label=(f'Loaded: {program.imageName} ({image.size} bytes)'
                       if image is not None else 'No file loaded'))
 
-    file_menu.configure(postcommand=refreshFileMenu)
+    firmware_menu.configure(postcommand=refreshFileMenu)
 
     def fileShortcut(action):
         """Runs a menu action from a key; 'break' keeps the Terminal's own
@@ -1955,6 +2007,8 @@ if __name__ == "__main__":
     view_menu.add_cascade(label="Appearance", menu=appearance_menu)
     view_menu.add_command(label="Terminal...",
                           command=lambda: showTerminalDialog())
+    view_menu.add_command(label="Hex Dump...",
+                          command=lambda: showHexDialog())
     menuSizeMenu = Menu(view_menu, tearoff=False, font=menuFont)
     view_menu.add_cascade(label="Menu text size", menu=menuSizeMenu)
     menuSizeVar = StringVar(value=serCom.menuSize)
@@ -2053,6 +2107,151 @@ if __name__ == "__main__":
         zoomState['restore'] = root.after(1500, restore)
 
     term.onZoom = zoomTerminal
+
+    fileViewer = {}
+
+    def showFileViewer():
+        """File > Firmware > View File: the whole loaded file as a hex dump, at
+        the addresses it will be written to (file address + Offset)"""
+        image = program.image
+        if image is None:
+            showinfo('View File', 'No file is loaded.\nUse File > Firmware > '
+                     'Open File first.')
+            return
+        try:
+            offset = parseField('Offset', program.start_addr.get())
+        except ValueError:
+            offset = 0
+        old = fileViewer.get('win')
+        if old is not None and old.winfo_exists():
+            old.destroy()
+        win = ctk.CTkToplevel(root)
+        fileViewer['win'] = win
+        win.title(f'{program.imageName}   {image.describe()}   '
+                  f'Offset 0x{offset:X}')
+        win.geometry('900x600')
+        win.grid_columnconfigure(0, weight=1)
+        win.grid_rowconfigure(0, weight=1)
+        colours = termColors()
+        view = ctk.CTkTextbox(
+            win, wrap='none', fg_color=colours['bg'], text_color=colours['fg'],
+            font=ctk.CTkFont(family=serCom.termFont, size=serCom.termFontSize))
+        view.grid(row=0, column=0, columnspan=4, padx=10, pady=(10, 4),
+                  sticky=NSEW)
+        text, rows = hexdump.format_segments(image.segments, offset,
+                                             **hexOptions())
+        view.insert('1.0', text)
+        view.configure(state='disabled')
+        view._textbox.tag_configure('hit', background=colours['select'])
+        font = ctk.CTkFont(size=14)
+        ctk.CTkLabel(win, text='Go to address: 0x', font=font
+                     ).grid(row=1, column=0, padx=(12, 0), pady=(4, 10), sticky='e')
+        entry = ctk.CTkEntry(win, width=120, font=font)
+        entry.grid(row=1, column=1, padx=4, pady=(4, 10), sticky='w')
+
+        def go(_event=None):
+            try:
+                address = parseField('Address', entry.get())
+            except ValueError as e:
+                showerror('View File', str(e))
+                return
+            line = hexdump.line_for_address(rows, address)
+            if line is None:
+                return
+            view._textbox.tag_remove('hit', '1.0', 'end')
+            view._textbox.tag_add('hit', f'{line}.0', f'{line}.end')
+            view._textbox.see(f'{line}.0')
+        entry.bind('<Return>', go)
+        ctk.CTkButton(win, text='Go', width=70, font=font, command=go
+                      ).grid(row=1, column=2, padx=4, pady=(4, 10), sticky='w')
+        ctk.CTkButton(win, text='Close', width=90, font=font, command=win.destroy
+                      ).grid(row=1, column=3, padx=12, pady=(4, 10), sticky='e')
+        win.bind('<Escape>', lambda _e: win.destroy())
+        win.after(150, lambda: (win.lift(), entry.focus_set()))
+
+    hexDialog = {}
+
+    def showHexDialog():
+        """View > Hex Dump...: layout of the Hex Dump display mode of the Read
+        panel, with a sample. Nothing changes until OK."""
+        if hexDialog.get('win') is not None and hexDialog['win'].winfo_exists():
+            hexDialog['win'].focus_set()
+            return
+        dlg = ctk.CTkToplevel(root)
+        hexDialog['win'] = dlg
+        dlg.title('Hex Dump')
+        dlg.resizable(False, False)
+        dlg.transient(root)
+        font = ctk.CTkFont(size=14)
+        rows = tuple(str(n) for n in hexdump.ROW_SIZES)
+        rowVar = StringVar(value=str(serCom.hexRow))
+        asciiVar = IntVar(value=int(serCom.hexAscii))
+        upperVar = IntVar(value=int(serCom.hexUpper))
+        gapVar = IntVar(value=int(serCom.hexGap))
+        sample = b'Dubrovnik hex dump: \x00\x01\x7f\xff 0123456789'
+
+        ctk.CTkLabel(dlg, text='Bytes per row', font=font, anchor='w'
+                     ).grid(row=0, column=0, padx=(24, 12), pady=6, sticky='w')
+        ctk.CTkOptionMenu(dlg, values=rows, variable=rowVar, font=font,
+                          dropdown_font=font, width=100,
+                          command=lambda _v: refresh()
+                          ).grid(row=0, column=1, padx=(0, 24), pady=6, sticky='w')
+        for row, (text, var) in enumerate((
+                ('ASCII column', asciiVar),
+                ('Upper case hex digits', upperVar),
+                ('Extra space after every 8 bytes', gapVar)), start=1):
+            ctk.CTkCheckBox(dlg, **CHECKBOX_STYLE, text=text, variable=var,
+                            font=font, command=lambda: refresh()
+                            ).grid(row=row, column=0, columnspan=2, padx=24,
+                                   pady=6, sticky='w')
+        preview = ctk.CTkTextbox(dlg, height=130, width=660, wrap='none',
+                                 border_width=0)
+        preview.grid(row=4, column=0, columnspan=2, padx=24, pady=(10, 4),
+                     sticky='ew')
+
+        def current():
+            return dict(per_row=int(rowVar.get()), show_ascii=bool(asciiVar.get()),
+                        upper=bool(upperVar.get()), gap=bool(gapVar.get()))
+
+        def refresh():
+            colours = termColors()
+            preview.configure(
+                state='normal', fg_color=colours['bg'], text_color=colours['fg'],
+                font=ctk.CTkFont(family=serCom.termFont, size=serCom.termFontSize))
+            preview.delete('1.0', END)
+            preview.insert('1.0', hexdump.format_hexdump(sample, 0x2005, **current()))
+            preview.configure(state='disabled')
+
+        def reset():
+            rowVar.set(str(CFG_DEFAULTS['hexBytesPerRow']))
+            asciiVar.set(int(CFG_DEFAULTS['hexAscii']))
+            upperVar.set(int(CFG_DEFAULTS['hexUpper']))
+            gapVar.set(int(CFG_DEFAULTS['hexGap']))
+            refresh()
+
+        def ok():
+            values = current()
+            serCom.hexRow, serCom.hexAscii = values['per_row'], values['show_ascii']
+            serCom.hexUpper, serCom.hexGap = values['upper'], values['gap']
+            serCom.saveConfig()
+            dlg.destroy()
+
+        bar = ctk.CTkFrame(dlg, fg_color='transparent')
+        bar.grid(row=5, column=0, columnspan=2, padx=24, pady=(8, 20), sticky='ew')
+        bar.grid_columnconfigure(0, weight=1)
+        ctk.CTkButton(bar, text='Reset to defaults', width=140, font=font,
+                      command=reset).grid(row=0, column=0, sticky='w')
+        ctk.CTkButton(bar, text='OK', width=90, font=font, command=ok
+                      ).grid(row=0, column=1, padx=(8, 0))
+        ctk.CTkButton(bar, text='Cancel', width=90, font=font,
+                      command=dlg.destroy).grid(row=0, column=2, padx=(8, 0))
+        dlg.bind('<Escape>', lambda _e: dlg.destroy())
+        refresh()
+        dlg.update_idletasks()
+        x = root.winfo_x() + (root.winfo_width() - dlg.winfo_width()) // 2
+        y = root.winfo_y() + (root.winfo_height() - dlg.winfo_height()) // 2
+        dlg.geometry(f'+{max(x, 0)}+{max(y, 0)}')
+        dlg.after(150, lambda: (dlg.grab_set(), dlg.focus_set()))
 
     fontCache = []
 
@@ -2505,7 +2704,7 @@ if __name__ == "__main__":
                               command=openDocsFolder)
 
     serCom.loadConfig()  # includes autoConnect and lastUsedPort
-    allMenus = (file_menu, tools_menu, view_menu, panels_menu, params_menu, scripts_menu,
+    allMenus = (file_menu, firmware_menu, tools_menu, view_menu, params_menu, scripts_menu,
                 help_menu, docs_menu, appearance_menu, menuSizeMenu)
     menuSizeVar.set(serCom.menuSize)
     applyMenuSize()          # the size just loaded from the settings file

@@ -23,9 +23,11 @@ class Dubrovnik:
         """### Configures how data is displayed in the console
         Parameters:\n
         * comm : Handle to comm port to communicate with the Dubrovnik board
-        * mode : binary ('b') or double-word ('w')
+        * mode : binary ('b'), double-word ('w') or hex dump ('h')
+          ('h' is formatted on the PC from binary data, see hexdump.py, so the
+          board is set to binary mode)
         """
-        comm.send(f'dispmode {mode}')
+        comm.send(f'dispmode {"b" if mode == "h" else mode}')
         self.dispmode = mode
 
     def global_echo(self, comm, onoff):

@@ -8,6 +8,51 @@ To release a new version: change VERSION in dubLibs\version.py, add an entry at
 the top of this file, commit, then tag the commit:  git tag v<VERSION>
 
 
+VERSION 1.2                                                        2026-10-13
+-----------------------------------------------------------------------------
+Programming from firmware files, a hex dump view, Terminal and menu customization,
+a datasheet shortcut and helper calls for script writers. This entry covers
+everything since 1.1; the notes of 1.1.2 to 1.1.6 below give the details.
+
+New (both editions unless noted):
+  * File > Firmware: Open File (Ctrl+O), View File, Program Loaded File (Ctrl+P), a
+    grey line naming the loaded file, and Close File. Reads .bin, Motorola S-record
+    (.srec .s19 .s28 .s37 .mot) and Intel HEX (.hex .ihex); the format is recognised
+    from the content and every line checksum is checked.
+  * On Open the Terminal shows a preview in hex-dump layout (first 64 bytes of each
+    block, blocks up to 1 KB in full) at the addresses the data will be written to.
+    View File opens the whole file in a window with "Go to address".
+  * Programming writes S-record and Intel HEX blocks at their own addresses plus the
+    Offset and leaves the gaps alone; nothing is erased first. A progress window
+    with Cancel (or Esc) is shown, and the programming runs in a background thread
+    so the window stays responsive. Program Loaded File also works with the panels
+    hidden: it lists the address ranges for confirmation and asks for the Offset.
+  * The open-file dialog starts in the folder of the last file opened.
+  * Read panel Display Mode "Hex Dump (h)" (address, hex bytes, ASCII) with
+    View > Hex Dump settings: bytes per row (8, 16, 32), ASCII column, upper case
+    digits, extra space after 8 bytes.
+  * View > Terminal: theme, background, text and selection colours, font and size,
+    with a preview; Ctrl + mouse wheel changes the Terminal text size.
+  * View > Menu text size (Workbench) and a single Hide / Show Panels item that
+    shows the action it will do.
+  * Help > Datasheet and Datasheet Source: opens the datasheet of the device in the
+    status bar (a matching file in docs, or the Renesas web search; the address can
+    be changed).
+  * Script calls: dub.read_bytes, dub.hexdump, dub.load_image, dub.program_image and
+    dub.verify. Unit tests in the tests folder.
+  * Experimental AI assistant (Workbench), hidden unless a model is configured; not
+    included in the installer.
+
+Changed:
+  * File menu: Firmware and Scripts are submenus, Save Terminal Log is a group of its
+    own. The old "Terminal theme" submenu and the Panels submenu are replaced.
+  * Programming a file, and dub.program_bytes, no longer send the data twice (about
+    one third faster).
+  * Display Mode is now the same kind of box as the COM port list.
+  * Help > Datasheet finds a local file also when the status bar shows an ordering
+    suffix after the part number.
+
+
 VERSION 1.1.6                                                      2026-10-13
 -----------------------------------------------------------------------------
 Faster, responsive file programming.
