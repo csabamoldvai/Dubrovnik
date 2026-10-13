@@ -57,6 +57,9 @@ the project's. The window checks never touch the user's real settings (`%APPDATA
 
 ## Where things are
 
-- `dubGui/` the program (and a compact launcher); `dubLibs/` shared libraries without GUI code (`boardcom`, `dubrovnik`,
+- `dubGui/` the program: `dubrovnik_workbench.py` (the `App` class, the panels, the Terminal; a compact launcher next
+  to it), `look.py` (colours and widget styles) and `dialogs/` (one module per window: `messages`, `progress`,
+  `hex_dialog`, `file_viewer`, `terminal_dialog`, `assistant_window`; each class is given what it needs, not the app).
+  `dubLibs/` shared libraries without GUI code (`boardcom`, `dubrovnik`,
   `firmware_image`, `hexdump`, `run_py_script`, `cfgfile`, `termstyle`, `datasheet`, `assistant`)
 - `tools/` Tools-menu scripts; `tests/` unit tests and `tests/data/`; `help/` the F1 guide; `docs/` Help > Documents.

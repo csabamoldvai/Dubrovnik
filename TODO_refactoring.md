@@ -1,7 +1,9 @@
 # TODO: refactoring and design lessons
 
-**Written for version 1.2** (commit `7bf6a87` on `main`, 2026-10-12). Status on branch `refactor-app-class`: Classic removed (item 5 below) and the main block moved into an `App` class
-(item 1 below; the panels get the app as an argument). The rest is open.
+**Written for version 1.2** (commit `7bf6a87` on `main`, 2026-10-12). Status on branch `refactor-app-class`: Classic removed (item 5 below), the main block moved into an `App` class
+(item 1 below; the panels get the app as an argument) and the big dialogs moved into `dubGui/dialogs/` (item 2 below;
+the workbench file went from 2,861 to about 2,200 lines). Open: the settings object, table-driven menus, and
+moving the panels (`SerComFrame` and the others) out of the main file.
 The numbers below describe the code as it was at that version; the commands in
 [How to measure again](#how-to-measure-again) let you compare later.
 
