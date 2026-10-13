@@ -1,6 +1,3 @@
-# from dubGui.serialTerminalShell import Terminal
-# import sys
-# import time
 import datetime
 import os
 import pathlib
@@ -106,21 +103,6 @@ MENU_SIZES = {'small': 12, 'normal': 14, 'large': 17}
 TERM_MIN_LINES = 8   # minimum visible terminal lines when resizing the window
 
 
-# class MainWindow:
-#     def __init__(self, parent):  # parent or master are good names
-#         frame = Frame(parent)    # want to put in into main window (master)
-#         frame.pack()
-
-#         self.printButton = Button(frame, text='Print Message', command=self.printMessage)
-#         self.printButton.pack(side=LEFT)
-
-#         self.quitButton = Button(frame, text='Quit', command=frame.quit)
-#         self.quitButton.pack(side=LEFT)
-
-#     def printMessage(self):
-#         print("Wow! It worked :)")
-
-
 class App:
     """The Dubrovnik Workbench: builds the window, the panels and the menus, and
     holds what they share (the settings panel serCom, the Terminal, the board
@@ -193,13 +175,6 @@ class App:
         self.stsBarComm = ctk.CTkLabel(self.root, text='Not connected', anchor='w')
         self.stsBarComm.grid(row=5, column=0, padx=10, pady=4,
                         columnspan=4, sticky=EW)
-
-        # stsBarRight = Label(root, text='Hello', width=10, font=(
-        #     "Helvetica", 9), anchor=W, justify=RIGHT, pady=2)
-        # stsBarRight.config(bd=1, relief=SUNKEN)
-        # # stsBarComm.pack(side=BOTTOM, fill=X, anchor=W, padx=10, pady=10)
-        # stsBarRight.grid_propagate(0)
-        # stsBarRight.grid(row=4, column=1, padx=10, pady=4,sticky='EW')
 
         # ############ MENU
         # A native Windows menu bar ignores font settings, so build the bar from
@@ -367,10 +342,6 @@ class App:
         """Shows the window and handles events until it is closed"""
         self.root.mainloop()
 
-
-    # def updtStsBar(statusMsg):
-    #     print(statusMsg)
-    #     stsBarComm.config(text=statusMsg)
 
     def layoutPanels(self):
         """Shows or hides the three panels together (settings.showPanels). Shown
@@ -961,27 +932,6 @@ class App:
         minH = int(min(startH,
                        startH - termStartH + TERM_MIN_LINES * termLineH))
         return minW, startH, minH
-
-    # print(comm.serialAvailable(comport))
-
-    # def timer():
-    #     # seconds = time.strftime("%S")
-    #     # print(seconds)
-    #     # term.displayText(seconds)
-
-    #     numBytes = comm.serialAvailable()
-    #     if numBytes > 0:
-    #         resp = comm.response()
-    #         term.displayText(resp)
-
-    #     # numBytes = comm.serialAvailable(comport)
-    #     # term.displayText(str(numBytes))  # print response into the teminal window
-    #     # print(f'numBytes: {numBytes}')
-    #     timer_lbl.after(1000, timer)  # regularly call function to implement a timer
-
-    # timer_lbl = Label(root, text='')
-    # # timer_lbl.pack() # make it invisible. Used as timer for checking serial port
-    # timer()  # must call the function once to start it
 
     def onClose(self):
         """Store the last used entry values and window size on exit."""

@@ -137,7 +137,6 @@ class ProgramFrame(LabeledFrame):
             self.app.du.page_program(
                 self.comm, startAddr, dataLen, pattn, incr)
             self.app.term.tprint(self.app.du.textToDisplay[:-1])
-            # term.displayText(du.textToDisplay)
         else:   # if programming a content of a file
             if self.image is None:
                 showerror('Program', 'No file is loaded. Click Open first.')

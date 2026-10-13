@@ -112,9 +112,6 @@ class ReadFrame(LabeledFrame):
         except ValueError as e:
             showerror('Read', str(e))
             return
-        # print(f'SPI Mode      : {self.spiMode.get()}')
-        # print(f'Start Address : {readStartAddr}')
-        # print(f'Read Lenght   : {readLen}')
         try:
             self.app.du.read_mode(self.comm, self.spiMode.get(),
                          start_addr=readStartAddr, length=readLen, echo=0)

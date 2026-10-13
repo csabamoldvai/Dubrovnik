@@ -118,7 +118,6 @@ class SerComFrame(LabeledFrame):
 
     def disconnectPort(self, selPort):
         self.comm.disconnect(selPort)
-        # print(f"Port: {selPort} disconnected")
         self.app.stsBarComm.configure(text='No COM port found!')
 
     def scriptBusy(self):

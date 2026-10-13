@@ -287,12 +287,10 @@ class Terminal(LabeledFrame):
         if printOn == 'sysConsole':
             print(text)
         elif printOn == 'guiConsole':
-            # term.displayText(text)
             self.displayText(text)
             self.app.du.textToDisplay = ""
         else:
             print(text)
-            # term.displayText(text)
             self.displayText(text)
             self.app.du.textToDisplay = ""
 
