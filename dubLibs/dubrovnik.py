@@ -228,11 +228,13 @@ class Dubrovnik:
                 line[data_start:data_start+(nbytes*2)])
         return (addr_list, block_list)
 
-    def write_buf_write(self, comm, inp_arr, dsize):
+    def write_buf_write(self, comm, inp_arr, dsize, progress=None):
         """
         * takes an input binary array
         * loads the data from the binary array into the
         * Tiberias write buffer using a sequence of 'write' commands
+        * progress(bytes_done), if given, is called after each 'write' command
+          (it may raise an exception to abort)
         """
         offst = 0
         while offst < dsize:
@@ -247,13 +249,17 @@ class Dubrovnik:
                 cmdstr += f'{inp_arr[offst]:02x}'
                 offst += 1
             comm.send(cmdstr)
+            if progress:
+                progress(offst)
 
-    def data_program(self, comm, data_array, start_addr=0):
+    def data_program(self, comm, data_array, start_addr=0, progress=None):
         """
         * gets a binary data array from the caller
         * programs binary data page by page
         * first writing the page data into the Tiberias write buffer
         * then performing a Tiberias program operation
+        * progress(bytes_done), if given, is called after each page (it may
+          raise an exception to abort between pages)
         """
         self.textToDisplay = ""  # used by GUI teminal
         prog_time = 0
@@ -276,6 +282,9 @@ class Dubrovnik:
             self.textToDisplay += f'(page program time: {page_prog_time})\n'
 
             prog_time += page_prog_time_us  # accumulating time for total time
+            idx += progSize
+            if progress:
+                progress(idx)
         # calculating total program time and building the string for the terminal
         total_prog_time = self.time_conv_from_usec(prog_time)
         self.textToDisplay += f'Total Program time: {total_prog_time}\n'

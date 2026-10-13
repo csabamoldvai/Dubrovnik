@@ -181,15 +181,24 @@ and are not restored automatically.</div>
 </table>
 <h3>Load from File</h3>
 <p>Click <strong>Open</strong> (or use <em>File &rarr; Open</em>) and choose a
-<code>.bin</code> file. Only binary files are supported at present. The pattern,
-increment and length entries are greyed out; the file's size sets the length.
-The start address still applies.</p>
-<p>Click <strong>Program</strong> to start. The Terminal shows the page-program
+firmware file. Three formats are accepted, recognised by their content: a raw binary
+(<code>.bin</code>), a Motorola S-record (<code>.srec</code>, <code>.s19</code>, <code>.s28</code>,
+<code>.s37</code>, <code>.mot</code>) and Intel HEX (<code>.hex</code>, <code>.ihex</code>). The Terminal lists what was
+loaded. A file with a bad checksum or line is refused with the line number. The next time the dialog opens in the folder of
+the last file.</p>
+<p>The pattern, increment and length entries are greyed out, and <em>Start Address</em> becomes <em>Offset</em>:</p>
+<ul>
+  <li><strong>.bin</strong> has no addresses, so the data is programmed starting at the Offset.</li>
+  <li><strong>S-record and Intel HEX</strong> carry their own addresses. Each block is programmed at its file address plus
+      the Offset (normally 0). The gaps between blocks are not touched.</li>
+</ul>
+<p>Click <strong>Program</strong> to start. A progress window shows the step and the percentage; <strong>Cancel</strong>
+(or Esc) stops between pages, and the device is then partly programmed. The Terminal shows the page-program
 commands with the time for each page and the total.
 <strong>Prog/Verify</strong> is reserved for a later version.</p>
 <div class="warn">Flash can only change bits from 1 to 0 when programming.
 <strong>Erase the area first</strong>, otherwise the stored data will not match
-what you programmed.</div>
+what you programmed. The Workbench does not erase for you.</div>
 
 <!-- ------------------------------------------------------------------ -->
 <h2 id="read">6. Read</h2>
@@ -526,7 +535,7 @@ if "caba0000" not in data:
 <h2 id="menus">10. Menus</h2>
 <h3>File</h3>
 <ul>
-  <li><strong>Open...</strong> &ndash; choose a <code>.bin</code> file to program and switch the Program panel to <em>Load from File</em>.</li>
+  <li><strong>Open...</strong> &ndash; choose a <code>.bin</code>, S-record or Intel HEX file to program and switch the Program panel to <em>Load from File</em>.</li>
   <li><strong>Scripts</strong> &ndash; <em>Run Command Script...</em> runs a text file of Terminal commands, <em>Run Python Script...</em> runs a Python file, and <em>Stop Script</em> (<kbd>Esc</kbd>) stops either (see <a href="#scripts">Scripts</a>).</li>
   <li><strong>Save Terminal Log...</strong> &ndash; save the Terminal contents as a text file.</li>
   <li><strong>Parameters</strong> &ndash; <em>Save</em> stores the values of the Erase, Program and Read entry boxes; <em>Load</em> restores the stored values; <em>Defaults</em> resets the boxes to the built-in values (use <em>Save</em> afterwards to keep them).</li>
@@ -728,8 +737,9 @@ for details of one command.</p>
       <td>The flash did not accept the status-register write, or keeps its Quad Enable bit elsewhere. Use <code>help 31</code> and <code>help 01</code> to see the write commands, and the data sheet to find the bit.</td></tr>
   <tr><td>A script stops with "error at line N"</td>
       <td>The board rejected that command. Run it by hand in the Terminal, and use <code>help &lt;command&gt;</code> to see the syntax it expects.</td></tr>
-  <tr><td>"Only .bin files are supported"</td>
-      <td>Convert the data to a raw binary file first.</td></tr>
+  <tr><td>"... is not a valid firmware image"</td>
+      <td>The message names the line and the problem, for example a checksum error. The file may be damaged, or may not be a
+          .bin, S-record or Intel HEX file.</td></tr>
   <tr><td>The settings look wrong or the window opens in an odd place</td>
       <td>Use <em>File &rarr; Parameters &rarr; Defaults</em> for the entry boxes, or delete the <code>.cfg</code> file listed in <a href="#settings">Settings</a>.</td></tr>
   <tr><td>The Terminal does not accept typing</td>

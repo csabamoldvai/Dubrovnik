@@ -26,6 +26,7 @@ from dubLibs import run_py_script
 from dubLibs import tools
 from dubLibs import datasheet
 from dubLibs import documents
+from dubLibs import firmware_image
 from dubLibs import termstyle
 from dubLibs.version import VERSION as APP_VERSION
 from dubLibs import dubrovnik  # instead of "from dubLibs import Dubrovnik as du"
@@ -95,7 +96,8 @@ CFG_DEFAULTS = dict(
     progLength='100',
     readSpiMode='SPI', readStartAddr='0', readLength='100',
     appearance='system', terminalTheme='dark', showPanels=True,
-    displayMode='Binary (b)', scriptFolder='', menuTextSize='normal',
+    displayMode='Binary (b)', scriptFolder='', programFolder='',
+    menuTextSize='normal',
     # Terminal look (View > Terminal...). terminalTheme is one of TERM_CHOICES;
     # the three colours are used by the 'custom' theme.
     terminalBg='#1B1F24', terminalFg='#D6DBE1', terminalSelect='#34506E',
@@ -231,6 +233,70 @@ def applyPalette():
 applyPalette()
 
 
+class ProgramCancelled(Exception):
+    """Raised by the progress dialog when the user clicks Cancel"""
+
+
+class ProgressDialog:
+    """Modal progress bar: update(text, done) from a long job, which also lets
+    the window repaint. Raises ProgramCancelled once Cancel was clicked."""
+
+    def __init__(self, title, total):
+        import time
+        self.total, self.cancelled, self.last = max(total, 1), False, 0.0
+        self.start = time.time()
+        self.win = ctk.CTkToplevel(root)
+        self.win.title(title)
+        self.win.resizable(False, False)
+        self.win.transient(root)
+        font = ctk.CTkFont(size=14)
+        self.label = ctk.CTkLabel(self.win, text='Starting...', font=font,
+                                  anchor='w', width=420)
+        self.label.grid(row=0, column=0, padx=24, pady=(22, 6), sticky='w')
+        self.bar = ctk.CTkProgressBar(self.win, width=420)
+        self.bar.set(0)
+        self.bar.grid(row=1, column=0, padx=24, pady=6)
+        self.info = ctk.CTkLabel(self.win, text='', font=font, anchor='w',
+                                 width=420)
+        self.info.grid(row=2, column=0, padx=24, pady=(0, 6), sticky='w')
+        ctk.CTkButton(self.win, text='Cancel', width=100, font=font,
+                      command=self.cancel).grid(row=3, column=0, padx=24,
+                                                pady=(6, 20), sticky='e')
+        self.win.protocol('WM_DELETE_WINDOW', self.cancel)
+        self.win.bind('<Escape>', lambda _e: self.cancel())
+        self.win.update_idletasks()
+        x = root.winfo_x() + (root.winfo_width() - self.win.winfo_width()) // 2
+        y = root.winfo_y() + (root.winfo_height() - self.win.winfo_height()) // 2
+        self.win.geometry(f'+{max(x, 0)}+{max(y, 0)}')
+        self.win.update()
+        self.win.grab_set()
+
+    def cancel(self):
+        self.cancelled = True
+        self.label.configure(text='Cancelling...')
+
+    def update(self, text, done):
+        import time
+        now = time.time()
+        if now - self.last >= 0.1 or done >= self.total:     # repaint ~10x/s
+            self.last = now
+            pct = min(done / self.total, 1.0)
+            self.label.configure(text=text)
+            self.bar.set(pct)
+            self.info.configure(
+                text=f'{pct * 100:.0f} %    {now - self.start:.0f} s elapsed')
+            self.win.update()
+        if self.cancelled:
+            raise ProgramCancelled()
+
+    def close(self):
+        try:
+            self.win.grab_release()
+            self.win.destroy()
+        except Exception:
+            pass
+
+
 class LabeledFrame(ctk.CTkFrame):
     """CTkFrame with a title label at row 0 -- a stand-in for tk.LabelFrame.
     Subclasses should grid their content starting at row=1.
@@ -265,6 +331,7 @@ class SerComFrame(LabeledFrame):
         self.winSize = None   # (width, height) of the window, unscaled units
         self.scriptRunning = False   # True while File > Run Script is running
         self.scriptDir = ''          # folder of the last script that was run
+        self.programDir = ''         # folder of the last file opened to program
         self.winPos = None    # (x, y) of the window's top-left corner, pixels
         self.appearance = 'system'   # 'light' | 'dark' | 'system'
         self.dispMode = 'Binary (b)'   # Read panel display mode (key of dispmodeOptions)
@@ -505,7 +572,8 @@ class SerComFrame(LabeledFrame):
                     'datasheetUrl': self.datasheetUrl,
                     'showPanels': self.showPanels,
                     'displayMode': self.dispMode,
-                    'scriptFolder': self.scriptDir})
+                    'scriptFolder': self.scriptDir,
+                    'programFolder': self.programDir})
         if self.winSize:
             cfg['windowWidth'], cfg['windowHeight'] = self.winSize
         if self.winPos:
@@ -559,6 +627,8 @@ class SerComFrame(LabeledFrame):
             self.dispMode = v['displayMode']
             read.applyDispMode(self.dispMode)
             self.scriptDir = v['scriptFolder'] if os.path.isdir(v['scriptFolder']) else ''
+            self.programDir = (v['programFolder']
+                               if os.path.isdir(v['programFolder']) else '')
             self.winSize = cfgfile.int_pair(cfg, 'windowWidth', 'windowHeight',
                                             200, 20000)
             self.winPos = cfgfile.int_pair(cfg, 'windowX', 'windowY',
@@ -587,7 +657,7 @@ class ProgramFrame(LabeledFrame):
     endAddr = 0
     pattn = 'cafe0000'
     incr = '1'
-    progData = []
+    image = None            # firmware_image.Image loaded with Open
 
     def __init__(self, parent=None, DEBUG=False):
         LabeledFrame.__init__(self, parent, text='Program')
@@ -625,7 +695,7 @@ class ProgramFrame(LabeledFrame):
         self.ent2_prog.grid(row=2, column=2, padx=(0, 10))
         self.increment.set('1')
 
-        lbl3_prog = ctk.CTkLabel(self, text='Start Address: 0x')
+        lbl3_prog = self.lbl3_prog = ctk.CTkLabel(self, text='Start Address: 0x')
         lbl3_prog.grid(row=3, column=1, padx=5, pady=5, sticky=E)
         self.ent3_prog = ctk.CTkEntry(self, textvariable=self.start_addr, width=80, height=ENTRY_HEIGHT)
         self.ent3_prog.grid(row=3, column=2, padx=(0, 10))
@@ -654,9 +724,11 @@ class ProgramFrame(LabeledFrame):
         global endAddr
         global pattn
         global incr
-        s_addr = parseField('Start Address', self.start_addr.get())
-        d_len = parseField('Length', self.length.get())
-        if self.progModeVar.get() == 'pattern':
+        pattern_mode = self.progModeVar.get() == 'pattern'
+        s_addr = parseField('Start Address' if pattern_mode else 'Offset',
+                            self.start_addr.get())
+        d_len = parseField('Length', self.length.get()) if pattern_mode else 0
+        if pattern_mode:
             parseField('Pattern', self.pattern.get())
             parseField('Increment', self.increment.get(), signed=True)
         startAddr, dataLen = s_addr, d_len
@@ -670,7 +742,9 @@ class ProgramFrame(LabeledFrame):
             self.ent2_prog.configure(state=DISABLED)
             self.ent4_prog.configure(state=DISABLED)
             self.btn_openFile.configure(state=NORMAL)
+            self.lbl3_prog.configure(text='Offset: 0x')   # added to file addresses
         else:
+            self.lbl3_prog.configure(text='Start Address: 0x')
             self.ent1_prog.configure(state=NORMAL)
             self.ent2_prog.configure(state=NORMAL)
             self.ent4_prog.configure(state=NORMAL)
@@ -692,34 +766,80 @@ class ProgramFrame(LabeledFrame):
             term.tprint(du.textToDisplay[:-1])
             # term.displayText(du.textToDisplay)
         else:   # if programming a content of a file
-            term.displayText('Downloading data...\n')
-            dsize = len(self.progData)
-            du.write_buf_write(self.comm, self.progData, dsize)
-            term.displayText('Programming...\n')
-            # term.tprint('Programming...\n')
-            du.data_program(self.comm, self.progData, startAddr)
-            term.tprint(du.textToDisplay[:-1])
+            if self.image is None:
+                showerror('Program', 'No file is loaded. Click Open first.')
+                return
+            if self.image.end + startAddr > 0xFFFFFFFF:
+                showerror('Program', 'The address offset puts the data beyond '
+                          'the 32-bit address range.')
+                return
+            self.programFile(startAddr)
+
+    def programFile(self, offset):
+        """Programs the loaded image segment by segment (the gaps between
+        segments are left alone) at file address + offset, with a progress
+        dialog. Cancel stops between pages and leaves the device partly
+        programmed."""
+        segments = self.image.segments
+        count = len(segments)
+        total = 2 * self.image.size     # download to the write buffer + program
+        dialog = ProgressDialog('Programming', total)
+        serCom.scriptRunning = True     # blocks the panels and the Terminal
+        term.cmdInProgress = True       # and the background serial reader
+        finished = False
+        base = 0                        # bytes already counted in the bar
+        try:
+            for number, (address, data) in enumerate(segments, 1):
+                target = address + offset
+                where = (f'segment {number} of {count}, ' if count > 1 else '')
+                term.displayText(f'Downloading data ({len(data)} bytes)...\n')
+                du.write_buf_write(
+                    self.comm, data, len(data),
+                    lambda n, b=base, w=where: dialog.update(
+                        f'Downloading data, {w}address {target:X}', b + n))
+                term.displayText(f'Programming at 0x{target:X}...\n')
+                du.data_program(
+                    self.comm, data, target,
+                    lambda n, b=base, w=where, s=len(data): dialog.update(
+                        f'Programming, {w}address {target:X}', b + s + n))
+                term.tprint(du.textToDisplay[:-1])
+                base += 2 * len(data)
+            finished = True
+        except ProgramCancelled:
+            term.displayText('*** Programming cancelled; the device may be '
+                             'partly programmed. ***\n')
+        finally:
+            term.cmdInProgress = False
+            serCom.scriptRunning = False
+            dialog.close()
+        if finished and count > 1:
+            term.displayText(f'Programmed {count} segments, '
+                             f'{self.image.size} bytes in total.\n')
 
     def progVerify(self):
         pass
 
     def openFile(self):
-        filename = askopenfilename(title='Select File to Program', initialdir=os.getcwd(
-        ), filetypes=(('All files', '*.*'), ('Binary files', '*.bin'), ('Hex files', '*.hex')))
+        folder = serCom.programDir
+        filename = askopenfilename(
+            title='Select File to Program',
+            initialdir=folder if os.path.isdir(folder) else os.getcwd(),
+            filetypes=firmware_image.FILE_TYPES)
         if not filename:             # dialog cancelled
             return False
-        extension = os.path.splitext(filename)[-1]
-        if extension.lower() != '.bin':
-            showerror('Open', 'Only .bin files are supported at the moment.')
-            return False
+        serCom.programDir = os.path.dirname(filename)   # start here next time
+        serCom.saveConfig()
         try:
-            with open(filename, 'rb') as f:
-                self.progData = f.read()
+            self.image = firmware_image.load_image(filename)
         except OSError as e:
             showerror('Open', f'Could not read the file:\n{e}')
             return False
+        except firmware_image.ImageError as e:
+            showerror('Open', f'{os.path.basename(filename)} is not a valid '
+                      f'firmware image:\n{e}')
+            return False
+        self.imageName = os.path.basename(filename)
         return True
-                # print(self.progData)
 
 
 class EraseFrame(LabeledFrame):
@@ -1666,8 +1786,17 @@ if __name__ == "__main__":
         if program.openFile():
             program.progModeVar.set('file')
             program.grayOutEntry()
-            showStatus(f'Loaded {len(program.progData)} bytes to program '
-                       f'(Program panel: Load from File)')
+            image = program.image
+            term.displayText(f'Loaded {program.imageName}: {image.describe()}\n')
+            if len(image.segments) > 1:
+                for address, data in image.segments:
+                    term.displayText(f'    0x{address:X} to '
+                                     f'0x{address + len(data) - 1:X}  '
+                                     f'({len(data)} bytes)\n')
+            term.displayText('Addresses are used as in the file, plus the '
+                             'Offset in the Program panel. Erase first if '
+                             'needed.\n')
+            showStatus(f'Loaded {program.imageName}: {image.describe()}', 8000)
 
     def saveTerminalLog():
         """File > Save Terminal Log: write the Terminal contents to a text file"""
