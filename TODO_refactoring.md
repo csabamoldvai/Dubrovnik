@@ -1,10 +1,10 @@
 # TODO: refactoring and design lessons
 
 **Written for version 1.2** (commit `7bf6a87` on `main`, 2026-10-12). Status on branch `refactor-app-class`: Classic removed (item 5 below), the main block moved into an `App` class
-(item 1 below; the panels get the app as an argument) and the big dialogs moved into `dubGui/dialogs/` (item 2 below;
-the workbench file went from 2,861 to about 2,100 lines), and the settings became an object
-(`dubLibs/settings.py`, item 3 below; `SerComFrame` no longer saves or loads anything). Open: table-driven menus, and
-moving the panels (`SerComFrame` and the others) out of the main file.
+(item 1 below), the big dialogs moved into `dubGui/dialogs/` (item 2), the settings made an object
+(`dubLibs/settings.py`, item 3) and the panels moved into `dubGui/panels/`. The workbench file went from 2,861 to
+about 1,100 lines. Open: table-driven menus (item 4), and giving the panels what they need as arguments instead of
+`self.app`.
 The numbers below describe the code as it was at that version; the commands in
 [How to measure again](#how-to-measure-again) let you compare later.
 
@@ -165,26 +165,19 @@ Run these from the project folder to compare with the table in section 1 (Git Ba
 the Python part works anywhere).
 
 ```
-wc -l dubGui/dubrovnik_workbench.py dubGui/dubrovnik_workbench_classic.py dubLibs/*.py
-
-# where the main block starts, how long it is, how many functions are nested in it
-grep -n "^if __name__" dubGui/dubrovnik_workbench.py
-awk '/^if __name__/{s=NR} s && /^    def /{c++} END{print c, "nested functions"}' dubGui/dubrovnik_workbench.py
+wc -l dubGui/dubrovnik_workbench.py dubGui/*.py dubGui/panels/*.py dubGui/dialogs/*.py dubLibs/*.py
 ```
 
 ```python
-# longest functions, and how much of the Workbench is repeated in Classic
-import ast
-src = open('dubGui/dubrovnik_workbench.py', encoding='utf-8').read()
-funcs = [(n.end_lineno - n.lineno + 1, n.name) for n in ast.walk(ast.parse(src))
-         if isinstance(n, ast.FunctionDef)]
-print(sorted(funcs, reverse=True)[:6])
-
-a = {l.strip() for l in src.splitlines() if len(l.strip()) > 30}
-b = {l.strip() for l in open('dubGui/dubrovnik_workbench_classic.py', encoding='utf-8').read().splitlines()
-     if len(l.strip()) > 30}
-print(len(a & b), 'of', len(a), 'longer lines are identical in both editions')
+# the longest functions of the program (all of dubGui)
+import ast, glob
+funcs = []
+for path in glob.glob('dubGui/**/*.py', recursive=True):
+    for n in ast.walk(ast.parse(open(path, encoding='utf-8').read())):
+        if isinstance(n, ast.FunctionDef):
+            funcs.append((n.end_lineno - n.lineno + 1, path, n.name))
+print(sorted(funcs, reverse=True)[:8])
 ```
 
-If the main block shrinks, the longest function gets shorter and the duplicated share falls, the refactoring is
-working.
+If the files get shorter, the longest function gets shorter and the panels and dialogs stay free of `self.app`, the
+refactoring is working.
