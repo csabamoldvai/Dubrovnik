@@ -180,7 +180,7 @@ and are not restored automatically.</div>
   <tr><td>Length (0x)</td><td>Number of bytes to program.</td></tr>
 </table>
 <h3>Load from File</h3>
-<p>Click <strong>Open</strong> (or use <em>File &rarr; Open</em>) and choose a
+<p>Click <strong>Open</strong> (or use <em>File &rarr; Open Firmware File</em>, <kbd>Ctrl</kbd>+<kbd>O</kbd>) and choose a
 firmware file. Three formats are accepted, recognised by their content: a raw binary
 (<code>.bin</code>), a Motorola S-record (<code>.srec</code>, <code>.s19</code>, <code>.s28</code>,
 <code>.s37</code>, <code>.mot</code>) and Intel HEX (<code>.hex</code>, <code>.ihex</code>). The Terminal lists what was
@@ -192,7 +192,9 @@ the last file.</p>
   <li><strong>S-record and Intel HEX</strong> carry their own addresses. Each block is programmed at its file address plus
       the Offset (normally 0). The gaps between blocks are not touched.</li>
 </ul>
-<p>Click <strong>Program</strong> to start. A progress window shows the step and the percentage; <strong>Cancel</strong>
+<p>Click <strong>Program</strong> (or <em>File &rarr; Program Loaded File</em>, <kbd>Ctrl</kbd>+<kbd>P</kbd>) to start. The
+menu works also when the panels are hidden: it asks for a confirmation that lists the addresses that will be written, and with the panels
+hidden it also asks for the Offset. A progress window shows the step and the percentage; <strong>Cancel</strong>
 (or Esc) stops between pages, and the device is then partly programmed. The Terminal shows the page-program
 commands with the time for each page and the total.
 <strong>Prog/Verify</strong> is reserved for a later version.</p>
@@ -535,7 +537,10 @@ if "caba0000" not in data:
 <h2 id="menus">10. Menus</h2>
 <h3>File</h3>
 <ul>
-  <li><strong>Open...</strong> &ndash; choose a <code>.bin</code>, S-record or Intel HEX file to program and switch the Program panel to <em>Load from File</em>.</li>
+  <li><strong>Open Firmware File...</strong> (<kbd>Ctrl</kbd>+<kbd>O</kbd>) &ndash; choose a <code>.bin</code>, S-record or Intel HEX file to program and switch the Program panel to <em>Load from File</em>.</li>
+  <li><strong>Program Loaded File</strong> (<kbd>Ctrl</kbd>+<kbd>P</kbd>) &ndash; program the loaded file. It asks for a confirmation that lists the address ranges (with the panels hidden it also asks for the Offset). Nothing is erased first. Greyed out until a file is loaded.</li>
+  <li><strong>Loaded: ...</strong> &ndash; a grey line showing which file is loaded and its size.</li>
+  <li><strong>Close File</strong> &ndash; forget the loaded file.</li>
   <li><strong>Scripts</strong> &ndash; <em>Run Command Script...</em> runs a text file of Terminal commands, <em>Run Python Script...</em> runs a Python file, and <em>Stop Script</em> (<kbd>Esc</kbd>) stops either (see <a href="#scripts">Scripts</a>).</li>
   <li><strong>Save Terminal Log...</strong> &ndash; save the Terminal contents as a text file.</li>
   <li><strong>Parameters</strong> &ndash; <em>Save</em> stores the values of the Erase, Program and Read entry boxes; <em>Load</em> restores the stored values; <em>Defaults</em> resets the boxes to the built-in values (use <em>Save</em> afterwards to keep them).</li>

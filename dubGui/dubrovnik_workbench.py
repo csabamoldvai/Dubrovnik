@@ -658,6 +658,7 @@ class ProgramFrame(LabeledFrame):
     pattn = 'cafe0000'
     incr = '1'
     image = None            # firmware_image.Image loaded with Open
+    imageName = ''
 
     def __init__(self, parent=None, DEBUG=False):
         LabeledFrame.__init__(self, parent, text='Program')
@@ -683,13 +684,13 @@ class ProgramFrame(LabeledFrame):
                                       value=self.progModeList[1], command=self.grayOutEntry)
         rb_pattn.grid(row=3, column=0, padx=10, pady=2, sticky=W)
 
-        lbl1_prog = ctk.CTkLabel(self, text='Pattern: 0x')
+        lbl1_prog = self.lbl1_prog = ctk.CTkLabel(self, text='Pattern: 0x')
         lbl1_prog.grid(row=1, column=1, padx=5, pady=5, sticky=E)
         self.ent1_prog = ctk.CTkEntry(self, textvariable=self.pattern, width=80, height=ENTRY_HEIGHT)
         self.ent1_prog.grid(row=1, column=2, padx=(0, 10))
         self.pattern.set('caba0000')
 
-        lbl2_prog = ctk.CTkLabel(self, text='Increment: 0x')
+        lbl2_prog = self.lbl2_prog = ctk.CTkLabel(self, text='Increment: 0x')
         lbl2_prog.grid(row=2, column=1, padx=5, pady=5, sticky=E)
         self.ent2_prog = ctk.CTkEntry(self, textvariable=self.increment, width=80, height=ENTRY_HEIGHT)
         self.ent2_prog.grid(row=2, column=2, padx=(0, 10))
@@ -701,7 +702,7 @@ class ProgramFrame(LabeledFrame):
         self.ent3_prog.grid(row=3, column=2, padx=(0, 10))
         self.start_addr.set('60')
 
-        lbl4_prog = ctk.CTkLabel(self, text='Length: 0x')
+        lbl4_prog = self.lbl4_prog = ctk.CTkLabel(self, text='Length: 0x')
         lbl4_prog.grid(row=4, column=1, padx=5, pady=5, sticky=E)
         self.ent4_prog = ctk.CTkEntry(self, textvariable=self.length, width=80, height=ENTRY_HEIGHT)
         self.ent4_prog.grid(row=4, column=2, padx=(0, 10))
@@ -737,18 +738,24 @@ class ProgramFrame(LabeledFrame):
         incr = self.increment.get().strip()
 
     def grayOutEntry(self):
-        if self.progModeVar.get() == 'file':
-            self.ent1_prog.configure(state=DISABLED)
-            self.ent2_prog.configure(state=DISABLED)
-            self.ent4_prog.configure(state=DISABLED)
-            self.btn_openFile.configure(state=NORMAL)
-            self.lbl3_prog.configure(text='Offset: 0x')   # added to file addresses
-        else:
-            self.lbl3_prog.configure(text='Start Address: 0x')
-            self.ent1_prog.configure(state=NORMAL)
-            self.ent2_prog.configure(state=NORMAL)
-            self.ent4_prog.configure(state=NORMAL)
-            self.btn_openFile.configure(state=DISABLED)
+        """Pattern mode uses Pattern, Increment, Start Address and Length; file
+        mode uses only the Offset (the Start Address entry) and Open. What a mode
+        does not use is greyed out, labels included."""
+        fileMode = self.progModeVar.get() == 'file'
+        unused = ((self.lbl1_prog, self.ent1_prog), (self.lbl2_prog, self.ent2_prog),
+                  (self.lbl4_prog, self.ent4_prog))
+        for label, entry in unused:
+            if fileMode:
+                label.configure(text_color=PAL['text_disabled'])
+                entry.configure(state=DISABLED, fg_color=PAL['panel'],
+                                text_color=PAL['text_disabled'])
+            else:
+                label.configure(text_color=PAL['text'])
+                entry.configure(state=NORMAL, fg_color=PAL['entry'],
+                                text_color=PAL['text'])
+        self.btn_openFile.configure(state=NORMAL if fileMode else DISABLED)
+        self.lbl3_prog.configure(
+            text='Offset: 0x' if fileMode else 'Start Address: 0x')
 
     def program(self):
         if serCom.scriptBusy():
@@ -839,7 +846,30 @@ class ProgramFrame(LabeledFrame):
                       f'firmware image:\n{e}')
             return False
         self.imageName = os.path.basename(filename)
+        self.announce()
         return True
+
+    def rangesText(self, offset=0, limit=6):
+        """The address ranges the loaded image occupies at this offset, one
+        per line (long lists are shortened)"""
+        lines = [f'  0x{a + offset:X} to 0x{a + offset + len(d) - 1:X}  '
+                 f'({len(d)} bytes)' for a, d in self.image.segments]
+        if len(lines) > limit:
+            lines = lines[:limit] + [f'  ... and {len(lines) - limit} more']
+        return '\n'.join(lines)
+
+    def announce(self):
+        """Tells the user what was loaded (Terminal and status bar)"""
+        term.displayText(f'Loaded {self.imageName}: {self.image.describe()}\n')
+        if len(self.image.segments) > 1:
+            term.displayText(self.rangesText() + '\n')
+        term.displayText('Addresses are used as in the file, plus the Offset '
+                         '(File > Program Loaded File, or the Program panel). '
+                         'Erase first if needed.\n')
+        showStatus(f'Loaded {self.imageName}: {self.image.describe()}', 8000)
+
+    def closeFile(self):
+        self.image, self.imageName = None, ''
 
 
 class EraseFrame(LabeledFrame):
@@ -1573,7 +1603,13 @@ if __name__ == "__main__":
 
     file_menu = Menu(root, tearoff=False, font=menuFont)
     my_menu.add_cascade(label="File", menu=file_menu)
-    file_menu.add_command(label="Open...", command=lambda: openForProgramming())
+    file_menu.add_command(label="Open Firmware File...", accelerator="Ctrl+O",
+                          command=lambda: openForProgramming())
+    file_menu.add_command(label="Program Loaded File", accelerator="Ctrl+P",
+                          command=lambda: programLoadedFile())
+    file_menu.add_command(label="No file loaded", state=DISABLED)
+    file_menu.add_command(label="Close File", command=lambda: closeLoadedFile())
+    file_menu.add_separator()
     scripts_menu = Menu(file_menu, tearoff=False, font=menuFont)
     file_menu.add_cascade(label="Scripts", menu=scripts_menu)
     scripts_menu.add_command(label="Run Command Script...",
@@ -1628,8 +1664,8 @@ if __name__ == "__main__":
     # File > Parameters: save / load / reset the entry-box values of the Erase,
     # Program and Read panels (the only settings that are NOT saved automatically)
     params_menu = Menu(file_menu, tearoff=False, font=menuFont)
-    file_menu.insert_cascade(4, label="Parameters", menu=params_menu)
-    file_menu.insert_separator(5)                    # before "Exit"
+    file_menu.insert_cascade(8, label="Parameters", menu=params_menu)
+    file_menu.insert_separator(9)                    # before "Exit"
 
     def showStatus(msg, ms=3000):
         """Shows msg in the status bar for a few seconds"""
@@ -1781,22 +1817,84 @@ if __name__ == "__main__":
     root.bind('<Escape>', lambda _e: stopScript())
 
     def openForProgramming():
-        """File > Open: pick a .bin file and set the Program panel up to
-        program it ("Load from File" mode)"""
+        """File > Open Firmware File: pick a .bin, S-record or Intel HEX file and
+        set the Program panel up for it ("Load from File" mode)"""
         if program.openFile():
             program.progModeVar.set('file')
             program.grayOutEntry()
-            image = program.image
-            term.displayText(f'Loaded {program.imageName}: {image.describe()}\n')
-            if len(image.segments) > 1:
-                for address, data in image.segments:
-                    term.displayText(f'    0x{address:X} to '
-                                     f'0x{address + len(data) - 1:X}  '
-                                     f'({len(data)} bytes)\n')
-            term.displayText('Addresses are used as in the file, plus the '
-                             'Offset in the Program panel. Erase first if '
-                             'needed.\n')
-            showStatus(f'Loaded {program.imageName}: {image.describe()}', 8000)
+
+    def programLoadedFile():
+        """File > Program Loaded File: with the panels shown it asks for a
+        confirmation (the Offset is the one in the Program panel); with the
+        panels hidden the question also asks for the Offset."""
+        image = program.image
+        if image is None:
+            showinfo('Program', 'No file is loaded.\nUse File > Open Firmware '
+                     'File first.')
+            return
+        if not scriptReady():
+            return
+        if serCom.showPanels:
+            try:
+                offset = parseField('Offset', program.start_addr.get())
+            except ValueError as e:
+                showerror('Program', str(e))
+                return
+            text = (f'Program {program.imageName} ({image.describe()})?\n\n'
+                    f'It will be written to:\n{program.rangesText(offset)}\n\n'
+                    'Nothing is erased first.')
+            if not dialogBox('Program File', text,
+                             [('Program', True), ('Cancel', False)]):
+                return
+        else:
+            text = (f'Program {program.imageName} ({image.describe()}).\n\n'
+                    f'Addresses in the file:\n{program.rangesText()}\n\n'
+                    'Offset (hex) added to every address, normally 0. '
+                    'Nothing is erased first.')
+            answer = dialogBox('Program File', text,
+                               [('Program', None), ('Cancel', False)], '0')
+            if answer is False:
+                return
+            try:
+                offset = parseField('Offset', answer)
+            except ValueError as e:
+                showerror('Program', str(e))
+                return
+            program.start_addr.set(f'{offset:X}')
+        program.progModeVar.set('file')
+        program.grayOutEntry()
+        program.program()
+
+    def closeLoadedFile():
+        """File > Close File: forget the loaded file"""
+        program.closeFile()
+        showStatus('File closed')
+
+    def refreshFileMenu():
+        """File menu opens: Program and Close need a loaded file; the grey
+        line says which one is loaded"""
+        image = program.image
+        state = NORMAL if image is not None else DISABLED
+        file_menu.entryconfigure(1, state=state)
+        file_menu.entryconfigure(3, state=state)
+        file_menu.entryconfigure(
+            2, label=(f'Loaded: {program.imageName} ({image.size} bytes)'
+                      if image is not None else 'No file loaded'))
+
+    file_menu.configure(postcommand=refreshFileMenu)
+
+    def fileShortcut(action):
+        """Runs a menu action from a key; 'break' keeps the Terminal's own
+        Ctrl+O / Ctrl+P (open line, previous line) from also running"""
+        def handler(_event=None):
+            action()
+            return 'break'
+        return handler
+
+    root.bind('<Control-o>', fileShortcut(lambda: openForProgramming()))
+    root.bind('<Control-p>', fileShortcut(lambda: programLoadedFile()))
+    term.txt.bind('<Control-o>', fileShortcut(lambda: openForProgramming()))
+    term.txt.bind('<Control-p>', fileShortcut(lambda: programLoadedFile()))
 
     def saveTerminalLog():
         """File > Save Terminal Log: write the Terminal contents to a text file"""

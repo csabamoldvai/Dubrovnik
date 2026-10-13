@@ -8,6 +8,26 @@ To release a new version: change VERSION in dubLibs\version.py, add an entry at
 the top of this file, commit, then tag the commit:  git tag v<VERSION>
 
 
+VERSION 1.1.5                                                      2026-10-13
+-----------------------------------------------------------------------------
+Programming a file from the File menu, also with the panels hidden.
+
+New (both editions):
+  * File > Open Firmware File... (Ctrl+O) replaces File > Open.
+  * File > Program Loaded File (Ctrl+P) programs the loaded file. It asks for a
+    confirmation that lists the address ranges that will be written; with the
+    panels hidden it also asks for the Offset. Nothing is erased first.
+  * A grey line in the File menu shows which file is loaded ("Loaded: name (N
+    bytes)"), and File > Close File forgets it.
+  * Loading a file from the Program panel's Open button also lists what was loaded
+    in the Terminal.
+
+Changed:
+  * In "Load from File" mode the labels of the unused entries (Pattern, Increment,
+    Length) are greyed out together with the entries, and the unused entries are
+    drawn greyed in the Workbench.
+
+
 VERSION 1.1.4                                                      2026-10-13
 -----------------------------------------------------------------------------
 Programming from S-record and Intel HEX files, a progress window, and the open
