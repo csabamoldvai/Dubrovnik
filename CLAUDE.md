@@ -9,8 +9,12 @@ Current released version: 1.2. Read `README.md` (overview), `FOLDERS.md` (what e
 - **Versions:** never change the version, tag, build an installer or create a release unless the user says so.
   The next release that changes code is 1.2.1. A later release after the refactoring and removal of Classic may
   be called 2.0 (user's choice, decide then).
-- **Git:** never commit or push without being asked. Never move or delete a pushed tag. Commit messages end with
-  the Co-Authored-By line given by the harness.
+- **Git:** during the refactoring, commit after every green step (both test sets pass) and push the branch
+  `refactor-app-class` right after (standing permission). Never push to `main`, never push tags, never amend or
+  force-push pushed commits (fix forward or `git revert`). Outside the refactoring, commit and push only when asked.
+  Never move or delete a pushed tag. Commit messages end with the Co-Authored-By line given by the harness.
+- **Version during the refactoring:** `dubLibs/version.py` stays at 1.2.1 (already set, not tagged). Do not bump it
+  per commit; tag `v1.2.1` only when the user says so.
 - **Classic edition** was removed (first step of the refactoring). It lives on in tag `v1.2`; do not bring it back or
   add features for it. There is one program now: `dubGui/dubrovnik_workbench.py`.
 - **Refactoring** is done on a separate branch (`refactor-app-class`), in small steps, one commit per step, and
