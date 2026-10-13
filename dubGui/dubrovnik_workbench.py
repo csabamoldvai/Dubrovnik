@@ -29,8 +29,15 @@ from dubLibs import documents
 from dubLibs import firmware_image
 from dubLibs import hexdump
 from dubLibs import termstyle
+from dubLibs.fields import parseField
 from dubLibs.version import VERSION as APP_VERSION
 from dubLibs import dubrovnik  # instead of "from dubLibs import Dubrovnik as du"
+from dubGui.dialogs import messages
+from dubGui.dialogs.hex_dialog import HexDialog
+from dubGui.dialogs.progress import ProgramCancelled, ProgressDialog
+from dubGui.look import (
+    CHECKBOX_STYLE, ENTRY_HEIGHT, PAL, PANEL_BORDER, RADIO_STYLE, TERM_THEMES,
+    styleCombobox, styleMenus)
 
 PROMPT = '>>> '
 CLEAR_CMD = 'clear'
@@ -126,30 +133,6 @@ def hexOptions(serCom):
     """The View > Hex Dump settings (kept by serCom) as keyword arguments of hexdump"""
     return dict(per_row=serCom.hexRow, show_ascii=serCom.hexAscii,
                 upper=serCom.hexUpper, gap=serCom.hexGap)
-
-
-def parseField(name, text, base=16, signed=False):
-    """Validates an entry-box string and returns it as an int.
-    Raises ValueError with a user-readable message if it is empty or invalid."""
-    text = text.strip()
-    if text == '':
-        raise ValueError(f'"{name}" is empty. Enter a value.')
-    try:
-        value = int(text, base)
-    except ValueError:
-        kind = 'hexadecimal' if base == 16 else 'decimal'
-        raise ValueError(f'"{name}" is not a valid {kind} number: {text}')
-    if value < 0 and not signed:
-        raise ValueError(f'"{name}" must not be negative: {text}')
-    return value
-
-
-from dubGui.dialogs import messages
-from dubGui.dialogs.hex_dialog import HexDialog
-from dubGui.dialogs.progress import ProgramCancelled, ProgressDialog
-from dubGui.look import (          # noqa: E402  (after the sys.path line above)
-    CHECKBOX_STYLE, ENTRY_HEIGHT, PAL, PANEL_BORDER, RADIO_STYLE, TERM_THEMES,
-    styleCombobox, styleMenus)
 
 
 class LabeledFrame(ctk.CTkFrame):
