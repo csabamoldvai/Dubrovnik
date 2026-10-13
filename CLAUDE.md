@@ -31,7 +31,7 @@ Current released version: 1.2. Read `README.md` (overview), `FOLDERS.md` (what e
 ## Commands (run from the project folder, C:\MyLibs\Dubrovnik)
 
 ```
-python -m unittest discover -s tests            unit tests, no windows, about 1 second (38 tests, 1 skipped on a clone)
+python -m unittest discover -s tests            unit tests, no windows, about 1 second (55 tests, 1 skipped on a clone)
 python dubScripts\gui_tests\run_all.py          window checks, about 30 seconds (personal folder)
 python dubScripts\gui_tests\check_menus.py wb   one check
 python dubGui\dubrovnik_workbench.py            run the Workbench from source
@@ -61,5 +61,8 @@ the project's. The window checks never touch the user's real settings (`%APPDATA
   to it), `look.py` (colours and widget styles) and `dialogs/` (one module per window: `messages`, `progress`,
   `hex_dialog`, `file_viewer`, `terminal_dialog`, `assistant_window`; each class is given what it needs, not the app).
   `dubLibs/` shared libraries without GUI code (`boardcom`, `dubrovnik`,
-  `firmware_image`, `hexdump`, `run_py_script`, `cfgfile`, `termstyle`, `datasheet`, `assistant`)
+  `firmware_image`, `hexdump`, `run_py_script`, `cfgfile`, `termstyle`, `datasheet`, `assistant`, `fields`, `settings`)
+- Settings: one `dubLibs/settings.py` `Settings` object, made by `App` (`app.settings`) and given to whoever needs
+  it (`self.app.settings` in the panels, a constructor argument in the dialogs). It loads, validates and saves the
+  file; `App.loadSettings` puts the entry-box values into the panels. `SerComFrame` only does the connection.
 - `tools/` Tools-menu scripts; `tests/` unit tests and `tests/data/`; `help/` the F1 guide; `docs/` Help > Documents.
