@@ -127,8 +127,6 @@ class App:
     library object). The menu actions and dialogs are its methods."""
 
     def __init__(self):
-        app = self      # for the nested class below, whose own self is another object
-
         self.root = ctk.CTk()
         self.root.title(f'Dubrovnik Workbench {APP_VERSION}')
 
@@ -294,8 +292,7 @@ class App:
             # * At this point we are connected to the UART chip on Dubrovnik, but not yet
             # * to the MCU. It may require a manual RESET to boot.
             if self.serCom.portStatus == 'connected':   # the port could be opened
-                resp = comm.connectToMCU()
-                # print(resp)
+                comm.connectToMCU()
                 self.term.clear()
 
                 if comm.isFlashPresent() == 0:
