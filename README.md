@@ -88,14 +88,120 @@ docs/        documents shown in Help > Documents (schematic, training guide, how
 changelist.txt, TODO List Dubrovnik.txt, requirements.txt, requirements-dev.txt
 ```
 
-Folders kept locally and not tracked by git (see `.gitignore`): `dubScripts/` (example and personal scripts),
-`dubUtils/` (older utilities such as `.srec` handling) and `packaging/` (installer build).
+What is in each folder:
+
+| Folder | Contents | In git |
+|---|---|---|
+| `dubGui/` | The two programs (Workbench and Classic) | yes |
+| `dubLibs/` | Shared libraries: board communication, firmware file reader, hex dump, script support | yes |
+| `tools/` | Scripts of the Tools menu (a `# TOOL:` header makes an entry) | yes |
+| `help/`, `docs/` | The built-in user guide; documents of the Help > Documents menu | yes |
+| `tests/` | Unit tests (`python -m unittest discover -s tests`); `tests/data/` holds the sample firmware images and dumps | yes |
+| `dubScripts/` | Your own command and Python scripts and examples (`legacy/` holds old scripts) | no |
+| `dubUtils/` | Small stand-alone utilities, e.g. `text2bin_file.py` | no |
+| `packaging/` | Installer build | no |
+
+The folders marked "no" are kept locally and not tracked by git (see `.gitignore`). See [FOLDERS.md](FOLDERS.md) for the full folder guide and how we share scripts and data.
 
 ## Versions and releases
 
 The version number is set in one place, [dubLibs/version.py](dubLibs/version.py); the About dialogs, the help
-file and the installer read it from there. To release: change `VERSION`, add an entry at the top of
-`changelist.txt`, commit, and tag the commit (`git tag -a v1.1 -m "Version 1.1"`).
+file, the installer and the file properties of the `.exe` files read it from there.
+
+**Numbering.** `1.2` is a feature release (new things people will notice), `1.2.1` a fix release. Earlier
+feature releases are tagged `v1.0`, `v1.1`, `v1.2`; fix releases `v1.1.3` and so on. The tag is always the
+version with a `v` in front.
+
+### Release checklist
+
+1. **Test.** `python -m unittest discover -s tests` must pass. Run the program from source and try the new
+   features, on the board if you can (the tests use a fake board).
+2. **Set the version.** Change `VERSION` in `dubLibs/version.py` (for example `'1.2'`) and the
+   "Current version" line at the top of this README.
+3. **Write the change list.** Add an entry at the top of `changelist.txt`, above the previous version, with
+   the same heading layout (`VERSION 1.2   <date>`, a line of dashes, a short summary, then "New:",
+   "Changed:" and "Fixed:" lists).
+4. **Check the help guide** (`help/dubrovnik_help.html`): new menu items, settings and script calls are
+   described, and nothing refers to things that were removed.
+5. **Build the installer.** Run `packaging\build.bat`. It creates
+   `packaging\installer\Dubrovnik-Setup-<version>.exe`. Start both programs from `packaging\dist\Dubrovnik`
+   once to see that they open, and check the version in the title bar.
+6. **Commit and tag.**
+   ```
+   git add -A README.md changelist.txt dubGui dubLibs help tests
+   git commit -m "Version 1.2: <one line summary>"
+   git tag -a v1.2 -m "Version 1.2"
+   git push origin main
+   git push origin v1.2
+   ```
+   Run `git status` first: personal files (`dubScripts/`, `dubUtils/`, `packaging/`) must not be added.
+7. **Write the release notes** for GitHub (see the template below) and save them as
+   `packaging\release_notes_<version>.md` next to the installer, so the text is kept.
+8. **Publish the release** on GitHub (next section).
+
+### Publishing the release on GitHub
+
+A GitHub release is the download page for a version. The tag from step 6 must already be pushed.
+
+1. Open the repository on GitHub, then **Releases** (right side of the main page) and **Draft a new release**
+   (or go to `https://github.com/csabamoldvai/Dubrovnik/releases/new`).
+2. Fill in the form:
+
+| Field | What to enter |
+|---|---|
+| **Choose a tag** | Pick the existing tag, for example **v1.2**. Do not create a new one here; this field must match the tag you pushed. |
+| **Target** | Not shown for an existing tag (it is the tagged commit). |
+| **Previous tag** (only used by "Generate release notes") | Leave on *auto*. We write the notes ourselves. |
+| **Release title** | `Dubrovnik Workbench 1.2` (product name and version, no `v`). |
+| **Description** | Open `packaging\release_notes_1.2.md` in a text editor, select all, copy, and paste it here. GitHub shows the formatting in the **Preview** tab. Do not paste `changelist.txt`: it is long and written for developers. |
+| **Attach binaries** | Drag `packaging\installer\Dubrovnik-Setup-1.2.exe` onto the box at the bottom, or click it to browse. Wait until the file name appears with its size. Do not attach the `dist` folder; the installer contains everything. GitHub adds the source code (zip and tar.gz) by itself. |
+| **Set as a pre-release** | Tick it if this version has not been tried on a real board. Leave it unticked for a normal release. |
+| **Set as the latest release** | Leave ticked for a normal release. |
+| **Create a discussion for this release** | Leave unticked. |
+
+3. Click **Publish release** (or **Save draft** to look at it first). A published release can be edited
+   later with the pencil icon, so a typo in the notes is easy to fix.
+4. Check it: open the release page, download the installer, and compare its size with
+   `packaging\installer`. The installer is not code-signed, so Windows SmartScreen may show "More info" /
+   "Run anyway"; the release notes say so.
+
+**With the GitHub command-line tool** (`gh`, after `gh auth login`) the same release is one command:
+
+```
+gh release create v1.2 packaging\installer\Dubrovnik-Setup-1.2.exe --title "Dubrovnik Workbench 1.2" --notes-file packaging\release_notes_1.2.md
+```
+
+Add `--prerelease` for a pre-release.
+
+**Release notes template** (`packaging\release_notes_<version>.md`; the 1.0, 1.1 and 1.2 files are examples):
+
+```
+## Dubrovnik Workbench <version>
+
+One or two sentences: what this version is about, and "Installs over <previous> and keeps your settings."
+
+### New
+- **Feature name:** what it does for the user, in one or two lines.
+
+### Changed
+- Behaviour that is different from before.
+
+### Fixed
+- Problems that are gone (leave this section out if there are none).
+
+### Install
+Download `Dubrovnik-Setup-<version>.exe` and run it. No admin rights are needed. The installer is not
+code-signed, so Windows SmartScreen may ask you to confirm ("More info" > "Run anyway"). Details are in
+`changelist.txt`.
+```
+
+Write for the people who install the program, not for developers: user-visible features first, no file names
+of source code, short sentences.
+
+**If something is wrong after publishing.** A wrong description or file: edit the release and replace the
+file. A wrong tag (the tag points at the wrong commit): delete the release and the tag
+(`git tag -d v1.2` and `git push origin :refs/tags/v1.2`), fix the problem, and start again from step 6.
+Do not move a tag that other people may already have downloaded; make a new fix release (`1.2.1`) instead.
 
 ## Building the installer
 

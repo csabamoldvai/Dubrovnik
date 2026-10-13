@@ -6,7 +6,9 @@ dubGui/dev/
 dubGui/temp/
 dubLibs/__pycache__
 dubScripts/*
+!dubScripts/README.txt
 dubUtils/*
+!dubUtils/README.txt
 packaging/*
 
 
