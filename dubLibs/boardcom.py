@@ -82,7 +82,7 @@ class BoardComm:
         may be 'FTDI', but not Dubrovnik boards. These ports are not valid for our app
         """
         portList = []
-        ports = serial.tools.list_ports.comports()
+        ports = comports()
         for i in range(len(ports)):
             if ports[i].manufacturer == 'FTDI':  # find ports made by 'FTDI'
                 portList.append(ports[i].device)
