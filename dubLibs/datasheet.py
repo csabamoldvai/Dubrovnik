@@ -43,13 +43,33 @@ def _key(text):
     return re.sub(r'[^a-z0-9]', '', text.lower())
 
 
+def _candidates(part):
+    """Part number spellings to look for, most specific first: the full string,
+    then shorter forms without the ordering suffix, e.g. AT25SL128A-MHE-T gives
+    AT25SL128A-MHE, AT25SL128A, AT25SL128. Cutting is only done at a - _ or
+    space, or by dropping trailing letters after the last digit, so AT25SL128
+    never turns into AT25SL1."""
+    found = []
+
+    def add(text):
+        key = _key(text)
+        if len(key) >= 4 and key not in found:
+            found.append(key)
+    parts = re.split(r'([-_ ])', part)
+    while parts:
+        add(''.join(parts))
+        parts = parts[:-2] if len(parts) > 2 else []
+    for key in list(found):
+        add(re.sub(r'[a-z]+$', '', key))
+    return found
+
+
 def find_local(folders, part):
     """Full path of a datasheet file for part in one of the folders (searched
-    in order, including a 'datasheets' subfolder), or ''. The part number must
-    appear in the file name, ignoring case, spaces, dashes and underscores."""
-    want = _key(part)
-    if not want:
-        return ''
+    in order, including a 'datasheets' subfolder), or ''. The part number (or a
+    shorter form of it, see _candidates) must appear in the file name, ignoring
+    case, spaces, dashes and underscores. The most specific spelling wins."""
+    files = []
     for folder in folders:
         for sub in ('', 'datasheets'):
             where = os.path.join(folder, sub)
@@ -60,7 +80,10 @@ def find_local(folders, part):
             for name in names:
                 path = os.path.join(where, name)
                 if (os.path.isfile(path)
-                        and name.lower().endswith(DATASHEET_EXTENSIONS)
-                        and want in _key(os.path.splitext(name)[0])):
-                    return path
+                        and name.lower().endswith(DATASHEET_EXTENSIONS)):
+                    files.append((_key(os.path.splitext(name)[0]), path))
+    for want in _candidates(part):
+        for key, path in files:
+            if want in key:
+                return path
     return ''

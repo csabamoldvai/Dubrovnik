@@ -8,6 +8,18 @@ To release a new version: change VERSION in dubLibs\version.py, add an entry at
 the top of this file, commit, then tag the commit:  git tag v<VERSION>
 
 
+VERSION 1.1.3                                                      2026-10-12
+-----------------------------------------------------------------------------
+Fix for Help > Datasheet.
+
+Fixed:
+  * Help > Datasheet did not find a local datasheet file when the part number in the
+    status bar was longer than the one in the file name (for example the status bar
+    showing AT25SL128A-MHE-T and the file named ...AT25SL128...). It now also tries
+    shorter forms of the part number (without the ordering suffix), most specific
+    first, so the file is found. A different part (AT25SL161) still does not match.
+
+
 VERSION 1.1.2                                                      2026-10-12
 -----------------------------------------------------------------------------
 Terminal and menu customization, a datasheet shortcut, and a matching Display
