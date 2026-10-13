@@ -47,7 +47,10 @@ the project's. The window checks never touch the user's real settings (`%APPDATA
   test harness imports the module and builds an `App`: replace a method by assigning it on `app.workbench`, replace a
   plain module name (`askopenfilename`, `showerror`) in `app.live` (= the module's `__dict__`). The panels reach
   the rest of the program through `self.app` (e.g. `self.app.serCom`, `self.app.term`).
-- Menus are built by index (`insert_cascade(5, ...)`). Adding an item shifts the numbers below it.
+- Menus are tables in `dubGui/menus.py` (`File`, `View`, `Help`; Tools and Documents are filled when they open). Add or
+  move an item there; find it in code by its key (`self.menus['view'].configure('panels', ...)`), never by number.
+  A command is the name of an `App` method. After a menu change, run `check_menu_structure.py` and, if the change is
+  meant, `python dubScripts\gui_tests\menu_dump.py --write` and read the difference of `menus_golden.json` in git.
 - A window opened by the program takes the keyboard focus about 150 ms later: tests must `app.settle()` first.
 - `tests/data` must stay byte-for-byte (`.gitattributes`); the sample files are used by tests.
 - Edits made through shell here-documents have lost backslash escapes (`\n` in strings) more than once. Prefer the
@@ -58,7 +61,7 @@ the project's. The window checks never touch the user's real settings (`%APPDATA
 ## Where things are
 
 - `dubGui/` the program: `dubrovnik_workbench.py` (the `App` class: menus, actions, start-up; a compact launcher next
-  to it), `look.py` (colours and widget styles), `panels/` (one module per panel: `serial_panel`, `erase_panel`,
+  to it), `look.py` (colours and widget styles), `menus.py` (the menus as tables), `panels/` (one module per panel: `serial_panel`, `erase_panel`,
   `program_panel`, `read_panel`, `terminal`, base class in `base`) and `dialogs/` (one module per window: `messages`,
   `progress`, `hex_dialog`, `file_viewer`, `terminal_dialog`, `assistant_window`). Panels get the app (`self.app`),
   dialogs get only what they need as arguments.

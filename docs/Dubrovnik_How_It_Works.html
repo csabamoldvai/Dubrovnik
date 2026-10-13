@@ -57,6 +57,7 @@ line, sends it and shows the reply.</p>
   <tr><th style="width:230px">File</th><th>Role</th></tr>
   <tr><td><code>dubGui/dubrovnik_workbench.py</code></td><td>The Workbench (CustomTkinter): the <code>App</code> class with the menus, the actions and the start-up logic.</td></tr>
   <tr><td><code>dubGui/panels/</code></td><td>The panels of the main window, one module each: Serial Connection, Erase, Program, Read and the Terminal.</td></tr>
+  <tr><td><code>dubGui/menus.py</code></td><td>The menus as tables (File, View, Help, Tools) and the code that builds them; an item is found by its key, not its position.</td></tr>
   <tr><td><code>dubGui/look.py</code></td><td>Colours and widget styles of the Workbench.</td></tr>
   <tr><td><code>dubGui/dialogs/</code></td><td>The other windows, one module each: About and message box, progress, Hex Dump and Terminal settings, file viewer, Assistant.</td></tr>
   <tr><td><code>dubLibs/boardcom.py</code></td><td>The serial link: finds the COM port, connects, <code>send()</code> a command and <code>response()</code>.</td></tr>
