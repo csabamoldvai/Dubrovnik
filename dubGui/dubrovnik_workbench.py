@@ -27,6 +27,7 @@ from dubLibs import datasheet
 from dubLibs import documents
 from dubLibs import firmware_image
 from dubLibs import hexdump
+from dubLibs import settings as settings_lib
 from dubLibs import termstyle
 from dubLibs.fields import parseField
 from dubLibs.version import VERSION as APP_VERSION
@@ -98,25 +99,10 @@ def showHelp(_event=None):
     except OSError:
         pass                        # fall back to the original file
     webbrowser.open(pathlib.Path(path).as_uri())
-# Default value of every remembered setting (also the fallback for bad values)
-CFG_DEFAULTS = dict(
-    autoConnect=0, lastUsedPort='',
-    eraseBlkSize='4', eraseStartAddr='0', eraseNumBlocks='1',
-    progPattern='cafe0000', progIncrement='1', progStartAddr='0',
-    progLength='100',
-    readSpiMode='SPI', readStartAddr='0', readLength='100',
-    appearance='system', terminalTheme='dark', showPanels=True,
-    displayMode='Binary (b)', scriptFolder='', programFolder='',
-    menuTextSize='normal',
-    # Terminal look (View > Terminal...). terminalTheme is one of TERM_CHOICES;
-    # the three colours are used by the 'custom' theme.
-    terminalBg='#1B1F24', terminalFg='#D6DBE1', terminalSelect='#34506E',
-    terminalFont='Consolas', terminalFontSize=15,
-    datasheetUrl=datasheet.DEFAULT_URL,     # Help > Datasheet Source...
-    # View > Hex Dump...: layout of the Read panel's Hex Dump display mode
-    hexBytesPerRow=16, hexAscii=True, hexUpper=True, hexGap=True)
 
-TERM_CHOICES = ('auto', 'light', 'dark', 'custom')   # 'auto' follows the window
+
+CFG_DEFAULTS = settings_lib.DEFAULTS   # see dubLibs/settings.py
+TERM_CHOICES = settings_lib.TERM_CHOICES
 TERM_SIZE_MIN, TERM_SIZE_MAX = termstyle.SIZE_MIN, termstyle.SIZE_MAX
 
 # View > Menu text size: size in unscaled px of the menu bar and the pop-up
