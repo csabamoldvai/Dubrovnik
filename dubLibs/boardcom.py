@@ -12,8 +12,6 @@ import serial
 from serial.tools.list_ports import comports
 from tkinter.messagebox import askretrycancel, showerror
 
-# PROMPT = b">>> "  # ? Is anyone using this?
-
 
 class BoardComm:
     """wrapper for communications interface
@@ -45,20 +43,16 @@ class BoardComm:
         try:
             self.handle = serial.Serial(
                 comport, self.baudrate, timeout=2)  # ! was: timeout=600
-            # print(self.handle)
         except serial.SerialException:
             print("Error: cannot open", comport)
-            # raise IOError("cannot open " + comport)
             askretrycancel('Comport Error', f'Cannot open port {comport}\n \
                            Make sure it is not used by another program')
             self.handle = None      # not connected (don't keep an old, closed port)
         return self.handle
-        # return comport
 
     def disconnect(self, comport, echo=1):
         if comport:
             self.handle.close()
-            # print(self.handle)
         if echo:
             print(f'\nDisconnected from {comport}...')
 
@@ -114,15 +108,6 @@ class BoardComm:
         portList.sort()  # in-place sorting of the list
         return portList  # return sorted port list
 
-        # while portList == []:
-        #     if askretrycancel('Dubrovnik Workbench Error',
-        #                       'COM Port Not Found!\nConnect USB cable.\nTurn on the board.\nPress RESET button.\nRetry?'):
-        #         portList = self.getPortList()
-        #     else:
-        #         sys.exit
-        #         break
-        # portList.sort()  # in-place sorting of the list
-        # return portList  # return sorted port list
 
     def find_and_connect(self, desiredPort='auto', echo=0):
         """### Finds all USB serial ports that have a potential Dubrovnik board connected to it
@@ -170,7 +155,6 @@ class BoardComm:
         self.textToDisplay = resp  # save response for printing
 
         if "ver" in resp:  # the MCU responded to ver command. We have comms with MCU
-            # print(resp)
             pass
         elif '*****' in resp:  # this is a response when the RESET button was pressed
             print('Clearing RESET message from the input buffer')
@@ -196,7 +180,6 @@ class BoardComm:
             removeCmd=True, removePrompt=True, returnAsList=True)
         try:
             partNum = cfg[0].split('=')[1].strip().lower()
-            # print(partNum)
         except IndexError:
             return 0  # TODO under some conditions even after reset cfg invalid
 
@@ -293,54 +276,10 @@ class BoardComm:
         else:
             return resp
 
-    # def sendvrfy(self, cm, annotation=None, showout=False, reflines=None):
-
-    # def sendvrfy(self, cm, annotation=None, reflines=None):
-    #     """Send a command 'cm' and optionally verify result via 'assert'.
-    #     This method produces text
-    #     If annotation not provided, 'assert' will use 'cm'.
-    #     If 'progress' is True, inform when done.
-    #     """
-    #     vout = self.vrfyout     # verify-out stream
-    #     self.send(cm)
-    #     resp = self.response()
-    #     if annotation is None:
-    #         annotation = cm
-
-    #     # verify successful completion of command
-    #     assert resp.endswith(self.prompt), annotation
-    #     if self.vrfyprogress:
-    #         print(" .", annotation, "done", file=vout)
-    #     resplines = self.responselines()
-    #     if reflines:
-    #         matched = True
-    #         for ref, got in zip(reflines, resplines):
-    #             assert ref == got, annotation
-    #             if ref != got:
-    #                 matched = False
-    #                 break
-    #         if not matched:
-    #             matched = False
-
-    #         return matched
-    #     else:
-    #         return True
-
 
 if __name__ == '__main__':
-    # import threading
-    # comm = BoardComm()
-    # comPort = comm.find_and_connect(echo=0)
-    # comm.disconnect(comPort, echo=0)
     comm = BoardComm()
     comPort = comm.find_and_connect(echo=1)
-
-    # cmdList = ['5', '0b 00 20;wait 00', 'dvar wait_time']
-
-    # for cmd in cmdList:
-    #     # comm.send(cmd)
-    #     resp = comm.term_send(cmd, getResponse=True, removeCmd=False, removePrompt=False, returnAsList=False)
-    #     print(resp)
 
     comm.send('b 0 400; wait 0')
     print(comm.response())
@@ -351,27 +290,5 @@ if __name__ == '__main__':
     comm.send('dvar wait_time')
     print(comm.response())
 
-    # while not comm.serialAvailable():
-    #     pass
-    # resp = comm.response()
-    # print(resp)
-
     comm.disconnect(comPort, echo=1)
 
-    # cmdList = ['b 0 2;wait 0', '05', 'dvar wait_time', '35']
-    # # T1 = threading.Thread(target=comm.serialAvailable)
-    # # T1.start()
-    # for cmd in cmdList:
-    #     print(cmd)
-    #     comm.send(cmd)
-    #     time.sleep(1)
-
-    #     t1 = time.perf_counter()
-    #     if comm.serialAvailable(comPort) != 0:
-    #         print(comm.response())
-    #     t2 = time.perf_counter()
-    #     print(f'ETE: {round(t2-t1,6)} second(s)')
-
-    # # comm.serialAvailable()
-    # # print(f'Number of inBuffer Bytes: {comm.inWaitingBytes}')
-    # print(comm.response())
