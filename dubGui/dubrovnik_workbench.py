@@ -19,7 +19,6 @@ from customtkinter.windows.widgets.scaling import ScalingTracker
 # Use the dubLibs next to this project, not another copy found on PYTHONPATH
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dubLibs import boardcom
-from dubLibs import cfgfile
 from dubLibs import run_cmd_script
 from dubLibs import run_py_script
 from dubLibs import tools
@@ -28,6 +27,7 @@ from dubLibs import documents
 from dubLibs import firmware_image
 from dubLibs import hexdump
 from dubLibs import settings as settings_lib
+from dubLibs.settings import Settings
 from dubLibs import termstyle
 from dubLibs.fields import parseField
 from dubLibs.version import VERSION as APP_VERSION
@@ -102,7 +102,6 @@ def showHelp(_event=None):
 
 
 CFG_DEFAULTS = settings_lib.DEFAULTS   # see dubLibs/settings.py
-TERM_CHOICES = settings_lib.TERM_CHOICES
 TERM_SIZE_MIN, TERM_SIZE_MAX = termstyle.SIZE_MIN, termstyle.SIZE_MAX
 
 # View > Menu text size: size in unscaled px of the menu bar and the pop-up
@@ -144,45 +143,16 @@ class SerComFrame(LabeledFrame):
     def __init__(self, parent, app, DEBUG=False):
         LabeledFrame.__init__(self, parent, text='Serial Connection')
         self.app = app
+        self.settings = app.settings          # the remembered settings (dubLibs/settings.py)
         self.DEBUG = DEBUG
         self.STANDALONE = False
         self.comm = None                      # object created by boardcom
         self.portStatus = 'disconnected'
-        self.selPort = ''  # ! keeps track of the selected port, between calls
         self.portList = []
         self.portHandle = None
         self.chk_var = IntVar()
-        self.autoConnect = 0
         self.serParams = ''
-        self.winSize = None   # (width, height) of the window, unscaled units
         self.scriptRunning = False   # True while File > Run Script is running
-        self.scriptDir = ''          # folder of the last script that was run
-        self.programDir = ''         # folder of the last file opened to program
-        self.winPos = None    # (x, y) of the window's top-left corner, pixels
-        self.appearance = 'system'   # 'light' | 'dark' | 'system'
-        self.dispMode = 'Binary (b)'   # Read panel display mode (key of dispmodeOptions)
-        self.showPanels = True   # Erase, Program and Read panels shown/hidden
-        self.termTheme = 'dark'      # Terminal colours: one of TERM_CHOICES
-        self.termBg = CFG_DEFAULTS['terminalBg']       # colours of 'custom'
-        self.termFg = CFG_DEFAULTS['terminalFg']
-        self.termSelect = CFG_DEFAULTS['terminalSelect']
-        self.termFont = CFG_DEFAULTS['terminalFont']
-        self.termFontSize = CFG_DEFAULTS['terminalFontSize']
-        self.menuSize = 'normal'     # View > Menu text size: a key of MENU_SIZES
-        self.datasheetUrl = datasheet.DEFAULT_URL   # Help > Datasheet
-        self.hexRow = CFG_DEFAULTS['hexBytesPerRow']    # View > Hex Dump...
-        self.hexAscii = CFG_DEFAULTS['hexAscii']
-        self.hexUpper = CFG_DEFAULTS['hexUpper']
-        self.hexGap = CFG_DEFAULTS['hexGap']
-
-        # Check if %AppData%\Dubrovnik folder exists. If not create one
-        appData = os.getenv('APPDATA') or ''
-        self.dubrovnikConfigPath = os.path.join(appData, 'Dubrovnik')
-        if not os.path.isdir(self.dubrovnikConfigPath):
-            os.mkdir(self.dubrovnikConfigPath)
-        self.cfgFile = os.path.join(self.dubrovnikConfigPath,
-                                    'dubrovnik_workbench.cfg')
-        self.migrateOldConfig()
 
         self.buildFrame()
 
@@ -362,131 +332,90 @@ class SerComFrame(LabeledFrame):
         self.app.read.startAddr.set('0')
         self.app.read.readLength.set('100')
 
+    @property
+    def selPort(self):
+        """The port chosen last. It is also what is remembered as lastUsedPort"""
+        return self.settings.lastUsedPort
+
+    @selPort.setter
+    def selPort(self, value):
+        self.settings.lastUsedPort = value
+
     def loadDefaultSettings(self):
-        """Resets everything: connection settings and the entry boxes"""
+        """No usable settings file: the connection settings and the entry boxes
+        start from their defaults (Settings.load has reset the settings)"""
         self.chk_var.set(0)
-        self.autoConnect = 0
-        self.selPort = ''
-        self.lastUsedPort = ''
         self.loadDefaultParams()
 
-    def migrateOldConfig(self):
-        """First run: start from the settings of the older app (dubrovnik.cfg,
-        written by the discontinued Classic edition), without that app's own window-size entries."""
-        oldFile = os.path.join(self.dubrovnikConfigPath, 'dubrovnik.cfg')
-        if os.path.isfile(self.cfgFile) or not os.path.isfile(oldFile):
-            return
-        cfg, status = cfgfile.read_json(oldFile)
-        if status == 'ok':
-            for key in ('mainWindowWidth', 'mainWindowHeight',
-                        'mainWindowX', 'mainWindowY'):
-                cfg.pop(key, None)
-            cfgfile.write_json(self.cfgFile, cfg)
+    def paramValues(self):
+        """The entry-box values of the Erase, Program and Read panels, in the
+        form the settings file keeps them"""
+        return {'eraseBlkSize': str(self.app.erase.blockSize.get()),
+                'eraseStartAddr': str(self.app.erase.startAddr.get()),
+                'eraseNumBlocks': str(self.app.erase.numBlocks.get()),
+                'progPattern': self.app.program.pattern.get(),
+                'progIncrement': self.app.program.increment.get(),
+                'progStartAddr': self.app.program.start_addr.get(),
+                'progLength': self.app.program.length.get(),
+                'readSpiMode': self.app.read.spiMode.get(),
+                'readStartAddr': self.app.read.startAddr.get(),
+                'readLength': self.app.read.readLength.get()}
+
+    def setParams(self, v):
+        """Puts stored entry-box values (see paramValues) into the panels"""
+        self.app.erase.blockSize.set(v['eraseBlkSize'])
+        self.app.erase.startAddr.set(v['eraseStartAddr'])
+        self.app.erase.numBlocks.set(v['eraseNumBlocks'])
+        self.app.program.pattern.set(v['progPattern'])
+        self.app.program.increment.set(v['progIncrement'])
+        self.app.program.start_addr.set(v['progStartAddr'])
+        self.app.program.length.set(v['progLength'])
+        self.app.read.spiMode.set(v['readSpiMode'])
+        self.app.read.startAddr.set(v['readStartAddr'])
+        self.app.read.readLength.set(v['readLength'])
 
     def saveConfig(self, params=False):
         """Saves the settings that are remembered automatically (connection,
         window, ...). The entry-box values of the Erase, Program and Read
         panels are saved only when params=True (File > Parameters > Save);
         otherwise the values already stored in the file are kept."""
-        cfg, _ = cfgfile.read_json(self.cfgFile)    # keeps the stored values
-        cfg.update({'autoConnect': self.chk_var.get(),
-                    'lastUsedPort': self.selPort,
-                    'appearance': self.appearance,
-                    'terminalTheme': self.termTheme,
-                    'terminalBg': self.termBg,
-                    'terminalFg': self.termFg,
-                    'terminalSelect': self.termSelect,
-                    'terminalFont': self.termFont,
-                    'terminalFontSize': self.termFontSize,
-                    'menuTextSize': self.menuSize,
-                    'datasheetUrl': self.datasheetUrl,
-                    'hexBytesPerRow': self.hexRow,
-                    'hexAscii': self.hexAscii,
-                    'hexUpper': self.hexUpper,
-                    'hexGap': self.hexGap,
-                    'showPanels': self.showPanels,
-                    'displayMode': self.dispMode,
-                    'scriptFolder': self.scriptDir,
-                    'programFolder': self.programDir})
-        if self.winSize:
-            cfg['windowWidth'], cfg['windowHeight'] = self.winSize
-        if self.winPos:
-            cfg['windowX'], cfg['windowY'] = self.winPos
-        if params:
-            cfg.update({'eraseBlkSize': str(self.app.erase.blockSize.get()),
-                        'eraseStartAddr': str(self.app.erase.startAddr.get()),
-                        'eraseNumBlocks': str(self.app.erase.numBlocks.get()),
-                        'progPattern': self.app.program.pattern.get(),
-                        'progIncrement': self.app.program.increment.get(),
-                        'progStartAddr': self.app.program.start_addr.get(),
-                        'progLength': self.app.program.length.get(),
-                        'readSpiMode': self.app.read.spiMode.get(),
-                        'readStartAddr': self.app.read.startAddr.get(),
-                        'readLength': self.app.read.readLength.get()})
-        cfgfile.write_json(self.cfgFile, cfg)
+        self.settings.autoConnect = self.chk_var.get()
+        self.settings.save(self.paramValues() if params else None)
 
     def loadConfig(self, prefs=True, params=True):
         """Loads the settings file: the remembered settings (prefs) and/or the
         stored entry-box values (params). A missing or damaged file, or a bad
         value in it, falls back to defaults; this never stops the app."""
-        cfg, status = cfgfile.read_json(self.cfgFile)
-        if status != 'ok':          # first run, or unreadable (kept as .bad)
+        status, stored = self.settings.load(prefs=prefs, choices=dict(
+            eraseBlkSize=self.app.erase.blockSizes,
+            readSpiMode=self.app.read.spiModes,
+            displayMode=tuple(self.app.read.dispmodeOptions),
+            menuTextSize=tuple(MENU_SIZES)))
+        if status == 'defaults':     # first run, or unreadable (kept as .bad)
             self.loadDefaultSettings()
             self.saveConfig(params=True)
             return
-        v = cfgfile.clean(cfg, CFG_DEFAULTS)
-        for key, allowed in (('eraseBlkSize', self.app.erase.blockSizes),
-                             ('readSpiMode', self.app.read.spiModes),
-                             ('displayMode', tuple(self.app.read.dispmodeOptions)),
-                             ('appearance', ('light', 'dark', 'system')),
-                             ('terminalTheme', TERM_CHOICES),
-                             ('menuTextSize', tuple(MENU_SIZES))):
-            if v[key] not in allowed:
-                v[key] = CFG_DEFAULTS[key]
-        termstyle.repair(v, CFG_DEFAULTS)
-        if v['hexBytesPerRow'] not in hexdump.ROW_SIZES:
-            v['hexBytesPerRow'] = CFG_DEFAULTS['hexBytesPerRow']
         if prefs:
-            self.autoConnect = v['autoConnect']
-            self.chk_var.set(self.autoConnect)
-            self.selPort = v['lastUsedPort']
-            self.lastUsedPort = self.selPort
-            self.appearance = v['appearance']
-            self.termTheme = v['terminalTheme']
-            self.termBg, self.termFg = v['terminalBg'], v['terminalFg']
-            self.termSelect = v['terminalSelect']
-            self.termFont = v['terminalFont']
-            self.termFontSize = v['terminalFontSize']
-            self.menuSize = v['menuTextSize']
-            self.datasheetUrl = datasheet.clean_url(v['datasheetUrl'])
-            self.hexRow, self.hexAscii = v['hexBytesPerRow'], v['hexAscii']
-            self.hexUpper, self.hexGap = v['hexUpper'], v['hexGap']
-            self.showPanels = v['showPanels']
-            self.dispMode = v['displayMode']
-            self.app.read.applyDispMode(self.dispMode)
-            self.scriptDir = v['scriptFolder'] if os.path.isdir(v['scriptFolder']) else ''
-            self.programDir = (v['programFolder']
-                               if os.path.isdir(v['programFolder']) else '')
-            self.winSize = cfgfile.int_pair(cfg, 'windowWidth', 'windowHeight',
-                                            200, 20000)
-            self.winPos = cfgfile.int_pair(cfg, 'windowX', 'windowY',
-                                           -32000, 32000)
+            self.chk_var.set(self.settings.autoConnect)
+            self.app.read.applyDispMode(self.settings.dispMode)
         if params:
-            self.app.erase.blockSize.set(v['eraseBlkSize'])
-            self.app.erase.startAddr.set(v['eraseStartAddr'])
-            self.app.erase.numBlocks.set(v['eraseNumBlocks'])
-            self.app.program.pattern.set(v['progPattern'])
-            self.app.program.increment.set(v['progIncrement'])
-            self.app.program.start_addr.set(v['progStartAddr'])
-            self.app.program.length.set(v['progLength'])
-            self.app.read.spiMode.set(v['readSpiMode'])
-            self.app.read.startAddr.set(v['readStartAddr'])
-            self.app.read.readLength.set(v['readLength'])
+            self.setParams(stored)
 
     def testSerComm(self):
         serParams = '%s, baud=%d, bytes=%1d,\nparity=%s, stop=%1d, protocol=%s' \
             % (self.comPort, self.comBaudrate, self.comBytesize, self.comParity, self.comStopbits, self.comXonXoff)
         self.test_lbl.configure(text=serParams)
+
+
+def _forward(name):
+    return property(lambda self: getattr(self.settings, name),
+                    lambda self, value: setattr(self.settings, name, value))
+
+
+# TEMPORARY: serCom.<setting> still works while the call sites are converted
+for _name in ('appearance', 'autoConnect', 'datasheetUrl', 'dispMode', 'hexAscii', 'hexGap', 'hexRow', 'hexUpper', 'lastUsedPort', 'menuSize', 'programDir', 'scriptDir', 'showPanels', 'termBg', 'termFg', 'termFont', 'termFontSize', 'termSelect', 'termTheme', 'winPos', 'winSize', 'cfgFile'):
+    setattr(SerComFrame, _name, _forward(_name))
+SerComFrame.dubrovnikConfigPath = property(lambda self: self.settings.folder)
 
 
 class ProgramFrame(LabeledFrame):
@@ -1295,6 +1224,7 @@ class App:
         # *******************************************
         # ****** Serial Communications Panel ********
         # *******************************************
+        self.settings = Settings()
         self.serCom = SerComFrame(self.root, self, DEBUG=False)
         self.serCom.grid(row=1, column=0, padx=(10, 3), pady=(8, 4), sticky=NSEW)
         if portList:
