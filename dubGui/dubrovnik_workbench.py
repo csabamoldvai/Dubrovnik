@@ -8,7 +8,7 @@ import sys
 import tempfile
 import webbrowser
 from tkinter import (
-    DISABLED, END, EW, INSERT, Menu, NORMAL, NSEW, NW, StringVar)
+    DISABLED, END, EW, INSERT, NORMAL, NSEW, NW, StringVar)
 from tkinter.filedialog import askopenfilename, asksaveasfilename
 from tkinter.messagebox import showerror, showwarning, showinfo
 import customtkinter as ctk
@@ -27,12 +27,13 @@ from dubLibs import termstyle
 from dubLibs.fields import parseField
 from dubLibs.version import VERSION as APP_VERSION
 from dubLibs import dubrovnik  # instead of "from dubLibs import Dubrovnik as du"
+from dubGui import menus
 from dubGui.dialogs import messages
 from dubGui.dialogs.assistant_window import AssistantWindow, ScriptReview
 from dubGui.dialogs.file_viewer import FileViewer
 from dubGui.dialogs.hex_dialog import HexDialog
 from dubGui.dialogs.terminal_dialog import TerminalDialog
-from dubGui.look import PAL, TERM_THEMES, styleCombobox, styleMenus
+from dubGui.look import TERM_THEMES, styleCombobox, styleMenus
 from dubGui.panels.erase_panel import EraseFrame
 from dubGui.panels.program_panel import ProgramFrame
 from dubGui.panels.read_panel import ReadFrame
@@ -205,6 +206,7 @@ class App:
         # ############ MENU
         # A native Windows menu bar ignores font settings, so build the bar from
         # CTk buttons (row 0) that pop up regular menus, whose font can be set.
+        # The menus are described by the tables in dubGui/menus.py.
         self.scale = ScalingTracker.get_widget_scaling(self.root)
         self.menuFamily = ctk.ThemeManager.theme['CTkFont']['family']
         self.menuFont = (self.menuFamily, -round(MENU_SIZES[self.settings.menuSize] * self.scale))
@@ -212,76 +214,24 @@ class App:
         self.menuBar = ctk.CTkFrame(self.root, corner_radius=0, height=30)
         self.menuBar.grid(row=0, column=0, columnspan=4, sticky=EW)
 
-        class MenuBarHolder:
-            """Stand-in for the menu bar: add_cascade() adds a button to menuBar
-            that pops up the given menu just below itself."""
-            col = 0
+        # the Tk variables behind the radio items of the View menu
+        self.appearanceVar = StringVar(value=self.settings.appearance)
+        self.menuSizeVar = StringVar(value=self.settings.menuSize)
 
-            def add_cascade(self, label, menu):
-                def popup():
-                    try:
-                        menu.tk_popup(btn.winfo_rootx(),
-                                      btn.winfo_rooty() + btn.winfo_height())
-                    finally:
-                        menu.grab_release()
-                font = ctk.CTkFont(size=MENU_SIZES[app.settings.menuSize])
-                btn = ctk.CTkButton(
-                    app.menuBar, text=label, width=font.measure(label) + 20, height=26,
-                    corner_radius=4, fg_color='transparent',
-                    hover_color=PAL['hover'], text_color=PAL['text'],
-                    font=font, command=popup)
-                btn.grid(row=0, column=self.col, padx=(4 if self.col == 0 else 0, 0),
-                         pady=2)
-                app.menuButtons.append((btn, font, label))
-                self.col += 1
-
-        my_menu = MenuBarHolder()
-
-        self.file_menu = Menu(self.root, tearoff=False, font=self.menuFont)
-        my_menu.add_cascade(label="File", menu=self.file_menu)
-        # File > Firmware: open a firmware file and program it (like Scripts below)
-        self.firmware_menu = Menu(self.file_menu, tearoff=False, font=self.menuFont)
-        self.file_menu.add_cascade(label="Firmware", menu=self.firmware_menu)
-        self.firmware_menu.add_command(label="Open File...", accelerator="Ctrl+O",
-                                  command=lambda: self.openForProgramming())
-        self.firmware_menu.add_command(label="View File...",
-                                  command=lambda: self.showFileViewer())
-        self.firmware_menu.add_command(label="Program Loaded File", accelerator="Ctrl+P",
-                                  command=lambda: self.programLoadedFile())
-        self.firmware_menu.add_command(label="No file loaded", state=DISABLED)
-        self.firmware_menu.add_command(label="Close File",
-                                  command=lambda: self.closeLoadedFile())
-        scripts_menu = Menu(self.file_menu, tearoff=False, font=self.menuFont)
-        self.file_menu.add_cascade(label="Scripts", menu=scripts_menu)
-        scripts_menu.add_command(label="Run Command Script...",
-                                 command=lambda: self.runScript())
-        scripts_menu.add_command(label="Run Python Script...",
-                                 command=lambda: self.runPythonScript())
-        scripts_menu.add_separator()
-        scripts_menu.add_command(label="Stop Script  (Esc)",
-                                 command=lambda: self.stopScript())
-        self.file_menu.add_separator()
-        self.file_menu.add_command(label="Save Terminal Log...",
-                              command=lambda: self.saveTerminalLog())
-        self.file_menu.add_separator()
-        self.file_menu.add_command(label="Exit", command=lambda: self.onClose())
-
-        self.tools_menu = Menu(self.root, tearoff=False, font=self.menuFont,
-                          postcommand=lambda: self.refreshTools())
-        my_menu.add_cascade(label="Tools", menu=self.tools_menu)
-
-        # View menu: panel visibility, window appearance and Terminal colours.
-        # (Radio items mark the current choice.)
-        self.view_menu = Menu(self.root, tearoff=False, font=self.menuFont)
-        my_menu.add_cascade(label="View", menu=self.view_menu)
-        self.view_menu.add_command(label='Hide Panels (Erase/Program/Read)',
-                              command=lambda: self.onPanelToggle())
-
-        # File > Parameters: save / load / reset the entry-box values of the Erase,
-        # Program and Read panels (the only settings that are NOT saved automatically)
-        params_menu = Menu(self.file_menu, tearoff=False, font=self.menuFont)
-        self.file_menu.insert_cascade(5, label="Parameters", menu=params_menu)
-        self.file_menu.insert_separator(6)                    # before "Exit"
+        bar = menus.MenuBar(self.menuBar, self.menuButtons, self.settings, MENU_SIZES)
+        self.allMenus = []        # every Tk menu, to restyle and resize them together
+        self.menus = {}           # key -> menus.BuiltMenu, to find an item by its key
+        for spec in menus.MENUS:
+            built = menus.build(self.root, spec.items, self, self.menuFont,
+                                self.allMenus, spec.postcommand)
+            bar.add(spec.label, built.menu)
+            self.menus[spec.key] = built
+        # the Tk menus that other code (and the tests) use
+        self.file_menu = self.menus['file'].menu
+        self.firmware_menu = self.menus['file'].sub('firmware').menu
+        self.tools_menu = self.menus['tools'].menu
+        self.view_menu = self.menus['view'].menu
+        self.docs_menu = self.menus['help'].sub('documents').menu
 
         # Scripts (File > Scripts). Both kinds run on the GUI thread and call
         # root.update() between commands, so the window stays alive and Esc is seen.
@@ -293,40 +243,10 @@ class App:
 
         self.root.bind('<Escape>', lambda _e: self.stopScript())
 
-        self.firmware_menu.configure(postcommand=self.refreshFileMenu)
-
         self.root.bind('<Control-o>', self.fileShortcut(lambda: self.openForProgramming()))
         self.root.bind('<Control-p>', self.fileShortcut(lambda: self.programLoadedFile()))
         self.term.txt.bind('<Control-o>', self.fileShortcut(lambda: self.openForProgramming()))
         self.term.txt.bind('<Control-p>', self.fileShortcut(lambda: self.programLoadedFile()))
-
-        params_menu.add_command(label="Save", command=self.saveParams)
-        params_menu.add_command(label="Load", command=self.loadParams)
-        params_menu.add_command(label="Defaults", command=self.defaultParams)
-
-        # Window appearance and Terminal colours (part of the View menu)
-        self.appearanceVar = StringVar(value=self.settings.appearance)
-        appearance_menu = Menu(self.view_menu, tearoff=False, font=self.menuFont)
-        self.view_menu.add_separator()
-        self.view_menu.add_cascade(label="Appearance", menu=appearance_menu)
-        self.view_menu.add_command(label="Terminal...",
-                              command=lambda: self.showTerminalDialog())
-        self.view_menu.add_command(label="Hex Dump...",
-                              command=lambda: self.showHexDialog())
-        menuSizeMenu = Menu(self.view_menu, tearoff=False, font=self.menuFont)
-        self.view_menu.add_cascade(label="Menu text size", menu=menuSizeMenu)
-        self.menuSizeVar = StringVar(value=self.settings.menuSize)
-
-        for label, value in (('Small', 'small'), ('Normal', 'normal'),
-                             ('Large', 'large')):
-            menuSizeMenu.add_radiobutton(label=label, value=value,
-                                         variable=self.menuSizeVar, command=self.setMenuSize)
-
-        for label, value in (('Light', 'light'), ('Dark', 'dark'),
-                             ('System (follow Windows)', 'system')):
-            appearance_menu.add_radiobutton(label=label, value=value,
-                                            variable=self.appearanceVar,
-                                            command=self.setAppearance)
 
         self.zoomState = dict(save=None, restore=None, old=None)
 
@@ -340,34 +260,12 @@ class App:
 
         self.termDialog = None
 
-        help_menu = Menu(self.root, tearoff=False, font=self.menuFont)
-        my_menu.add_cascade(label="Help", menu=help_menu)
-        help_menu.add_command(label="Help", accelerator="F1", command=showHelp)
         self.root.bind('<F1>', showHelp)
-        help_menu.add_separator()
-        help_menu.add_command(label="About", command=self.showAbout)
 
-        # Help > Documents: one entry for every file in the docs folder
-        # (see dubLibs/documents.py); rebuilt each time the submenu opens.
-        self.docs_menu = Menu(help_menu, tearoff=False, font=self.menuFont,
-                         postcommand=lambda: self.refreshDocs())
-        help_menu.insert_cascade(1, label="Documents", menu=self.docs_menu)
-        help_menu.insert_command(2, label="Datasheet", command=lambda: self.openDatasheet())
-        help_menu.insert_command(3, label="Datasheet Source...",
-                                 command=lambda: self.editDatasheetUrl())
-
-        # Help > Assistant: chat window backed by dubLibs/assistant.py. It answers
-        # from the help and proposes scripts; nothing runs without the user's OK.
         self.assistant = None             # dubLibs.assistant.Assistant, made when first needed
         self.assistantWindow = None
 
-        from dubLibs import assistant as assistantLib
-        if assistantLib.configured():       # hidden unless a model is set up
-            help_menu.insert_command(4, label="Assistant...", command=self.showAssistant)
-
         self.loadSettings()  # includes autoConnect and lastUsedPort
-        self.allMenus = (self.file_menu, self.firmware_menu, self.tools_menu, self.view_menu, params_menu, scripts_menu,
-                    help_menu, self.docs_menu, appearance_menu, menuSizeMenu)
         self.menuSizeVar.set(self.settings.menuSize)
         self.applyMenuSize()          # the size just loaded from the settings file
         self.syncTheme()
@@ -523,6 +421,10 @@ class App:
         w = max(minW, round(self.root.winfo_width() / self.scale))
         self.root.geometry(f'{w}x{h}')
         self.settings.save()
+
+    def showHelp(self, _event=None):
+        """Help > Help (F1): open the user guide in the default web browser"""
+        showHelp(_event)
 
     def showAbout(self):
         messages.showAbout(self.root)
