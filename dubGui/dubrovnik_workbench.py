@@ -132,7 +132,7 @@ class App:
         # ***********************************
         # ******** Terminal Window **********
         # ***********************************
-        self.term = Terminal(self.root, self)
+        self.term = Terminal(self.root, self.du, self.menuFont)
         self.term.grid(row=3, column=0, padx=10, pady=4, columnspan=4, sticky=NSEW)
         self.term.grid_columnconfigure(0, weight=1)
         self.term.grid_rowconfigure(1, weight=1)  # txt widget lives at row 1
@@ -148,6 +148,7 @@ class App:
         if portList:
             self.serCom.combo.set(portList[0])
         self.serCom.comm = comm
+        self.term.serCom = self.serCom
         self.serCom.checkLink()      # notices when the board is switched off
 
         # ******************************
