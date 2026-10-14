@@ -159,7 +159,7 @@ class App:
         # and the remaining ones close up (see layoutPanels below).
         self.panelRow = ctk.CTkFrame(self.root, fg_color='transparent', corner_radius=0)
         self.panelRow.grid(row=2, column=0, columnspan=4, sticky=NW)
-        self.erase = EraseFrame(self.panelRow, self, DEBUG=False)
+        self.erase = EraseFrame(self.panelRow, self.serCom, self.term, self.du, DEBUG=False)
         self.erase.comm = comm
 
         # ******************************
@@ -172,7 +172,7 @@ class App:
         # ***************************
         # ****** Read Panel *********
         # ***************************
-        self.read = ReadFrame(self.panelRow, self, DEBUG=False)
+        self.read = ReadFrame(self.panelRow, self.serCom, self.term, self.du, self.settings, DEBUG=False)
         self.read.comm = comm
 
         # Let the terminal row absorb all extra vertical space, and let the three

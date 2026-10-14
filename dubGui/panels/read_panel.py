@@ -10,9 +10,12 @@ from dubLibs.fields import parseField
 
 
 class ReadFrame(LabeledFrame):
-    def __init__(self, parent, app, DEBUG=False):
+    def __init__(self, parent, serCom, term, du, settings, DEBUG=False):
         LabeledFrame.__init__(self, parent, text='Read')
-        self.app = app
+        self.serCom = serCom        # the connection panel: is the board free and connected?
+        self.term = term
+        self.du = du                # the board library object
+        self.settings = settings
         self.DEBUG = DEBUG
         self.comm = None
         self.spiMode = StringVar()
@@ -75,7 +78,7 @@ class ReadFrame(LabeledFrame):
         self.dispmode_cb.grid(row=5, column=2, padx=(0, 10), sticky=EW)
 
         self.dispmode_cb.set(options[0])
-        self.app.du.dispmode = self.dispmodeOptions[options[0]]
+        self.du.dispmode = self.dispmodeOptions[options[0]]
 
         btn1_read = ctk.CTkButton(self, text='Read', width=80,
                                   command=self.readFlash)
@@ -90,21 +93,21 @@ class ReadFrame(LabeledFrame):
     def applyDispMode(self, label):
         """Selects a display mode (a key of dispmodeOptions) in the combo box"""
         self.dispmode_cb.set(label)
-        self.app.du.dispmode = self.dispmodeOptions[label]
+        self.du.dispmode = self.dispmodeOptions[label]
 
     def dispmode_cb_updated(self, _choice=None):
         dispModeSelKey = self.dispmode_cb.get()  # get the selected item in Combo
         # assign the associated value to dispmode
         mode = self.dispmodeOptions[dispModeSelKey]
-        self.app.du.dispmode = mode  # update dispmode in class Dubrovnik
+        self.du.dispmode = mode  # update dispmode in class Dubrovnik
         self.dispmode_cb.set(dispModeSelKey)
-        self.app.settings.dispMode = self.dispmode_cb.get()    # remembered automatically
-        self.app.settings.save()
+        self.settings.dispMode = self.dispmode_cb.get()    # remembered automatically
+        self.settings.save()
 
     def readFlash(self):
-        if self.app.serCom.scriptBusy():
+        if self.serCom.scriptBusy():
             return
-        if not self.app.serCom.checkConnection():  # check if board is connected
+        if not self.serCom.checkConnection():  # check if board is connected
             return
         try:
             readStartAddr = parseField('Start Address', self.startAddr.get())
@@ -113,21 +116,21 @@ class ReadFrame(LabeledFrame):
             showerror('Read', str(e))
             return
         try:
-            self.app.du.read_mode(self.comm, self.spiMode.get(),
+            self.du.read_mode(self.comm, self.spiMode.get(),
                          start_addr=readStartAddr, length=readLen, echo=0)
         except ValueError as e:
             showerror('Read', str(e))
             return
-        text = self.app.du.textToDisplay[:-1]
-        if self.app.du.dispmode == 'h':          # laid out here, like a hex editor
+        text = self.du.textToDisplay[:-1]
+        if self.du.dispmode == 'h':          # laid out here, like a hex editor
             data = hexdump.bytes_from_reply(
-                self.app.du.textToDisplay, getattr(self.comm, 'cmdline', ''))
+                self.du.textToDisplay, getattr(self.comm, 'cmdline', ''))
             if len(data) == readLen:
                 text = hexdump.format_hexdump(
-                    data, readStartAddr, per_row=self.app.settings.hexRow,
-                    show_ascii=self.app.settings.hexAscii, upper=self.app.settings.hexUpper,
-                    gap=self.app.settings.hexGap)
+                    data, readStartAddr, per_row=self.settings.hexRow,
+                    show_ascii=self.settings.hexAscii, upper=self.settings.hexUpper,
+                    gap=self.settings.hexGap)
             else:
                 text = (f'(Hex Dump: expected {readLen} bytes, found '
                         f'{len(data)}; raw reply follows)\n' + text)
-        self.app.term.tprint(text, printOn='guiConsole')
+        self.term.tprint(text, printOn='guiConsole')

@@ -8,9 +8,11 @@ from dubLibs.fields import parseField
 
 
 class EraseFrame(LabeledFrame):
-    def __init__(self, parent, app, DEBUG=False):
+    def __init__(self, parent, serCom, term, du, DEBUG=False):
         LabeledFrame.__init__(self, parent, text='Erase')
-        self.app = app
+        self.serCom = serCom        # the connection panel: is the board free and connected?
+        self.term = term
+        self.du = du                # the board library object
         self.DEBUG = DEBUG
         self.comm = None
         self.pageSize = 0x100
@@ -64,9 +66,9 @@ class EraseFrame(LabeledFrame):
             quit_btn_ers.grid(row=4, column=1, padx=2, pady=2)
 
     def blockErase(self):
-        if self.app.serCom.scriptBusy():
+        if self.serCom.scriptBusy():
             return
-        if not self.app.serCom.checkConnection():  # check if board is connected
+        if not self.serCom.checkConnection():  # check if board is connected
             return
         blkSzStr = self.blockSize.get().lower()
         try:
@@ -80,15 +82,15 @@ class EraseFrame(LabeledFrame):
             block_size = int(blkSzStr)
             blockSizeKB = block_size * 1024
             startAddr = (start_addr // blockSizeKB) * blockSizeKB
-            self.app.term.tprint(f'Erasing {num_blocks} {block_size}kB block(s) from address {startAddr:x}',
+            self.term.tprint(f'Erasing {num_blocks} {block_size}kB block(s) from address {startAddr:x}',
                         printOn='guiConsole')
-            self.app.du.block_erase(
+            self.du.block_erase(
                 self.comm, block_size, start_addr, num_blocks)
         else:
-            self.app.term.tprint('Erasing chip', printOn='guiConsole')
-            self.app.du.block_erase(self.comm, blkSzStr)
+            self.term.tprint('Erasing chip', printOn='guiConsole')
+            self.du.block_erase(self.comm, blkSzStr)
 
-        self.app.term.tprint(self.app.du.textToDisplay[:-1])
+        self.term.tprint(self.du.textToDisplay[:-1])
 
     def erase_test(self):
         print(f'Selected Erase Block Size : {self.blockSize.get()}')
