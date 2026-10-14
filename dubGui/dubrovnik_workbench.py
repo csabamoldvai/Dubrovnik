@@ -166,7 +166,8 @@ class App:
         # ****** Program Panel *********
         # ******************************
         # TODO rename program to progFrm
-        self.program = ProgramFrame(self.panelRow, self, DEBUG=False)
+        self.program = ProgramFrame(self.panelRow, self.serCom, self.term, self.du, self.settings,
+                                    self.scriptStop, self.showStatus, DEBUG=False)
         self.program.comm = comm
 
         # ***************************
