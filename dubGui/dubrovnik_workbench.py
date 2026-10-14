@@ -114,13 +114,35 @@ class App:
 
         comm = boardcom.BoardComm()   # create an instance of class Comm
         self.du = dubrovnik.Dubrovnik()
+        self.settings = Settings()
+        self.scriptStop = [False]      # set by Esc or a lost connection: stops scripts and programming
+
+        # ***************************
+        # ****** Status Bar *********
+        # ***************************
+        self.stsBarComm = ctk.CTkLabel(self.root, text='Not connected', anchor='w')
+        self.stsBarComm.grid(row=5, column=0, padx=10, pady=4,
+                        columnspan=4, sticky=EW)
+
+        # the menu font is also used by the Terminal's pop-up menu
+        self.scale = ScalingTracker.get_widget_scaling(self.root)
+        self.menuFamily = ctk.ThemeManager.theme['CTkFont']['family']
+        self.menuFont = (self.menuFamily, -round(MENU_SIZES[self.settings.menuSize] * self.scale))
+
+        # ***********************************
+        # ******** Terminal Window **********
+        # ***********************************
+        self.term = Terminal(self.root, self)
+        self.term.grid(row=3, column=0, padx=10, pady=4, columnspan=4, sticky=NSEW)
+        self.term.grid_columnconfigure(0, weight=1)
+        self.term.grid_rowconfigure(1, weight=1)  # txt widget lives at row 1
+        self.term.comm = comm
 
         portList = comm.findPorts(exit_if_none=False)   # may be empty: no board yet
 
         # *******************************************
         # ****** Serial Communications Panel ********
         # *******************************************
-        self.settings = Settings()
         self.serCom = SerComFrame(self.root, self, DEBUG=False)
         self.serCom.grid(row=1, column=0, padx=(10, 3), pady=(8, 4), sticky=NSEW)
         if portList:
@@ -151,15 +173,6 @@ class App:
         self.read = ReadFrame(self.panelRow, self, DEBUG=False)
         self.read.comm = comm
 
-        # ***********************************
-        # ******** Terminal Window **********
-        # ***********************************
-        self.term = Terminal(self.root, self)
-        self.term.grid(row=3, column=0, padx=10, pady=4, columnspan=4, sticky=NSEW)
-        self.term.grid_columnconfigure(0, weight=1)
-        self.term.grid_rowconfigure(1, weight=1)  # txt widget lives at row 1
-        self.term.comm = comm     # initializeing self.com in Erase class
-
         # Let the terminal row absorb all extra vertical space, and let the three
         # panel columns share extra horizontal space evenly.
         self.root.grid_rowconfigure(3, weight=1)
@@ -169,20 +182,10 @@ class App:
             self.root.grid_columnconfigure(col, weight=0)
         self.root.grid_columnconfigure(3, weight=1)
 
-        # ***************************
-        # ****** Status Bar *********
-        # ***************************
-        self.stsBarComm = ctk.CTkLabel(self.root, text='Not connected', anchor='w')
-        self.stsBarComm.grid(row=5, column=0, padx=10, pady=4,
-                        columnspan=4, sticky=EW)
-
         # ############ MENU
         # A native Windows menu bar ignores font settings, so build the bar from
         # CTk buttons (row 0) that pop up regular menus, whose font can be set.
         # The menus are described by the tables in dubGui/menus.py.
-        self.scale = ScalingTracker.get_widget_scaling(self.root)
-        self.menuFamily = ctk.ThemeManager.theme['CTkFont']['family']
-        self.menuFont = (self.menuFamily, -round(MENU_SIZES[self.settings.menuSize] * self.scale))
         self.menuButtons = []     # (button, font, label) of the menu bar, see applyMenuSize
         self.menuBar = ctk.CTkFrame(self.root, corner_radius=0, height=30)
         self.menuBar.grid(row=0, column=0, columnspan=4, sticky=EW)
@@ -212,8 +215,6 @@ class App:
         #                   (see dubLibs/run_cmd_script.py)
         #   Python script : a Python file that uses the `dub` object
         #                   (see dubLibs/run_py_script.py)
-        self.scriptStop = [False]
-
         self.root.bind('<Escape>', lambda _e: self.stopScript())
 
         self.root.bind('<Control-o>', self.fileShortcut(lambda: self.openForProgramming()))
