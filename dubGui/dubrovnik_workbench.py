@@ -143,7 +143,8 @@ class App:
         # *******************************************
         # ****** Serial Communications Panel ********
         # *******************************************
-        self.serCom = SerComFrame(self.root, self, DEBUG=False)
+        self.serCom = SerComFrame(self.root, self.settings, self.du, self.term, self.stsBarComm,
+                                self.scriptStop, DEBUG=False)
         self.serCom.grid(row=1, column=0, padx=(10, 3), pady=(8, 4), sticky=NSEW)
         if portList:
             self.serCom.combo.set(portList[0])
