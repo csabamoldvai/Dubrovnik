@@ -29,6 +29,7 @@ from dubGui.dialogs import messages
 from dubGui.dialogs.assistant_window import AssistantWindow, ScriptReview
 from dubGui.dialogs.file_viewer import FileViewer
 from dubGui.dialogs.hex_dialog import HexDialog
+from dubGui.dialogs.script_preview import ScriptPreview
 from dubGui.dialogs.terminal_dialog import TerminalDialog
 from dubGui.look import TERM_THEMES, styleCombobox, styleMenus
 from dubGui.panels.erase_panel import EraseFrame
@@ -256,6 +257,7 @@ class App:
         self.hexDialog = None
         self.fontCache = []
         self.termDialog = None
+        self.scriptPreview = None
         self.assistant = None             # dubLibs.assistant.Assistant, made when first needed
         self.assistantWindow = None
 
@@ -545,14 +547,26 @@ class App:
             return
         try:
             with open(name, encoding='utf-8-sig') as fh:
-                lines = run_cmd_script.parse_lines(fh.read())
+                text = fh.read()
         except (OSError, UnicodeDecodeError) as e:
             showerror('Run Command Script', f'Could not read the file:\n{e}')
             return
-        commands = [line for line in lines if line[1]]
-        if not commands:
+        lines = run_cmd_script.parse_lines(text)
+        if not any(line[1] for line in lines):
             showinfo('Run Command Script', 'The file contains no commands.')
             return
+        # the script runs only when the user chooses Run in the preview
+        self.scriptPreview = ScriptPreview(
+            self.root, os.path.basename(name), text, self.termColors(),
+            self.settings.termFont, self.settings.termFontSize,
+            lambda: self.runCommandLines(name, lines))
+
+    def runCommandLines(self, name, lines):
+        """Runs the commands of a parsed command script (see run_cmd_script.parse_lines)
+        and prints its comments"""
+        if not self.scriptReady():
+            return
+        commands = [line for line in lines if line[1]]
         self.serCom.scriptRunning = True
         self.scriptStop[0] = False
         self.term.scriptPrint(f'--- Running script {os.path.basename(name)} '

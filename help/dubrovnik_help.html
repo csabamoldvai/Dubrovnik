@@ -469,7 +469,7 @@ cannot measure deep power down currents (the error is about 20&nbsp;&micro;A). U
 available under <strong>File &rarr; Scripts</strong>:</p>
 <table>
   <tr><th style="width:230px">Menu item</th><th>Use it for</th></tr>
-  <tr><td><strong>Run Command Script...</strong></td><td>A plain text file of Terminal commands. The simplest way to repeat a setup or a test sequence.</td></tr>
+  <tr><td><strong>Run Command Script...</strong></td><td>A plain text file of Terminal commands. The simplest way to repeat a setup or a test sequence. The whole script is shown first, with line numbers; choose <em>Run</em> to start it or <em>Cancel</em> (<kbd>Esc</kbd>) to leave it alone.</td></tr>
   <tr><td><strong>Run Python Script...</strong></td><td>A Python file. Use it when you need loops, conditions, calculations or want to check the data that was read.</td></tr>
 </table>
 <p>Both show every command and reply in the Terminal, block the panels and the
@@ -497,6 +497,7 @@ b 0 100             # read 0x100 bytes from address 0</pre>
   <li>Several commands can be chained on one line with <code>;</code>, for example
       <code>6; 2 0; wait 0</code>. A <code>;</code> at the end of a line is ignored.</li>
   <li>Save the file as <code>.txt</code> or <code>.scr</code> with any text editor.</li>
+  <li>When you open a script, a window shows its whole content with line numbers. Nothing runs until you choose <em>Run</em>.</li>
   <li>Scripts use the same commands as the Terminal, including flash opcodes. See the
       <a href="#commands">command reference</a>.</li>
   <li>If the board answers with an <code>Error:</code> message, the script stops at that

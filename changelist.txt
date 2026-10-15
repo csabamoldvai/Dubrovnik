@@ -16,6 +16,8 @@ Added:
   * Command scripts show their comments in the Terminal as they run: a comment
     after a command is shown after it, a comment on its own line where the
     script reaches it.
+  * File > Scripts > Run Command Script shows the whole script, with line numbers,
+    in a window first. Run starts it, Cancel (or Esc) does not.
   * Read panel, Display Mode "Hex Dump": the issued command is printed above the
     dump, as in the Binary and DWord modes.
 
