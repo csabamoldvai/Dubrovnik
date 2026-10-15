@@ -11,6 +11,9 @@ the top of this file, commit, then tag the commit:  git tag v<VERSION>
 VERSION 1.2.3                                                  (in progress)
 -----------------------------------------------------------------------------
 Added:
+  * Tools menu: a command script (.txt or .scr) in the tools folder whose first line
+    is "# TOOL: name" is listed too, below a divider after the Python tools. It runs
+    like File > Scripts > Run Command Script. "# TOOLS:" is accepted as well.
   * Erase, Program and Read panels: hovering over an entry box shows the allowed
     format of its value (hex digits, number of digits, units).
 

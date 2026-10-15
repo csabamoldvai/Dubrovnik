@@ -595,6 +595,9 @@ rebuilt every time it opens, so the new entry appears at once. Optional header l
 <code># DESCRIPTION: one line</code> (shown in the status bar when the tool starts) and
 <code># CONFIRM: question</code> (the tool starts only if the user answers Yes; write
 <code>\n</code> for a new line).</p>
+<p><strong>Command scripts</strong> (<code>.txt</code> or <code>.scr</code>) also appear in the menu, below a divider
+after the Python tools, if their <em>first line</em> is <code># TOOL: Name in the menu</code>. Choosing one runs it
+like <em>File &rarr; Scripts &rarr; Run Command Script</em>, with the listing first if that option is on.</p>
 <h3>View</h3>
 <ul>
   <li><strong>Hide Panels (Erase/Program/Read)</strong> / <strong>Show Panels</strong> &ndash; one item that does the opposite of the current state: it reads <em>Hide</em> while the three panels are shown and <em>Show</em> while they are hidden. Hiding them gives the Terminal more room, which suits users who work mainly with commands.</li>

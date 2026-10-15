@@ -22,7 +22,7 @@ Current version: **1.2.2** (see [changelist.txt](changelist.txt)).
   `program_image`, `verify`, dialogs, result files, ...). Esc stops them. A command script is listed first with line numbers (Run / Cancel), `#` comments in it are
   shown as it runs, and both can be switched off in File > Scripts. The Terminal command line accepts `# comments` too.
 - **Tools menu** built from the scripts in the [tools](tools) folder: Functional Test, SFDP Program (ATXP032),
-  Icc Read Measurement and INA230 Calibration. A new tool is a Python file with a `# TOOL: name` header.
+  Icc Read Measurement and INA230 Calibration. A new tool is a Python file, or a command script (`.txt`/`.scr`), with a `# TOOL: name` header (the first line for a command script).
 - Remembers window size and position, panels, theme, COM port and display mode. The Erase/Program/Read entry
   values are saved only when you choose File > Parameters > Save.
 - Terminal look (View > Terminal): theme, colours, font and size, and Ctrl + mouse wheel zoom. Menu text size and a
