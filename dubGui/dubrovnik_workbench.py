@@ -126,9 +126,11 @@ class App:
         self.bindKeys()
         self.initState()
         self.loadAndSync()
+        self.startupNote = None      # (Terminal text, status bar text) of a start-up problem
         self.autoConnect(comm, portList)
         self.focusTerminal()
         self.placeWindow()
+        self.showStartupNote()
 
     def buildStatusBar(self):
         """The status bar at the bottom of the window"""
@@ -291,37 +293,69 @@ class App:
         # * At this point we have a list of valid COM ports.
         # * Next step is to connect to one of them.
         if self.settings.autoConnect and portList:  # auto connect, if a board was found
-            if len(portList) > 1:  # no need to check if ==0. boardcom.py already does
-                if self.settings.lastUsedPort in portList:  # if last used port is in the portList
-                    # connect to that port
-                    self.serCom.connectPort(self.settings.lastUsedPort,
-                                       checkIsFlashPresent=False)
-            else:
-                # otherwise connect to the first in the list
-                self.serCom.connectPort(portList[0], checkIsFlashPresent=False)
-        # If not autoconnect then do not connect to anything
+            comm.retryDialog = False        # no Retry/Cancel pop-ups before the window is up
+            try:
+                if len(portList) > 1:  # no need to check if ==0. boardcom.py already does
+                    if self.settings.lastUsedPort in portList:  # if last used port is in the portList
+                        # connect to that port
+                        self.serCom.connectPort(self.settings.lastUsedPort,
+                                           checkIsFlashPresent=False)
+                else:
+                    # otherwise connect to the first in the list
+                    self.serCom.connectPort(portList[0], checkIsFlashPresent=False)
+                # If not autoconnect then do not connect to anything
 
-            # * At this point we are connected to the UART chip on Dubrovnik, but not yet
-            # * to the MCU. It may require a manual RESET to boot.
-            if self.serCom.portStatus == 'connected':   # the port could be opened
-                comm.connectToMCU()
-                self.term.clear()
-
-                if comm.isFlashPresent() == 0:
-                    showwarning(
-                        'Warning', 'No flash device detected\nInstall a device and RESET the board')
-                else:                   # show the device in the status bar
-                    try:
-                        self.serCom.deviceDetected(self.du.get_part_number(comm))
-                    except Exception:
-                        pass            # the status bar just shows no device
+                # * At this point we are connected to the UART chip on Dubrovnik, but not yet
+                # * to the MCU. It may require a manual RESET to boot.
+                if self.serCom.portStatus == 'connected':   # the port could be opened
+                    self.probeBoard(comm)
+                elif self.serCom.combo.get():               # it could not (in use?)
+                    port = self.serCom.combo.get()
+                    self.startupNote = (f'Could not open {port}. Make sure it is not used by '
+                                        'another program, then click Connect.',
+                                        f'Could not open {port}')
+            finally:
+                comm.retryDialog = True
 
         elif self.settings.autoConnect:     # Auto connect is on, but no board was found
-            showwarning(
-                'No board found',
-                'No Dubrovnik board was found.\n\n1. Connect the USB cable\n'
-                '2. Turn on the board\n3. Press the RESET button\n\n'
-                'Then click Connect (the COM port list refreshes when you open it).')
+            # no pop-up: the window must come up anyway. The note is shown once it is there.
+            self.startupNote = ('No Dubrovnik board was found. 1. Connect the USB cable '
+                                '2. Turn on the board 3. Press the RESET button. Then click '
+                                'Connect (the COM port list refreshes when you open it).',
+                                'No COM port found: connect the USB cable, turn on the board '
+                                'and press RESET')
+
+    def probeBoard(self, comm):
+        """Start-up: talks to the MCU on the port that was just opened. A board that does
+        not answer (switched off, not reset yet) must not keep the window from coming up:
+        comm.retryDialog is off meanwhile (see autoConnect), so a timeout ends up here
+        instead of in a Retry/Cancel loop that quits the program."""
+        try:
+            comm.connectToMCU()
+            self.term.clear()
+            if comm.isFlashPresent() == 0:
+                showwarning(
+                    'Warning', 'No flash device detected\nInstall a device and RESET the board')
+            else:                   # show the device in the status bar
+                try:
+                    self.serCom.deviceDetected(self.du.get_part_number(comm))
+                except Exception:
+                    pass            # the status bar just shows no device
+        except boardcom.BoardTimeout:
+            self.term.clear()
+            self.startupNote = (f'Connected to {self.serCom.selPort}, but the board did not '
+                                'answer. Switch it on and press RESET: its start-up message '
+                                'appears in the Terminal.', '')
+
+    def showStartupNote(self):
+        """A start-up problem is reported in the Terminal (and in the status bar, if it
+        has something to say), not in a dialog that would hold the window back"""
+        if self.startupNote:
+            text, status = self.startupNote
+            self.term.displayText('*** ' + text + ' ***')
+            if status:
+                self.stsBarComm.configure(text=status)
+            self.startupNote = None
 
 
     def focusTerminal(self):

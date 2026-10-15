@@ -740,12 +740,14 @@ for details of one command.</p>
 <h2 id="trouble">13. Troubleshooting</h2>
 <table>
   <tr><th style="width:36%">Symptom</th><th>What to do</th></tr>
-  <tr><td>"Serial COM Port Not Found"</td>
-      <td>Connect the USB cable, switch the board on, press RESET and restart the application.</td></tr>
+  <tr><td>The Terminal says "No Dubrovnik board was found" at start-up</td>
+      <td>The window starts anyway. Connect the USB cable, switch the board on, press RESET and click <em>Connect</em> (the port list refreshes when you open it). No restart is needed.</td></tr>
+  <tr><td>The Terminal says "Connected to COMn, but the board did not answer"</td>
+      <td>The USB port opened, but the board's processor is silent. Switch the board on and press RESET: its start-up message appears in the Terminal and you can work as usual.</td></tr>
   <tr><td>Connecting fails with "access denied"</td>
       <td>Another program, or a second copy of the Workbench, has the COM port open. Close it.</td></tr>
   <tr><td>"Communication Error: Serial Port Timeout" &ndash; Retry / Cancel</td>
-      <td>The board does not answer. Check that it is on and press its RESET button, then choose <em>Retry</em>.</td></tr>
+      <td>The board stopped answering while you were working. Check that it is on and press its RESET button, then choose <em>Retry</em>. (At start-up there is no such dialog: the window opens and the Terminal tells you.)</td></tr>
   <tr><td>"No flash device detected"</td>
       <td>Insert a device in the socket and press RESET. The Terminal commands (<code>volt</code>, <code>freq</code>, <code>config</code>, ...) still work without a device.</td></tr>
   <tr><td>A dialog says an entry "is empty" or "is not a valid hexadecimal number"</td>

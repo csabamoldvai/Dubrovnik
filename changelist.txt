@@ -26,6 +26,12 @@ Added:
   * Erase, Program and Read panels: hovering over an entry box shows the allowed
     format of its value (hex digits, number of digits, units).
 
+Fixed:
+  * Start-up with no COM port, with a COM port that cannot be opened, or with a board whose
+    processor does not answer (switched off, not reset): the window now always opens. Before,
+    a Retry/Cancel box could repeat for ever, and Cancel quit the program. The problem is now
+    reported in the Terminal (and the status bar), and no restart is needed after RESET.
+
 Changed:
   * Erase panel: Num. Blocks is now hexadecimal (it was decimal), like the
     other number entries. A value saved earlier as "10" now means 16 blocks.

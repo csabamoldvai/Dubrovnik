@@ -13,8 +13,16 @@ from serial.tools.list_ports import comports
 from tkinter.messagebox import askretrycancel, showerror
 
 
+class BoardTimeout(Exception):
+    """The board did not answer (raised by send() when retryDialog is False)"""
+
+
 class BoardComm:
     """wrapper for communications interface
+
+    retryDialog: True (the default) asks "Retry or Cancel" when the board does not answer,
+    and quits the program on Cancel. The GUI sets it False while it probes the board at
+    start-up: send() then raises BoardTimeout and the window can come up anyway.
     """
 
     # changed prompt from ">>>" to ">>> ". This reduced the in_waiting bytes form 1 to 0.
@@ -38,6 +46,7 @@ class BoardComm:
         self.inWaitingBytes = 0  # number of bytes waiting in the in_buffer
         self.vrfyout = sys.stdout       # default verify-out
         self.vrfyprogress = False       # default verify report progress
+        self.retryDialog = True         # ask Retry/Cancel on a timeout (see the class text)
 
     def connect(self, comport, echo=1):
         try:
@@ -45,7 +54,8 @@ class BoardComm:
                 comport, self.baudrate, timeout=2)  # ! was: timeout=600
         except serial.SerialException:
             print("Error: cannot open", comport)
-            askretrycancel('Comport Error', f'Cannot open port {comport}\n \
+            if self.retryDialog:
+                askretrycancel('Comport Error', f'Cannot open port {comport}\n \
                            Make sure it is not used by another program')
             self.handle = None      # not connected (don't keep an old, closed port)
         return self.handle
@@ -150,20 +160,22 @@ class BoardComm:
         user to press RESET button which forces the MCU to boot and print a RESET message that
         contains a row of stars: '*****'. The function is checking for this to detect if MCU responded.
         """
-        self.send('ver')  # sends out a message to the board (not the flash, yet)
-        resp = self.response()
-        self.textToDisplay = resp  # save response for printing
+        try:
+            self.send('ver')  # sends out a message to the board (not the flash, yet)
+            resp = self.response()
+            self.textToDisplay = resp  # save response for printing
 
-        if "ver" in resp:  # the MCU responded to ver command. We have comms with MCU
-            pass
-        elif '*****' in resp:  # this is a response when the RESET button was pressed
-            print('Clearing RESET message from the input buffer')
-            self.handle.reset_input_buffer()  # in that case clear the input buffer
-        else:    # wrong response
-            print("Wrong response. No response already checked for in self.reponse()")
-
-        # increase serial timeout for long Erase times (minutes)
-        self.handle.timeout = 200
+            if "ver" in resp:  # the MCU responded to ver command. We have comms with MCU
+                pass
+            elif '*****' in resp:  # this is a response when the RESET button was pressed
+                print('Clearing RESET message from the input buffer')
+                self.handle.reset_input_buffer()  # in that case clear the input buffer
+            else:    # wrong response
+                print("Wrong response. No response already checked for in self.reponse()")
+        finally:
+            # increase serial timeout for long Erase times (minutes), also when the board
+            # did not answer (BoardTimeout): the port stays open and is used later
+            self.handle.timeout = 200
         # TODO sometimes long timeout not set (check self.handle.get_settings())
         return resp
 
@@ -223,6 +235,8 @@ class BoardComm:
 
         while self.raw == "":
             # if no response from the board (raw=="") after timeout, pop up a RETRY/CANCEL dialog
+            if not self.retryDialog:
+                raise BoardTimeout('The board did not answer')
             if not askretrycancel('Communication Error: Serial Port Timeout',
                                   'Is the board turned ON?\nPress the RESET button'):
                 sys.exit()
