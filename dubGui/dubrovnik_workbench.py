@@ -5,7 +5,7 @@ import sys
 import tempfile
 import webbrowser
 from tkinter import (
-    DISABLED, END, EW, INSERT, NORMAL, NSEW, NW, StringVar)
+    DISABLED, END, EW, INSERT, NORMAL, NSEW, NW, BooleanVar, StringVar)
 from tkinter.filedialog import askopenfilename, asksaveasfilename
 from tkinter.messagebox import showerror, showwarning, showinfo
 import customtkinter as ctk
@@ -215,6 +215,8 @@ class App:
         # the Tk variables behind the radio items of the View menu
         self.appearanceVar = StringVar(value=self.settings.appearance)
         self.menuSizeVar = StringVar(value=self.settings.menuSize)
+        self.scriptListingVar = BooleanVar(value=self.settings.scriptListing)
+        self.scriptCommentsVar = BooleanVar(value=self.settings.scriptComments)
 
         bar = menus.MenuBar(self.menuBar, self.menuButtons, self.settings, MENU_SIZES)
         self.allMenus = []        # every Tk menu, to restyle and resize them together
@@ -266,6 +268,8 @@ class App:
         """Loads the settings into the panels and the menus"""
         self.loadSettings()  # includes autoConnect and lastUsedPort
         self.menuSizeVar.set(self.settings.menuSize)
+        self.scriptListingVar.set(self.settings.scriptListing)
+        self.scriptCommentsVar.set(self.settings.scriptComments)
         self.applyMenuSize()          # the size just loaded from the settings file
         self.syncTheme()
         self.watchSystemAppearance()
@@ -537,6 +541,12 @@ class App:
             return False
         return True
 
+    def setScriptOptions(self):
+        """File > Scripts > Show Script Listing / Comments: remember the choice"""
+        self.settings.scriptListing = self.scriptListingVar.get()
+        self.settings.scriptComments = self.scriptCommentsVar.get()
+        self.settings.save()
+
     def runScript(self):
         """File > Scripts > Run Command Script"""
         if not self.scriptReady():
@@ -555,7 +565,10 @@ class App:
         if not any(line[1] for line in lines):
             showinfo('Run Command Script', 'The file contains no commands.')
             return
-        # the script runs only when the user chooses Run in the preview
+        if not self.settings.scriptListing:
+            self.runCommandLines(name, lines)
+            return
+        # the script runs only when the user chooses Run in the listing
         self.scriptPreview = ScriptPreview(
             self.root, os.path.basename(name), text, self.termColors(),
             self.settings.termFont, self.settings.termFontSize,
@@ -577,8 +590,11 @@ class App:
                 if self.scriptStop[0]:
                     reason = 'stopped by the user'
                     break
+                if not self.settings.scriptComments:
+                    comment = ''
                 if not cmd:                 # a comment on its own line
-                    self.term.scriptPrint(f'# {comment}')
+                    if comment:
+                        self.term.scriptPrint(f'# {comment}')
                     continue
                 reply = self.term.runScriptCommand(cmd, comment)
                 self.root.update()

@@ -18,6 +18,9 @@ Added:
     script reaches it.
   * File > Scripts > Run Command Script shows the whole script, with line numbers,
     in a window first. Run starts it, Cancel (or Esc) does not.
+  * File > Scripts has two new options, remembered between runs: Show Script
+    Listing Before Running and Show Script Comments While Running (both on by
+    default). With comments off the Terminal shows only the commands and replies.
   * Read panel, Display Mode "Hex Dump": the issued command is printed above the
     dump, as in the Binary and DWord modes.
 

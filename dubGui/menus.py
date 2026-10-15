@@ -41,6 +41,15 @@ class Radio:
 
 
 @dataclass
+class Check:
+    """A check button. variable: name of the App attribute that holds the Tk variable."""
+    key: str
+    label: str
+    variable: str
+    command: object = None
+
+
+@dataclass
 class Separator:
     key: str = None
 
@@ -97,6 +106,9 @@ def build(parent, items, app, font, all_menus, postcommand=None):
             child = build(menu, item.items, app, font, all_menus, item.postcommand)
             menu.add_cascade(label=item.label, menu=child.menu)
             built._children[item.key] = child
+        elif isinstance(item, Check):
+            menu.add_checkbutton(label=item.label, variable=getattr(app, item.variable),
+                                 command=_call(app, item.command))
         elif isinstance(item, Radio):
             menu.add_radiobutton(label=item.label, value=item.value,
                                  variable=getattr(app, item.variable),
@@ -164,6 +176,10 @@ FILE = [
         Item('run_python', 'Run Python Script...', 'runPythonScript'),
         Separator(),
         Item('stop', 'Stop Script  (Esc)', 'stopScript'),
+        Separator(),
+        # what Run Command Script shows (saved in the settings)
+        Check('show_listing', 'Show Script Listing Before Running', 'scriptListingVar', 'setScriptOptions'),
+        Check('show_comments', 'Show Script Comments While Running', 'scriptCommentsVar', 'setScriptOptions'),
     ]),
     Separator(),
     Item('save_log', 'Save Terminal Log...', 'saveTerminalLog'),

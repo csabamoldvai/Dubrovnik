@@ -497,7 +497,10 @@ b 0 100             # read 0x100 bytes from address 0</pre>
   <li>Several commands can be chained on one line with <code>;</code>, for example
       <code>6; 2 0; wait 0</code>. A <code>;</code> at the end of a line is ignored.</li>
   <li>Save the file as <code>.txt</code> or <code>.scr</code> with any text editor.</li>
-  <li>When you open a script, a window shows its whole content with line numbers. Nothing runs until you choose <em>Run</em>.</li>
+  <li>When you open a script, a window shows its whole content with line numbers. Nothing runs until you choose <em>Run</em>.
+      Two items of <em>File &gt; Scripts</em> change this: <em>Show Script Listing Before Running</em> (off: the script starts
+      at once) and <em>Show Script Comments While Running</em> (off: the Terminal shows only the commands and their replies,
+      a clean log to save). Both are remembered.</li>
   <li>Scripts use the same commands as the Terminal, including flash opcodes. See the
       <a href="#commands">command reference</a>.</li>
   <li>If the board answers with an <code>Error:</code> message, the script stops at that

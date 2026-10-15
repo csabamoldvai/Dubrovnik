@@ -68,6 +68,19 @@ class SettingsTests(unittest.TestCase):
                          ('https://example.com/{part}', (900, 700), (10, 20)))
         self.assertEqual(params, {k: DEFAULTS[k] for k in PARAM_KEYS})
 
+    def test_script_options_default_on_roundtrip_and_bad_values(self):
+        s = Settings(self.folder)
+        self.assertEqual((s.scriptListing, s.scriptComments), (True, True))
+        s.scriptListing, s.scriptComments = False, False
+        s.save()
+        t = Settings(self.folder)
+        t.load()
+        self.assertEqual((t.scriptListing, t.scriptComments), (False, False))
+        self.write({'showScriptListing': 'maybe', 'showScriptComments': 5})
+        u = Settings(self.folder)
+        u.load()
+        self.assertEqual((u.scriptListing, u.scriptComments), (True, True))
+
     def test_bad_values_fall_back_to_their_defaults(self):
         self.write({'appearance': 'purple', 'terminalTheme': 'neon', 'terminalFontSize': 'big',
                     'hexBytesPerRow': 12, 'menuTextSize': 'huge', 'terminalBg': 'red',

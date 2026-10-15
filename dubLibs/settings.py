@@ -35,7 +35,9 @@ DEFAULTS = dict(
     terminalFont='Consolas', terminalFontSize=15,
     datasheetUrl=datasheet.DEFAULT_URL,     # Help > Datasheet Source...
     # View > Hex Dump...: layout of the Read panel's Hex Dump display mode
-    hexBytesPerRow=16, hexAscii=True, hexUpper=True, hexGap=True)
+    hexBytesPerRow=16, hexAscii=True, hexUpper=True, hexGap=True,
+    # File > Scripts: show the listing of a command script before it runs, and print its comments
+    showScriptListing=True, showScriptComments=True)
 
 # The keys of the entry-box values of the Erase, Program and Read panels
 PARAM_KEYS = ('eraseBlkSize', 'eraseStartAddr', 'eraseNumBlocks',
@@ -53,6 +55,7 @@ class Settings:
     winSize (width, height) or None, winPos (x, y) or None
     termTheme, termBg, termFg, termSelect, termFont, termFontSize   Terminal
     hexRow, hexAscii, hexUpper, hexGap   Hex Dump layout
+    scriptListing, scriptComments        command scripts: show the listing first, print the comments
     dispMode                             Read panel display mode
     scriptDir, programDir                last folders used
     datasheetUrl
@@ -81,6 +84,8 @@ class Settings:
         self.hexAscii = d['hexAscii']
         self.hexUpper = d['hexUpper']
         self.hexGap = d['hexGap']
+        self.scriptListing = d['showScriptListing']
+        self.scriptComments = d['showScriptComments']
 
         # %AppData%\Dubrovnik is created if it does not exist
         self.folder = folder or os.path.join(os.getenv('APPDATA') or '', 'Dubrovnik')
@@ -130,6 +135,8 @@ class Settings:
                     'hexUpper': self.hexUpper,
                     'hexGap': self.hexGap,
                     'showPanels': self.showPanels,
+                    'showScriptListing': self.scriptListing,
+                    'showScriptComments': self.scriptComments,
                     'displayMode': self.dispMode,
                     'scriptFolder': self.scriptDir,
                     'programFolder': self.programDir})
@@ -182,6 +189,8 @@ class Settings:
             self.hexRow, self.hexAscii = v['hexBytesPerRow'], v['hexAscii']
             self.hexUpper, self.hexGap = v['hexUpper'], v['hexGap']
             self.showPanels = v['showPanels']
+            self.scriptListing = v['showScriptListing']
+            self.scriptComments = v['showScriptComments']
             self.dispMode = v['displayMode']
             self.scriptDir = v['scriptFolder'] if os.path.isdir(v['scriptFolder']) else ''
             self.programDir = (v['programFolder']
