@@ -273,8 +273,8 @@ opcode. <code>help &lt;opcode&gt;</code> shows its syntax, and
   <li>Separate several commands on one line with <code>;</code>. The board reads the whole line first and then runs
       the commands with the least possible delay in between, which is what you want for timing and power
       measurements. A semicolon at the end of the line is ignored.</li>
-  <li>The command line has <strong>no comments</strong>. (<code>#</code> comments work only in command script
-      files.) Do not paste text with explanations.</li>
+  <li>You can add a comment after <code>#</code>, for example <code>freq 120 # set the clock</code>. The command runs;
+      the comment is not sent to the board. A line with only a comment does nothing.</li>
   <li>If you paste text that starts with <code>&gt;&gt;&gt;</code>, or that has line breaks or invisible characters
       (from a presentation, for example), the Terminal removes them and joins the lines with semicolons.</li>
 </ul>
@@ -491,7 +491,9 @@ pattern caba0000 1
 6; 2 0; wait 0      # page program from the write buffer at address 0
 b 0 100             # read 0x100 bytes from address 0</pre>
 <ul>
-  <li>Everything after <code>#</code> on a line is a comment. Blank lines are ignored.</li>
+  <li>Everything after <code>#</code> on a line is a comment. Blank lines are ignored. The board never sees comments,
+      but while the script runs they are shown in the Terminal: a comment after a command is printed after that command,
+      and a comment on its own line is printed where the script reaches it.</li>
   <li>Several commands can be chained on one line with <code>;</code>, for example
       <code>6; 2 0; wait 0</code>. A <code>;</code> at the end of a line is ignored.</li>
   <li>Save the file as <code>.txt</code> or <code>.scr</code> with any text editor.</li>

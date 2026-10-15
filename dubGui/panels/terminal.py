@@ -134,10 +134,11 @@ class Terminal(LabeledFrame):
     def onReturnKey(self, _event):
         if self.serCom.scriptRunning:
             return 'break'          # the script owns the board
-        cmdstr = self.txt.get("end-1l linestart", "end-1l lineend")[
+        typed = self.txt.get("end-1l linestart", "end-1l lineend")[
             len(PROMPT):].strip()
-        if len(cmdstr) > 0:
-            self.history.append(cmdstr)
+        if len(typed) > 0:
+            self.history.append(typed)
+        cmdstr = run_cmd_script.split_comment(typed)[0]   # a '# comment' is not sent
 
         if cmdstr == CLEAR_CMD:
             self.clear()
@@ -166,12 +167,13 @@ class Terminal(LabeledFrame):
             self.cmdInProgress = False
         return resp
 
-    def runScriptCommand(self, cmdstr):
+    def runScriptCommand(self, cmdstr, comment=''):
         """Runs cmdstr as if it had been typed (the command and its reply are
-        shown in the Terminal) and returns the reply"""
+        shown in the Terminal) and returns the reply. A comment of the script
+        line is shown after the command and not sent to the board."""
         self.ensureActiveLine()
         self.txt.delete('end-1l linestart+%dc' % len(PROMPT), 'end-1c')
-        self.txt.insert(END, cmdstr)
+        self.txt.insert(END, f'{cmdstr}  # {comment}' if comment else cmdstr)
         if cmdstr == CLEAR_CMD:
             self.clear()
             return ''

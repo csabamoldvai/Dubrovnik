@@ -545,10 +545,11 @@ class App:
             return
         try:
             with open(name, encoding='utf-8-sig') as fh:
-                commands = run_cmd_script.parse(fh.read())
+                lines = run_cmd_script.parse_lines(fh.read())
         except (OSError, UnicodeDecodeError) as e:
             showerror('Run Command Script', f'Could not read the file:\n{e}')
             return
+        commands = [line for line in lines if line[1]]
         if not commands:
             showinfo('Run Command Script', 'The file contains no commands.')
             return
@@ -558,11 +559,14 @@ class App:
                          f'({len(commands)} commands) ---')
         reason = None
         try:
-            for lineno, cmd in commands:
+            for lineno, cmd, comment in lines:
                 if self.scriptStop[0]:
                     reason = 'stopped by the user'
                     break
-                reply = self.term.runScriptCommand(cmd)
+                if not cmd:                 # a comment on its own line
+                    self.term.scriptPrint(f'# {comment}')
+                    continue
+                reply = self.term.runScriptCommand(cmd, comment)
                 self.root.update()
                 if run_cmd_script.is_error(reply):
                     reason = f'error at line {lineno}: {cmd}'

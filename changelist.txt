@@ -8,6 +8,16 @@ To release a new version: change VERSION in dubLibs\version.py, add an entry at
 the top of this file, commit, then tag the commit:  git tag v<VERSION>
 
 
+VERSION 1.2.2                                                    (in progress)
+-----------------------------------------------------------------------------
+Added:
+  * Comments in the Terminal command line: "freq 120 # set the clock" runs the
+    command and does not send the comment to the board.
+  * Command scripts show their comments in the Terminal as they run: a comment
+    after a command is shown after it, a comment on its own line where the
+    script reaches it.
+
+
 VERSION 1.2.1                                                      2026-10-13
 -----------------------------------------------------------------------------
 The Classic edition is discontinued, and the program was restructured inside. What

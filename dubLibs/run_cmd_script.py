@@ -4,7 +4,7 @@ A script is a plain text file with one board command per line, exactly as it
 would be typed in the Terminal:
 
     config
-    freq 120            # text after '#' is a comment
+    freq 120            # text after '#' is a comment, shown while the script runs
     volt 1.9
     6; 31 2;            # ';' chains commands on one line; a last ';' is ignored
     pattern caba0000 1
@@ -13,17 +13,32 @@ would be typed in the Terminal:
 """
 
 
-def parse(text):
-    """Returns [(line number, command), ...] for the commands in a script.
-    Comments ('#' to the end of the line), blank lines and a ';' at the end of
-    a line are removed (';' inside a line chains commands and is kept).
-    Line numbers start at 1 and refer to the original file."""
-    commands = []
+def split_comment(line):
+    """Splits a line at the first '#': returns (command, comment). The command
+    is stripped; the comment is the text after '#', stripped ('' if none)."""
+    command, _, comment = line.partition('#')
+    return command.strip(), comment.strip()
+
+
+def parse_lines(text):
+    """Returns [(line number, command, comment), ...] for every line of a script
+    that has a command or a comment. A comment-only line has command ''. A ';'
+    at the end of a command is removed (';' inside a line chains commands and
+    is kept). Blank lines are left out. Line numbers start at 1 and refer to
+    the original file."""
+    lines = []
     for number, line in enumerate(text.splitlines(), 1):
-        line = line.split('#', 1)[0].strip().rstrip(';').strip()
-        if line:
-            commands.append((number, line))
-    return commands
+        command, comment = split_comment(line)
+        command = command.rstrip(';').strip()
+        if command or comment:
+            lines.append((number, command, comment))
+    return lines
+
+
+def parse(text):
+    """Returns [(line number, command), ...] for the commands in a script
+    (comments and blank lines left out, see parse_lines)."""
+    return [(number, command) for number, command, _ in parse_lines(text) if command]
 
 
 def is_error(reply):
