@@ -7,15 +7,14 @@ Current released version: 1.2. Read `README.md` (overview), `FOLDERS.md` (what e
 ## Decisions already made (do not re-ask)
 
 - **Versions:** never change the version, tag, build an installer or create a release unless the user says so.
-  The next release that changes code is 1.2.2 (1.2.1 is released and tagged). A later release after the refactoring and removal of Classic may
+  The next release that changes code is 1.2.3 (1.2.2 is released and tagged). A later release after the refactoring and removal of Classic may
   be called 2.0 (user's choice, decide then).
 - **Git:** commit only when both test sets pass (check the exit code, not just the output). Add files by name or with
   `git add -u`, never `git add -A` (personal files lie around, e.g. in `tools/`). Never push to `main` or push tags
   without being asked. Never amend or force-push pushed commits (fix forward or `git revert`). Never move or delete
   a pushed tag. The branch `refactor-app-class` was pushed after every step (standing permission for that branch);
   for new work ask which branch to use. Commit messages end with the Co-Authored-By line given by the harness.
-- **Version:** `dubLibs/version.py` is still 1.2.1 and tag `v1.2.1` exists. Work for 1.2.2 is on `main` (changelist has a
-  "1.2.2 (in progress)" entry). Change the version, tag `v1.2.2` and build the installer only when the user says so. The tags `tested-on-board-1..5` mark commits the user tried on the real board.
+- **Version:** `dubLibs/version.py` is 1.2.2, released 2026-10-14 (tag `v1.2.2`). The next release will be 1.2.3 or larger; change the version, tag and build the installer only when the user says so. The tags `tested-on-board-1..5` mark commits the user tried on the real board.
 - **Classic edition** was removed (first step of the refactoring). It lives on in tag `v1.2`; do not bring it back or
   add features for it. There is one program now: `dubGui/dubrovnik_workbench.py`.
 - **Refactoring** (Classic removed, `App` class, dialogs and panels in their own modules, `Settings` object, menu

@@ -8,8 +8,11 @@ To release a new version: change VERSION in dubLibs\version.py, add an entry at
 the top of this file, commit, then tag the commit:  git tag v<VERSION>
 
 
-VERSION 1.2.2                                                    (in progress)
+VERSION 1.2.2                                                      2026-10-14
 -----------------------------------------------------------------------------
+Comments in commands and scripts, and a listing of a command script before it runs.
+The settings file is extended by two entries; older files keep working.
+
 Added:
   * Comments in the Terminal command line: "freq 120 # set the clock" runs the
     command and does not send the comment to the board.
@@ -23,6 +26,10 @@ Added:
     default). With comments off the Terminal shows only the commands and replies.
   * Read panel, Display Mode "Hex Dump": the issued command is printed above the
     dump, as in the Binary and DWord modes.
+
+Changed:
+  * Inside only: the panels and dialogs are built in smaller parts. Nothing changes
+    in what they do.
 
 
 VERSION 1.2.1                                                      2026-10-13

@@ -4,7 +4,7 @@ PC application for the **Dubrovnik** flash test board. It erases, programs and r
 board's socket, and gives you a terminal, scripts and ready-made tools for talking to the board's
 **Tiberias** firmware.
 
-Current version: **1.2.1** (1.2.2 is in progress) (see [changelist.txt](changelist.txt)).
+Current version: **1.2.2** (see [changelist.txt](changelist.txt)).
 
 ## Features
 
