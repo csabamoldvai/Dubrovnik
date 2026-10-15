@@ -5,6 +5,7 @@ from tkinter.messagebox import showerror
 import customtkinter as ctk
 from dubGui.look import ENTRY_HEIGHT, RADIO_STYLE
 from dubGui.panels.base import LabeledFrame
+from dubGui.tooltip import Tooltip
 from dubLibs import hexdump
 from dubLibs.fields import parseField
 
@@ -56,11 +57,13 @@ class ReadFrame(LabeledFrame):
 
         self.startAddr.set('0')
         self.readLength.set('200')
+        Tooltip(ent1_read, 'Hex digits only, no 0x. Example: 0')
 
         lbl2_read = ctk.CTkLabel(self, text='Length:  0x')
         lbl2_read.grid(row=2, column=1, padx=10, pady=2, sticky=E)
         ent2_read = ctk.CTkEntry(self, textvariable=self.readLength, width=80, height=ENTRY_HEIGHT)
         ent2_read.grid(row=2, column=2, padx=(0, 10), sticky=EW)
+        Tooltip(ent2_read, 'Hex digits only, no 0x, in bytes. Example: 100')
 
         dispmode_lbl = ctk.CTkLabel(self, text='Display Mode: ')
         dispmode_lbl.grid(row=5, column=1, padx=5, sticky="E")

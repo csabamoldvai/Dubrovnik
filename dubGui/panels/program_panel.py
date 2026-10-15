@@ -8,6 +8,7 @@ from dubGui.dialogs import messages
 from dubGui.dialogs.progress import ProgramCancelled, ProgressDialog
 from dubGui.look import ENTRY_HEIGHT, PAL, RADIO_STYLE
 from dubGui.panels.base import LabeledFrame
+from dubGui.tooltip import Tooltip
 from dubLibs import firmware_image, hexdump
 from dubLibs.fields import parseField
 
@@ -60,24 +61,33 @@ class ProgramFrame(LabeledFrame):
         self.ent1_prog = ctk.CTkEntry(self, textvariable=self.pattern, width=80, height=ENTRY_HEIGHT)
         self.ent1_prog.grid(row=1, column=2, padx=(0, 10))
         self.pattern.set('caba0000')
+        Tooltip(self.ent1_prog, 'Exactly 8 hex digits, no 0x. Example: caba0000')
 
         lbl2_prog = self.lbl2_prog = ctk.CTkLabel(self, text='Increment: 0x')
         lbl2_prog.grid(row=2, column=1, padx=5, pady=5, sticky=E)
         self.ent2_prog = ctk.CTkEntry(self, textvariable=self.increment, width=80, height=ENTRY_HEIGHT)
         self.ent2_prog.grid(row=2, column=2, padx=(0, 10))
         self.increment.set('1')
+        Tooltip(self.ent2_prog, 'Hex digits, 1 to 8, a minus sign is allowed. '
+                'Added to the pattern each step. Example: 1 or -1')
 
         lbl3_prog = self.lbl3_prog = ctk.CTkLabel(self, text='Start Address: 0x')
         lbl3_prog.grid(row=3, column=1, padx=5, pady=5, sticky=E)
         self.ent3_prog = ctk.CTkEntry(self, textvariable=self.start_addr, width=80, height=ENTRY_HEIGHT)
         self.ent3_prog.grid(row=3, column=2, padx=(0, 10))
         self.start_addr.set('60')
+        Tooltip(self.ent3_prog, lambda: (
+            'Offset: hex digits only, no 0x. Where a .bin file starts; added to the '
+            'addresses in an S-record or Intel HEX file. Example: 0'
+            if self.progModeVar.get() == 'file'
+            else 'Hex digits only, no 0x. Example: 0'))
 
         lbl4_prog = self.lbl4_prog = ctk.CTkLabel(self, text='Length: 0x')
         lbl4_prog.grid(row=4, column=1, padx=5, pady=5, sticky=E)
         self.ent4_prog = ctk.CTkEntry(self, textvariable=self.length, width=80, height=ENTRY_HEIGHT)
         self.ent4_prog.grid(row=4, column=2, padx=(0, 10))
         self.length.set('250')
+        Tooltip(self.ent4_prog, 'Hex digits only, no 0x, in bytes. Example: 100')
 
         self.btn_openFile = ctk.CTkButton(
             self, text='Open', width=80, command=self.openFile, state=DISABLED)

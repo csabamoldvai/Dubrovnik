@@ -10,6 +10,10 @@ the top of this file, commit, then tag the commit:  git tag v<VERSION>
 
 VERSION 1.2.3                                                  (in progress)
 -----------------------------------------------------------------------------
+Added:
+  * Erase, Program and Read panels: hovering over an entry box shows the allowed
+    format of its value (hex digits, number of digits, units).
+
 Changed:
   * Erase panel: Num. Blocks is now hexadecimal (it was decimal), like the
     other number entries. A value saved earlier as "10" now means 16 blocks.

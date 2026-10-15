@@ -4,6 +4,7 @@ from tkinter.messagebox import showerror
 import customtkinter as ctk
 from dubGui.look import ENTRY_HEIGHT, RADIO_STYLE
 from dubGui.panels.base import LabeledFrame
+from dubGui.tooltip import Tooltip
 from dubLibs.fields import parseField
 
 
@@ -44,6 +45,8 @@ class EraseFrame(LabeledFrame):
         ent1_ers.grid(row=1, column=2, padx=(0, 10), sticky=W)
 
         self.startAddr.set('0')
+        Tooltip(ent1_ers, 'Hex digits only, no 0x. Example: 1000\n'
+                'The block of the chosen size that contains this address is erased.')
 
         lbl2_ers = ctk.CTkLabel(self, text='Num. Blocks:  0x')
         lbl2_ers.grid(row=2, column=1, padx=10, pady=2, sticky=E)
@@ -51,6 +54,7 @@ class EraseFrame(LabeledFrame):
         ent2_ers.grid(row=2, column=2, padx=(0, 10), sticky=W)
 
         self.numBlocks.set('3')
+        Tooltip(ent2_ers, 'Hex digits only, no 0x. Example: 4')
 
         btn2_ers = ctk.CTkButton(self, text='Erase', width=80,
                                  command=self.blockErase)
