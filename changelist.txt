@@ -8,7 +8,7 @@ To release a new version: change VERSION in dubLibs\version.py, add an entry at
 the top of this file, commit, then tag the commit:  git tag v<VERSION>
 
 
-VERSION 1.2.3                                                  (in progress)
+VERSION 1.2.3                                                      2026-10-15
 -----------------------------------------------------------------------------
 Added:
   * A command-script template in the Tools menu, to copy and edit: Basic Device Check (read only).
