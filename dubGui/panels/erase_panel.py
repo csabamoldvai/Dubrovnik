@@ -45,7 +45,7 @@ class EraseFrame(LabeledFrame):
 
         self.startAddr.set('0')
 
-        lbl2_ers = ctk.CTkLabel(self, text='Num. Blocks:    ')
+        lbl2_ers = ctk.CTkLabel(self, text='Num. Blocks:  0x')
         lbl2_ers.grid(row=2, column=1, padx=10, pady=2, sticky=E)
         ent2_ers = ctk.CTkEntry(self, textvariable=self.numBlocks, width=80, height=ENTRY_HEIGHT)
         ent2_ers.grid(row=2, column=2, padx=(0, 10), sticky=W)
@@ -73,7 +73,7 @@ class EraseFrame(LabeledFrame):
         blkSzStr = self.blockSize.get().lower()
         try:
             start_addr = parseField('Start Address', self.startAddr.get())
-            num_blocks = parseField('Num. Blocks', self.numBlocks.get(), base=10)
+            num_blocks = parseField('Num. Blocks', self.numBlocks.get())
         except ValueError as e:
             showerror('Erase', str(e))
             return
@@ -82,7 +82,7 @@ class EraseFrame(LabeledFrame):
             block_size = int(blkSzStr)
             blockSizeKB = block_size * 1024
             startAddr = (start_addr // blockSizeKB) * blockSizeKB
-            self.term.tprint(f'Erasing {num_blocks} {block_size}kB block(s) from address {startAddr:x}',
+            self.term.tprint(f'Erasing 0x{num_blocks:x} {block_size}kB block(s) from address {startAddr:x}',
                         printOn='guiConsole')
             self.du.block_erase(
                 self.comm, block_size, start_addr, num_blocks)

@@ -8,6 +8,15 @@ To release a new version: change VERSION in dubLibs\version.py, add an entry at
 the top of this file, commit, then tag the commit:  git tag v<VERSION>
 
 
+VERSION 1.2.3                                                  (in progress)
+-----------------------------------------------------------------------------
+Changed:
+  * Erase panel: Num. Blocks is now hexadecimal (it was decimal), like the
+    other number entries. A value saved earlier as "10" now means 16 blocks.
+  * Program panel: Pattern must be exactly 8 hex digits. A shorter pattern was
+    padded with zeros by the board; now it is refused with a message.
+
+
 VERSION 1.2.2                                                      2026-10-14
 -----------------------------------------------------------------------------
 Comments in commands and scripts, and a listing of a command script before it runs.

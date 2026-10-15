@@ -160,7 +160,7 @@ device and press RESET. You can still use the Terminal.</p>
   <tr><th style="width:190px">Control</th><th>Meaning</th></tr>
   <tr><td>4kB / 32kB / 64kB / Chip</td><td>Size of the block to erase. <em>Chip</em> erases the whole device and ignores the address and block count.</td></tr>
   <tr><td>Start Address (0x)</td><td>Hexadecimal address. It is rounded down to a multiple of the block size.</td></tr>
-  <tr><td>Num. Blocks</td><td>Number of consecutive blocks to erase. <strong>Decimal.</strong></td></tr>
+  <tr><td>Num. Blocks</td><td>Number of consecutive blocks to erase, hexadecimal.</td></tr>
 </table>
 <p>The Terminal lists the erase command for each block with its erase time.</p>
 <div class="warn"><strong>Erasing cannot be undone.</strong> Check the start
@@ -174,7 +174,7 @@ and are not restored automatically.</div>
 <h3>Use Pattern</h3>
 <table>
   <tr><th style="width:190px">Entry</th><th>Meaning (all hexadecimal)</th></tr>
-  <tr><td>Pattern (0x)</td><td>First 32-bit data word, for example <code>cafe0000</code>.</td></tr>
+  <tr><td>Pattern (0x)</td><td>First 32-bit data word: exactly 8 hex digits, for example <code>cafe0000</code>.</td></tr>
   <tr><td>Increment (0x)</td><td>Value added to the pattern for each following word. May be negative, for example <code>-1</code>.</td></tr>
   <tr><td>Start Address (0x)</td><td>First flash address to program.</td></tr>
   <tr><td>Length (0x)</td><td>Number of bytes to program.</td></tr>

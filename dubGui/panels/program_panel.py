@@ -101,7 +101,7 @@ class ProgramFrame(LabeledFrame):
                             self.start_addr.get())
         d_len = parseField('Length', self.length.get()) if pattern_mode else 0
         if pattern_mode:
-            parseField('Pattern', self.pattern.get())
+            parseField('Pattern', self.pattern.get(), digits=8)
             parseField('Increment', self.increment.get(), signed=True)
         startAddr, dataLen = s_addr, d_len
         endAddr = startAddr + dataLen
