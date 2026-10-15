@@ -35,6 +35,9 @@ Fixed:
     program; it only gives up on that command. The box and the Terminal now say what to check:
     press RESET, a valid SD card is inserted, the MCU is functional. Clicking Connect on a board
     whose processor is silent shows the same message instead of the Retry/Cancel loop.
+  * The COM port list now follows the boards that are plugged in while the program runs (it was only
+    refreshed when you opened the list). After swapping boards, Connect uses the new port instead of
+    reporting that the old one cannot be opened. A port you typed by hand is left alone.
   * The long serial timeout (for chip erases) is now also set after the first answer of the board,
     so it is in effect after a manual Connect and after RESET on a board that did not answer at first.
 

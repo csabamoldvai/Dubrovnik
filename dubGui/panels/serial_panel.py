@@ -76,6 +76,30 @@ class SerComFrame(LabeledFrame):
             self.statusLabel.configure(text='No COM port found: connect the USB cable, '
                              'turn on the board and press RESET')
 
+    def refreshPorts(self):
+        """Brings the list and the chosen port up to date without asking the user (boards
+        are swapped while the program runs). The list follows what is plugged in; the
+        chosen port stays unless it is gone, then the first port is chosen."""
+        if self.comm is None:
+            return
+        try:
+            ports = sorted(self.comm.getPortList())
+        except Exception:
+            return                      # can't tell: leave everything as it is
+        old = list(self.portList)
+        if ports != old:
+            self.portList = ports
+            self.combo['values'] = ports
+            if not ports:
+                self.statusLabel.configure(text='No COM port found: connect the USB cable, '
+                                           'turn on the board and press RESET')
+            elif self.statusLabel.cget('text').startswith('No COM port found'):
+                self.statusLabel.configure(text='Not connected')    # a board is there now
+        current = self.combo.get()
+        # a port typed by hand (never in the list) is left alone; a listed one that is gone is replaced
+        if current not in ports and (current in old or not current):
+            self.combo.set(ports[0] if ports else '')
+
     def connectPort(self, defaultPort=None, checkIsFlashPresent=True):
         if self.scriptBusy():
             return
@@ -84,6 +108,7 @@ class SerComFrame(LabeledFrame):
                 self.selPort = defaultPort         # updates class variable as well
                 self.combo.set(self.selPort)
             else:
+                self.refreshPorts()                # the boards may have been swapped
                 self.selPort = self.combo.get()
             if not self.selPort:            # nothing chosen yet: look again
                 self.updtPortList()
@@ -179,8 +204,8 @@ class SerComFrame(LabeledFrame):
         self.statusLabel.configure(text=self.serParams)
 
     def checkLink(self):
-        """Every 2 s: is the COM port of the connected board still there?
-        (Backs up the faster check in Terminal.pollSerial.)"""
+        """Every 2 s: is the COM port of the connected board still there? (Backs up the
+        faster check in Terminal.pollSerial.) While disconnected: update the port list."""
         if self.portStatus == 'connected':
             try:
                 present = self.selPort in self.comm.getPortList()
@@ -188,6 +213,8 @@ class SerComFrame(LabeledFrame):
                 present = True          # can't tell: assume it is
             if not present:
                 self.connectionLost()
+        else:
+            self.refreshPorts()         # the list follows the boards that are plugged in
         self.after(2000, self.checkLink)
 
     def setSerialParams(self):
