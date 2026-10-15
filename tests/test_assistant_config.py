@@ -83,5 +83,17 @@ class ResolveTests(CleanEnvironment):
         self.assertEqual((c['model'], c['vertexRegion']), (assistant.DEFAULT_MODEL, 'global'))
 
 
+class AvailableTests(CleanEnvironment):
+    def test_available_does_not_import_anthropic(self):
+        # importing it takes seconds and would freeze the window
+        with mock.patch.dict(sys.modules):
+            sys.modules.pop('anthropic', None)
+            ai = assistant.Assistant('none.html', os.getcwd())
+            self.assertIn('not set up', ai.available())
+            ai.configure({'provider': 'anthropic', 'apiKey': 'k'})
+            self.assertEqual(ai.available(), '')
+            self.assertNotIn('anthropic', sys.modules)
+
+
 if __name__ == '__main__':
     unittest.main()

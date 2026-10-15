@@ -18,6 +18,7 @@ Needs the ``anthropic`` package (``anthropic[bedrock]`` or ``anthropic[vertex]``
 for the cloud providers).
 """
 import html
+import importlib.util
 import os
 import re
 
@@ -161,15 +162,15 @@ class Assistant:
         self.client = None
 
     def available(self):
-        """Returns '' if the assistant can run, else the reason it can't"""
-        try:
-            import anthropic   # noqa: F401
-        except ImportError:
-            return ('The assistant needs the "anthropic" package:\n'
-                    'pip install anthropic')
+        """Returns '' if the assistant can run, else the reason it can't. It does not
+        import anthropic (that takes seconds and would freeze the window); the import
+        happens in makeClient, which runs in the worker thread."""
         if not configured(self.saved):
             return ('The assistant is not set up yet.\n\n'
                     'Enter your credentials in Help > Assistant Settings.')
+        if importlib.util.find_spec('anthropic') is None:
+            return ('The assistant needs the "anthropic" package:\n'
+                    'pip install anthropic')
         return ''
 
     def makeClient(self):
