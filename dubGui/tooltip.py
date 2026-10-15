@@ -1,6 +1,7 @@
 """A small hover message for a widget (used on the entry boxes of the panels)."""
 import tkinter as tk
 import customtkinter as ctk
+from customtkinter.windows.widgets.scaling import ScalingTracker
 from dubGui.look import PAL
 
 DELAY_MS = 500
@@ -32,7 +33,10 @@ class Tooltip:
         win.wm_overrideredirect(True)
         win.wm_geometry(f'+{self.widget.winfo_rootx()}'
                         f'+{self.widget.winfo_rooty() + self.widget.winfo_height() + 4}')
-        tk.Label(win, text=text, justify='left', wraplength=300, padx=6, pady=3,
+        scale = ScalingTracker.get_widget_scaling(self.widget)
+        font = ctk.CTkFont().create_scaled_tuple(scale)    # the font of the entry boxes
+        tk.Label(win, text=text, justify='left', wraplength=round(300 * scale), padx=6, pady=3,
+                 font=font,
                  bg=PAL['panel'][i], fg=PAL['text'][i], relief='solid', borderwidth=1
                  ).pack()
 
