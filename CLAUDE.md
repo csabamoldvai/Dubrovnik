@@ -73,4 +73,4 @@ the project's. The window checks never touch the user's real settings (`%APPDATA
 - Settings: one `dubLibs/settings.py` `Settings` object, made by `App` (`app.settings`) and given to whoever needs
   it (a constructor argument in the panels and the dialogs). It loads, validates and saves the
   file; `App.loadSettings` puts the entry-box values into the panels. `SerComFrame` only does the connection.
-- `tools/` Tools-menu scripts; `tests/` unit tests and `tests/data/`; `help/` the F1 guide; `docs/` Help > Documents.
+- `tools/` Tools-menu scripts; `tests/` unit tests and `tests/data/`; `help/` the F1 guide and `assistant_reference.md` (for the AI Assistant, not wired in yet); `docs/` Help > Documents.

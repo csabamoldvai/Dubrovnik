@@ -11,6 +11,9 @@ the top of this file, commit, then tag the commit:  git tag v<VERSION>
 VERSION 1.2.3                                                  (in progress)
 -----------------------------------------------------------------------------
 Added:
+  * help/assistant_reference.md: a compact reference of the dub object, the board commands
+    and example scripts, written for an AI model that writes scripts (not loaded by the
+    Assistant yet).
   * Help > Assistant Settings: a dialog for the credentials of the experimental Assistant
     (provider, API key or token, base URL, model). The key is stored encrypted for your
     Windows account in %APPDATA%\Dubrovnik\assistant.cfg. Environment variables still work
