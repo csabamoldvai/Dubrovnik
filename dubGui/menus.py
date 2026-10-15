@@ -154,12 +154,6 @@ class MenuBar:
         self.col += 1
 
 
-def assistantConfigured(app):
-    """The Assistant item is hidden unless a model is set up"""
-    from dubLibs import assistant
-    return assistant.configured()
-
-
 # ---- the tables --------------------------------------------------------------------------
 
 FILE = [
@@ -222,7 +216,8 @@ HELP = [
     Item('datasheet_source', 'Datasheet Source...', 'editDatasheetUrl'),
     # Help > Assistant: chat window backed by dubLibs/assistant.py. It answers from the help
     # and proposes scripts; nothing runs without the user's OK.
-    Item('assistant', 'Assistant...', 'showAssistant', when=assistantConfigured),
+    Item('assistant', 'Assistant...', 'showAssistant'),
+    Item('assistant_settings', 'Assistant Settings...', 'showAssistantSettings'),
     Separator(),
     Item('about', 'About', 'showAbout'),
 ]

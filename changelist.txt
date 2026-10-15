@@ -11,6 +11,11 @@ the top of this file, commit, then tag the commit:  git tag v<VERSION>
 VERSION 1.2.3                                                  (in progress)
 -----------------------------------------------------------------------------
 Added:
+  * Help > Assistant Settings: a dialog for the credentials of the experimental Assistant
+    (provider, API key or token, base URL, model). The key is stored encrypted for your
+    Windows account in %APPDATA%\Dubrovnikssistant.cfg. Environment variables still work
+    for what the dialog leaves empty. Help > Assistant is now always in the menu; without
+    credentials it points to the settings.
   * Tools menu: a command script (.txt or .scr) in the tools folder whose first line
     is "# TOOL: name" is listed too, below a divider after the Python tools. It runs
     like File > Scripts > Run Command Script. "# TOOLS:" is accepted as well.

@@ -17,6 +17,7 @@ from dubLibs import run_cmd_script
 from dubLibs import run_py_script
 from dubLibs import tools
 from dubLibs import datasheet
+from dubLibs import assistant_config
 from dubLibs import documents
 from dubLibs import settings as settings_lib
 from dubLibs.settings import Settings
@@ -26,6 +27,7 @@ from dubLibs.version import VERSION as APP_VERSION
 from dubLibs import dubrovnik  # instead of "from dubLibs import Dubrovnik as du"
 from dubGui import menus
 from dubGui.dialogs import messages
+from dubGui.dialogs.assistant_settings import AssistantSettingsDialog
 from dubGui.dialogs.assistant_window import AssistantWindow, ScriptReview
 from dubGui.dialogs.file_viewer import FileViewer
 from dubGui.dialogs.hex_dialog import HexDialog
@@ -262,6 +264,8 @@ class App:
         self.scriptPreview = None
         self.assistant = None             # dubLibs.assistant.Assistant, made when first needed
         self.assistantWindow = None
+        self.assistantCfg = None          # the saved credentials, read when first needed
+        self.assistantSettings = None
 
 
     def loadAndSync(self):
@@ -908,6 +912,30 @@ class App:
         ScriptReview(self.root, proposal, ai, self.assistantFolder,
                      self.scriptReady, self.executePython, self.showStatus)
 
+    def assistantConfig(self):
+        """The credentials saved in Help > Assistant Settings"""
+        if self.assistantCfg is None:
+            self.assistantCfg = assistant_config.load(self.settings.folder)
+        return self.assistantCfg
+
+    def showAssistantSettings(self):
+        win = self.assistantSettings
+        if win is not None and win.win.winfo_exists():
+            win.win.deiconify()
+            win.win.focus_set()
+            return
+        self.assistantSettings = AssistantSettingsDialog(
+            self.root, self.assistantConfig(), self.saveAssistantConfig)
+
+    def saveAssistantConfig(self, config):
+        if not assistant_config.save(self.settings.folder, config):
+            showerror('Assistant Settings', 'Could not save the settings.')
+            return
+        self.assistantCfg = assistant_config.load(self.settings.folder)
+        if self.assistant is not None:
+            self.assistant.configure(self.assistantCfg)
+        self.showStatus('Assistant settings saved')
+
     def showAssistant(self):
         win = self.assistantWindow
         if win is not None and win.win.winfo_exists():
@@ -916,7 +944,8 @@ class App:
             return
         from dubLibs import assistant
         if self.assistant is None:
-            self.assistant = assistant.Assistant(helpFilePath(), toolsFolder())
+            self.assistant = assistant.Assistant(helpFilePath(), toolsFolder(),
+                                                 self.assistantConfig())
         problem = self.assistant.available()
         if problem:
             showerror('Assistant', problem)

@@ -66,10 +66,10 @@ the project's. The window checks never touch the user's real settings (`%APPDATA
 - `dubGui/` the program: `dubrovnik_workbench.py` (the `App` class: menus, actions, start-up; a compact launcher next
   to it), `look.py` (colours and widget styles), `menus.py` (the menus as tables), `panels/` (one module per panel: `serial_panel`, `erase_panel`,
   `program_panel`, `read_panel`, `terminal`, base class in `base`) and `dialogs/` (one module per window: `messages`,
-  `progress`, `hex_dialog`, `file_viewer`, `terminal_dialog`, `assistant_window`, `script_preview`). Panels and dialogs get only what they
+  `progress`, `hex_dialog`, `file_viewer`, `terminal_dialog`, `assistant_window`, `assistant_settings`, `script_preview`). Panels and dialogs get only what they
   need as arguments (no `self.app`).
   `dubLibs/` shared libraries without GUI code (`boardcom`, `dubrovnik`,
-  `firmware_image`, `hexdump`, `run_py_script`, `cfgfile`, `termstyle`, `datasheet`, `assistant`, `fields`, `settings`)
+  `firmware_image`, `hexdump`, `run_py_script`, `cfgfile`, `termstyle`, `datasheet`, `assistant`, `assistant_config`, `fields`, `settings`)
 - Settings: one `dubLibs/settings.py` `Settings` object, made by `App` (`app.settings`) and given to whoever needs
   it (a constructor argument in the panels and the dialogs). It loads, validates and saves the
   file; `App.loadSettings` puts the entry-box values into the panels. `SerComFrame` only does the connection.
