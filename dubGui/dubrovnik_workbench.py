@@ -553,8 +553,11 @@ class App:
             return
         name = self.pickScript('Run Command Script', (
             ('Script files', '*.txt *.scr'), ('All files', '*.*')))
-        if not name:
-            return
+        if name:
+            self.runCommandFile(name)
+
+    def runCommandFile(self, name):
+        """Reads a command script, shows its listing (if wanted) and runs it"""
         try:
             with open(name, encoding='utf-8-sig') as fh:
                 text = fh.read()
@@ -642,9 +645,13 @@ class App:
         self.scriptStop[0] = True
 
     # Tools menu: one entry for every script in the tools folder that has a
-    # "# TOOL: name" header (see dubLibs/tools.py). Rebuilt each time it opens.
+    # "# TOOL: name" header, Python and command scripts (see dubLibs/tools.py).
+    # Rebuilt each time it opens.
     def runTool(self, tool):
         if not self.scriptReady():
+            return
+        if tool['kind'] == 'command':
+            self.runCommandFile(tool['path'])
             return
         if tool['confirm'] and not self.dialogBox(
                 tool['name'], tool['confirm'], [('Yes', True), ('No', False)]):
@@ -663,7 +670,9 @@ class App:
     def refreshTools(self):
         self.tools_menu.delete(0, 'end')
         found = tools.find_tools(toolsFolder())
-        for tool in found:
+        for i, tool in enumerate(found):
+            if i and tool['kind'] != found[i - 1]['kind']:
+                self.tools_menu.add_separator()     # Python tools, then command scripts
             self.tools_menu.add_command(label=tool['name'],
                                    command=lambda t=tool: self.runTool(t))
         if not found:
