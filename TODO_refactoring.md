@@ -2,9 +2,11 @@
 
 **Written for version 1.2** (commit `7bf6a87` on `main`, 2026-10-12). Status on branch `refactor-app-class`: Classic removed (item 5 below), the main block moved into an `App` class
 (item 1 below), the big dialogs moved into `dubGui/dialogs/` (item 2), the settings made an object
-(`dubLibs/settings.py`, item 3) and the panels moved into `dubGui/panels/`. The menus became tables (`dubGui/menus.py`, item 4). The workbench file went from 2,861 to about 1,000 lines. Open:
-giving the panels what they need as arguments instead of `self.app`, and splitting the long constructors of the dialogs and
-of `App`.
+(`dubLibs/settings.py`, item 3) and the panels moved into `dubGui/panels/`. The menus became tables (`dubGui/menus.py`, item 4). The workbench file went from 2,861 to about 1,000 lines.
+The last two steps are done too (branch `refactor-finish`): the panels get explicit arguments instead of `self.app`, and the
+long constructors of `App` (229 lines to 18), `TerminalDialog` (179 to 20), `HexDialog` and the Assistant windows are split into methods.
+Nothing is open that matters; what is left is optional: the longest functions are now `programFile` (76), `ReadFrame.buildFrame` (63)
+and `App.buildPanels` (63).
 The numbers below describe the code as it was at that version; the commands in
 [How to measure again](#how-to-measure-again) let you compare later.
 

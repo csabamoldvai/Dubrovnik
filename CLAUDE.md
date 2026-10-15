@@ -21,8 +21,8 @@ Current released version: 1.2. Read `README.md` (overview), `FOLDERS.md` (what e
 - **Refactoring** (Classic removed, `App` class, dialogs and panels in their own modules, `Settings` object, menu
   tables) was done on branch `refactor-app-class` in small steps and merged into `main` after the user tried it on a
   real board. Same method for the next big change: a branch, one small step per commit, board test, then merge.
-  Still open: give the panels explicit arguments instead of `self.app`; split the long constructors (see
-  `TODO_refactoring.md`).
+  The last two steps (panels with explicit arguments, long constructors split) were done on branch `refactor-finish`.
+  What is left is only the optional list in `TODO_refactoring.md`.
 - **Do not mix** structure changes and behaviour changes in one commit.
 - **Audience:** only the author and one coworker use the program today, with about 50 internal boards. Wider
   release is planned for early next year. No need for deprecation notices, code signing or settings migration.
@@ -49,8 +49,8 @@ the project's. The window checks never touch the user's real settings (`%APPDATA
 
 - The program is a module with an `App` class (`App()` builds the window, `App().run()` starts the main loop). The
   test harness imports the module and builds an `App`: replace a method by assigning it on `app.workbench`, replace a
-  plain module name (`askopenfilename`, `showerror`) in `app.live` (= the module's `__dict__`). The panels reach
-  the rest of the program through `self.app` (e.g. `self.app.serCom`, `self.app.term`).
+  plain module name (`askopenfilename`, `showerror`) in `app.live` (= the module's `__dict__`). The panels get what
+  they need as constructor arguments (`serCom`, `term`, `du`, `settings`, ...); `App.buildPanels` wires them.
 - Menus are tables in `dubGui/menus.py` (`File`, `View`, `Help`; Tools and Documents are filled when they open). Add or
   move an item there; find it in code by its key (`self.menus['view'].configure('panels', ...)`), never by number.
   A command is the name of an `App` method. After a menu change, run `check_menu_structure.py` and, if the change is
@@ -67,11 +67,11 @@ the project's. The window checks never touch the user's real settings (`%APPDATA
 - `dubGui/` the program: `dubrovnik_workbench.py` (the `App` class: menus, actions, start-up; a compact launcher next
   to it), `look.py` (colours and widget styles), `menus.py` (the menus as tables), `panels/` (one module per panel: `serial_panel`, `erase_panel`,
   `program_panel`, `read_panel`, `terminal`, base class in `base`) and `dialogs/` (one module per window: `messages`,
-  `progress`, `hex_dialog`, `file_viewer`, `terminal_dialog`, `assistant_window`). Panels get the app (`self.app`),
-  dialogs get only what they need as arguments.
+  `progress`, `hex_dialog`, `file_viewer`, `terminal_dialog`, `assistant_window`). Panels and dialogs get only what they
+  need as arguments (no `self.app`).
   `dubLibs/` shared libraries without GUI code (`boardcom`, `dubrovnik`,
   `firmware_image`, `hexdump`, `run_py_script`, `cfgfile`, `termstyle`, `datasheet`, `assistant`, `fields`, `settings`)
 - Settings: one `dubLibs/settings.py` `Settings` object, made by `App` (`app.settings`) and given to whoever needs
-  it (`self.app.settings` in the panels, a constructor argument in the dialogs). It loads, validates and saves the
+  it (a constructor argument in the panels and the dialogs). It loads, validates and saves the
   file; `App.loadSettings` puts the entry-box values into the panels. `SerComFrame` only does the connection.
 - `tools/` Tools-menu scripts; `tests/` unit tests and `tests/data/`; `help/` the F1 guide; `docs/` Help > Documents.
