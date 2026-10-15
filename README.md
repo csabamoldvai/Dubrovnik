@@ -4,7 +4,7 @@ PC application for the **Dubrovnik** flash test board. It erases, programs and r
 board's socket, and gives you a terminal, scripts and ready-made tools for talking to the board's
 **Tiberias** firmware.
 
-Current version: **1.2.1** (see [changelist.txt](changelist.txt)).
+Current version: **1.2.1** (1.2.2 is in progress) (see [changelist.txt](changelist.txt)).
 
 ## Features
 
@@ -19,7 +19,8 @@ Current version: **1.2.1** (see [changelist.txt](changelist.txt)).
   flash device in the socket. Command history, read-only history area, save the log to a file.
 - **Scripts** (File > Scripts): run a text file of Terminal commands, or a Python script that uses the
   built-in `dub` object (`dub.send`, `erase`, `program`, `read`, `read_bytes`, `hexdump`, `load_image`,
-  `program_image`, `verify`, dialogs, result files, ...). Esc stops them.
+  `program_image`, `verify`, dialogs, result files, ...). Esc stops them. A command script is listed first with line numbers (Run / Cancel), `#` comments in it are
+  shown as it runs, and both can be switched off in File > Scripts. The Terminal command line accepts `# comments` too.
 - **Tools menu** built from the scripts in the [tools](tools) folder: Functional Test, SFDP Program (ATXP032),
   Icc Read Measurement and INA230 Calibration. A new tool is a Python file with a `# TOOL: name` header.
 - Remembers window size and position, panels, theme, COM port and display mode. The Erase/Program/Read entry

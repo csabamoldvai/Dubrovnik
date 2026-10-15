@@ -7,15 +7,15 @@ Current released version: 1.2. Read `README.md` (overview), `FOLDERS.md` (what e
 ## Decisions already made (do not re-ask)
 
 - **Versions:** never change the version, tag, build an installer or create a release unless the user says so.
-  The next release that changes code is 1.2.1. A later release after the refactoring and removal of Classic may
+  The next release that changes code is 1.2.2 (1.2.1 is released and tagged). A later release after the refactoring and removal of Classic may
   be called 2.0 (user's choice, decide then).
 - **Git:** commit only when both test sets pass (check the exit code, not just the output). Add files by name or with
   `git add -u`, never `git add -A` (personal files lie around, e.g. in `tools/`). Never push to `main` or push tags
   without being asked. Never amend or force-push pushed commits (fix forward or `git revert`). Never move or delete
   a pushed tag. The branch `refactor-app-class` was pushed after every step (standing permission for that branch);
   for new work ask which branch to use. Commit messages end with the Co-Authored-By line given by the harness.
-- **Version:** `dubLibs/version.py` is 1.2.1 (set, not tagged, no installer built yet). Tag `v1.2.1` and build the
-  installer only when the user says so. The tags `tested-on-board-1..5` mark commits the user tried on the real board.
+- **Version:** `dubLibs/version.py` is still 1.2.1 and tag `v1.2.1` exists. Work for 1.2.2 is on `main` (changelist has a
+  "1.2.2 (in progress)" entry). Change the version, tag `v1.2.2` and build the installer only when the user says so. The tags `tested-on-board-1..5` mark commits the user tried on the real board.
 - **Classic edition** was removed (first step of the refactoring). It lives on in tag `v1.2`; do not bring it back or
   add features for it. There is one program now: `dubGui/dubrovnik_workbench.py`.
 - **Refactoring** (Classic removed, `App` class, dialogs and panels in their own modules, `Settings` object, menu
@@ -35,7 +35,7 @@ Current released version: 1.2. Read `README.md` (overview), `FOLDERS.md` (what e
 ## Commands (run from the project folder, C:\MyLibs\Dubrovnik)
 
 ```
-python -m unittest discover -s tests            unit tests, no windows, about 1 second (55 tests, 1 skipped on a clone)
+python -m unittest discover -s tests            unit tests, no windows, about 1 second (63 tests, 1 skipped on a clone)
 python dubScripts\gui_tests\run_all.py          window checks, about 30 seconds (personal folder)
 python dubScripts\gui_tests\check_menus.py wb   one check
 python dubGui\dubrovnik_workbench.py            run the Workbench from source
@@ -53,8 +53,8 @@ the project's. The window checks never touch the user's real settings (`%APPDATA
   they need as constructor arguments (`serCom`, `term`, `du`, `settings`, ...); `App.buildPanels` wires them.
 - Menus are tables in `dubGui/menus.py` (`File`, `View`, `Help`; Tools and Documents are filled when they open). Add or
   move an item there; find it in code by its key (`self.menus['view'].configure('panels', ...)`), never by number.
-  A command is the name of an `App` method. After a menu change, run `check_menu_structure.py` and, if the change is
-  meant, `python dubScripts\gui_tests\menu_dump.py --write` and read the difference of `menus_golden.json` in git.
+  An item is an `Item` (a command: the name of an `App` method), a `Radio` or a `Check` (both use a Tk variable held by `App`). After a menu change, run `check_menu_structure.py` and, if the change is
+  meant, `python dubScripts\gui_tests\menu_dump.py --write` and read the difference of `menus_golden.json` (personal folder: not in git, so look at it before you write).
 - A window opened by the program takes the keyboard focus about 150 ms later: tests must `app.settle()` first.
 - `tests/data` must stay byte-for-byte (`.gitattributes`); the sample files are used by tests.
 - Edits made through shell here-documents have lost backslash escapes (`\n` in strings) more than once. Prefer the
