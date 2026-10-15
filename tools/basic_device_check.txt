@@ -1,0 +1,12 @@
+# TOOL: Template: Basic Device Check
+# TEMPLATE - copy or edit this file to make your own command script.
+# A command script is one Terminal command per line; # starts a comment.
+# Choosing it in the Tools menu shows the listing first: Run starts it, Cancel (Esc) does not.
+# Nothing here erases, programs or changes the board settings.
+
+ver                 # Tiberias software version
+config              # current board configuration
+9f 2                # read the 2-byte JEDEC ID of the flash (hex)
+05                  # status register 1
+35                  # status register 2
+b 0 20              # read 0x20 bytes from address 0 (hex)

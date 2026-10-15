@@ -587,6 +587,8 @@ for confirmation first, because they change the device or the board.</p>
   <li><strong>INA230 Calibration</strong> &ndash; calibrates the power monitor of the power domains you choose and
       writes the result to the board EEPROM. Follow the instructions in the dialogs: the sockets of the calibrated
       domains must be empty and the board has to be reset twice.</li>
+  <li><strong>Template: Basic Device Check</strong> &ndash; a command script (below the divider) that only reads: version, configuration, JEDEC ID, status registers and the first bytes. Nothing is changed on the board.</li>
+  <li><strong>Template: Program Pattern and Verify</strong> &ndash; a command script that <strong>erases</strong> the 4 kB block at address 0, programs 0x200 bytes at 0x100 with a pattern, reads them back and compares. Edit the addresses first.</li>
   <li><strong>Open Tools Folder</strong> &ndash; opens the folder in Windows Explorer.</li>
 </ul>
 <p><strong>Adding your own tool.</strong> Put a Python script in the tools folder and start

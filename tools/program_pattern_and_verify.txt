@@ -1,0 +1,15 @@
+# TOOL: Template: Program Pattern and Verify
+# TEMPLATE - copy or edit this file to make your own command script.
+# WARNING: this script ERASES the 4 kB block at address 0 and PROGRAMS 0x200 bytes at 0x100
+# of the device in the socket. Edit the addresses and the pattern before you run it.
+# Numbers in flash commands and in pattern/cmp are hex, without 0x; freq and volt are decimal.
+# Choosing it in the Tools menu shows the listing first: Run starts it, Cancel (Esc) does not.
+
+config              # print the current board configuration
+freq 120            # SPI clock in MHz (decimal)
+6; 31 0             # write enable, then clear the Quad Enable bit (QE=0) for single-line reads
+pattern caba0000 1  # fill the write buffer: 8 hex digits, each 32-bit word larger by 1
+6; 20 0; wait 0     # write enable, erase the 4 kB block at address 0, wait until done
+6; 2 100 200; wait 0  # write enable, program 0x200 bytes at address 0x100 from the write buffer, wait
+b 100 200           # read 0x200 bytes back from address 0x100
+cmp 0 200           # compare the read buffer with the write buffer: prints Equal! or the differences
