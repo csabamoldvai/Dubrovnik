@@ -3,6 +3,7 @@ import os
 import pathlib
 import sys
 import tempfile
+import traceback
 import webbrowser
 from tkinter import (
     DISABLED, END, EW, INSERT, NORMAL, NSEW, NW, BooleanVar, StringVar)
@@ -114,6 +115,7 @@ class App:
     def __init__(self):
         self.root = ctk.CTk()
         self.root.title(f'Dubrovnik Workbench {APP_VERSION}')
+        self.root.report_callback_exception = self.onCallbackError
 
         comm = boardcom.BoardComm()   # create an instance of class Comm
         self.du = dubrovnik.Dubrovnik()
@@ -344,8 +346,19 @@ class App:
         except boardcom.BoardTimeout:
             self.term.clear()
             self.startupNote = (f'Connected to {self.serCom.selPort}, but the board did not '
-                                'answer. Switch it on and press RESET: its start-up message '
-                                'appears in the Terminal.', '')
+                                'answer. Press the RESET button (its start-up message then '
+                                'appears here), verify that a valid SD card is inserted, or '
+                                'verify that the MCU is functional.', '')
+
+    def onCallbackError(self, exc, val, tb):
+        """Tk calls this for an error in a button, menu or timer callback. A board that does
+        not answer (the user chose Cancel in the Retry/Cancel box) is not a bug: say so in
+        the Terminal and the status bar and carry on. Anything else is printed as usual."""
+        if isinstance(val, boardcom.BoardTimeout):
+            self.term.displayText('*** ' + str(val) + ' ***')
+            self.showStatus('The board did not answer', 6000)
+        else:
+            traceback.print_exception(exc, val, tb)
 
     def showStartupNote(self):
         """A start-up problem is reported in the Terminal (and in the status bar, if it

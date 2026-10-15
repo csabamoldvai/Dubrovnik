@@ -9,6 +9,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dubLibs import boardcom  # noqa: E402
 
 
+REPLY = b'ver 1.0' + bytes([13, 10]) + b'>>> '     # what the MCU sends back
+
+
 class SilentPort:
     """A serial port the MCU never answers on"""
     timeout = 2
@@ -37,19 +40,36 @@ class TimeoutTests(unittest.TestCase):
                 comm.send('ver')
         dialog.assert_not_called()
 
-    def test_send_still_asks_by_default_and_retries(self):
+    def test_send_asks_by_default_and_cancel_raises_instead_of_quitting(self):
         comm = self.comm()
         with mock.patch.object(boardcom, 'askretrycancel', return_value=False) as dialog:
-            with self.assertRaises(SystemExit):     # Cancel quits, as before
+            with self.assertRaises(boardcom.BoardTimeout):
                 comm.send('ver')
         dialog.assert_called_once()
+        text = dialog.call_args[0][1]
+        for hint in ('RESET', 'SD card', 'MCU'):
+            self.assertIn(hint, text)
 
-    def test_connect_to_mcu_sets_the_long_timeout_even_when_the_board_is_silent(self):
+    def test_retry_reads_again(self):
+        comm = self.comm()
+        answers = [b'', REPLY]
+        comm.handle.read_until = lambda expected=b'': answers.pop(0)
+        with mock.patch.object(boardcom, 'askretrycancel', return_value=True) as dialog:
+            comm.send('ver')
+        dialog.assert_called_once()
+
+    def test_a_silent_board_keeps_the_short_timeout(self):
         comm = self.comm()
         comm.retryDialog = False
         with self.assertRaises(boardcom.BoardTimeout):
             comm.connectToMCU()
-        self.assertEqual(comm.handle.timeout, 200)
+        self.assertEqual(comm.handle.timeout, 2)
+
+    def test_the_first_answer_sets_the_long_timeout(self):
+        comm = self.comm()
+        comm.handle.read_until = lambda expected=b'': REPLY
+        comm.send('ver')
+        self.assertEqual(comm.handle.timeout, boardcom.LONG_TIMEOUT)
 
     def test_connect_does_not_pop_up_when_the_dialog_is_off(self):
         import serial

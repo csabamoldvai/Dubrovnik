@@ -13,16 +13,26 @@ from serial.tools.list_ports import comports
 from tkinter.messagebox import askretrycancel, showerror
 
 
+LONG_TIMEOUT = 200          # s: serial timeout once the board has answered (erases take minutes)
+
+# What to tell the user when the MCU on the board is silent
+TIMEOUT_SHORT = ('The board did not answer: press the RESET button, verify that a valid SD card '
+                 'is inserted, or verify that the MCU is functional.')
+TIMEOUT_LIST = ('The board did not answer.\n\n1. Press the RESET button on the board.\n'
+                '2. Verify that a valid SD card is inserted.\n'
+                '3. Verify that the MCU is functional.')
+
+
 class BoardTimeout(Exception):
-    """The board did not answer (raised by send() when retryDialog is False)"""
+    """The board did not answer (raised by send() when retryDialog is False, or after Cancel)"""
 
 
 class BoardComm:
     """wrapper for communications interface
 
-    retryDialog: True (the default) asks "Retry or Cancel" when the board does not answer,
-    and quits the program on Cancel. The GUI sets it False while it probes the board at
-    start-up: send() then raises BoardTimeout and the window can come up anyway.
+    retryDialog: True (the default) asks "Retry or Cancel" when the board does not answer;
+    Cancel raises BoardTimeout. The GUI sets it False while it probes the board (start-up,
+    Connect): send() then raises BoardTimeout at once, without a dialog.
     """
 
     # changed prompt from ">>>" to ">>> ". This reduced the in_waiting bytes form 1 to 0.
@@ -160,23 +170,21 @@ class BoardComm:
         user to press RESET button which forces the MCU to boot and print a RESET message that
         contains a row of stars: '*****'. The function is checking for this to detect if MCU responded.
         """
-        try:
-            self.send('ver')  # sends out a message to the board (not the flash, yet)
-            resp = self.response()
-            self.textToDisplay = resp  # save response for printing
+        self.send('ver')  # sends out a message to the board (not the flash, yet); raises
+        resp = self.response()      # BoardTimeout if the MCU is silent (the timeout stays short)
+        self.textToDisplay = resp  # save response for printing
 
-            if "ver" in resp:  # the MCU responded to ver command. We have comms with MCU
-                pass
-            elif '*****' in resp:  # this is a response when the RESET button was pressed
-                print('Clearing RESET message from the input buffer')
-                self.handle.reset_input_buffer()  # in that case clear the input buffer
-            else:    # wrong response
-                print("Wrong response. No response already checked for in self.reponse()")
-        finally:
-            # increase serial timeout for long Erase times (minutes), also when the board
-            # did not answer (BoardTimeout): the port stays open and is used later
-            self.handle.timeout = 200
-        # TODO sometimes long timeout not set (check self.handle.get_settings())
+        if "ver" in resp:  # the MCU responded to ver command. We have comms with MCU
+            pass
+        elif '*****' in resp:  # this is a response when the RESET button was pressed
+            print('Clearing RESET message from the input buffer')
+            self.handle.reset_input_buffer()  # in that case clear the input buffer
+        else:    # wrong response
+            print("Wrong response. No response already checked for in self.reponse()")
+
+        # increase serial timeout for long Erase times (minutes); send() does the same
+        # after any answer of the board
+        self.handle.timeout = LONG_TIMEOUT
         return resp
 
     def isFlashPresent(self):
@@ -236,13 +244,15 @@ class BoardComm:
         while self.raw == "":
             # if no response from the board (raw=="") after timeout, pop up a RETRY/CANCEL dialog
             if not self.retryDialog:
-                raise BoardTimeout('The board did not answer')
+                raise BoardTimeout(TIMEOUT_SHORT)
             if not askretrycancel('Communication Error: Serial Port Timeout',
-                                  'Is the board turned ON?\nPress the RESET button'):
-                sys.exit()
+                                  TIMEOUT_LIST + '\n\nRetry?'):
+                raise BoardTimeout(TIMEOUT_SHORT)
             self.raw = self.handle.read_until(
                 expected=self.prompt).decode('utf-8')
 
+        if self.handle.timeout != LONG_TIMEOUT:     # the board answers: allow long erases
+            self.handle.timeout = LONG_TIMEOUT
         self.cooked = self.raw.lower()
         # RECOMMENDED to get a response. If not, after a back-to-back "send()" command we must have
         # a blind wait (established experimentally) allowing all data to arrive from Tiberias, before
@@ -254,8 +264,8 @@ class BoardComm:
 
     def response(self, removeCmd=False, removePrompt=True, returnAsList=False, readInBuffer=False):
         """### Get a response from Tiberias
-        If no response is received, a pop-up dialog will prompt the user to turn on or reset the board
-        (which may remedy the situation). If "Cancel" is pressed, the program quits.\n
+        (send() is the call that waits for the board: when it gets no answer it asks the user to
+        reset the board and raises BoardTimeout on Cancel.)\n
         Parameters:\n
         * removeCmd    : if True, removes the echo'd command string from the beginning of the response string
         * removePrompt : if True, removes the prompt from the end of the response string

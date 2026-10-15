@@ -31,6 +31,12 @@ Fixed:
     processor does not answer (switched off, not reset): the window now always opens. Before,
     a Retry/Cancel box could repeat for ever, and Cancel quit the program. The problem is now
     reported in the Terminal (and the status bar), and no restart is needed after RESET.
+  * A board that stops answering during use: Cancel in the Retry/Cancel box no longer quits the
+    program; it only gives up on that command. The box and the Terminal now say what to check:
+    press RESET, a valid SD card is inserted, the MCU is functional. Clicking Connect on a board
+    whose processor is silent shows the same message instead of the Retry/Cancel loop.
+  * The long serial timeout (for chip erases) is now also set after the first answer of the board,
+    so it is in effect after a manual Connect and after RESET on a board that did not answer at first.
 
 Changed:
   * Erase panel: Num. Blocks is now hexadecimal (it was decimal), like the

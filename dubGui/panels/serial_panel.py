@@ -6,6 +6,7 @@ from tkinter.messagebox import showerror, showinfo, showwarning
 import customtkinter as ctk
 from dubGui.look import CHECKBOX_STYLE
 from dubGui.panels.base import LabeledFrame
+from dubLibs.boardcom import BoardTimeout, TIMEOUT_LIST
 
 
 class SerComFrame(LabeledFrame):
@@ -103,11 +104,19 @@ class SerComFrame(LabeledFrame):
             self.btn2.configure(text='Disconnect')  # change button label
             self.portStatus = 'connected'  # update connection status
             self.serParams = f'Connected: {self.comPort} ({self.comBaudrate},{self.comBytesize},{self.comParity},{self.comStopbits},{self.comXonXoff})'
+            self.statusLabel.configure(text=self.serParams)   # connected, whatever the board says
             if checkIsFlashPresent:  # allow this part to run only when enabled by func argument
-                if self.comm.isFlashPresent():
-                    pn = self.du.get_part_number(self.comm)
-                    self.serParams += '    Device: ' + pn
-            self.statusLabel.configure(text=self.serParams)
+                self.comm.retryDialog = False       # a silent board gets a message, not a loop
+                try:
+                    if self.comm.isFlashPresent():
+                        pn = self.du.get_part_number(self.comm)
+                        self.serParams += '    Device: ' + pn
+                        self.statusLabel.configure(text=self.serParams)
+                except BoardTimeout as e:
+                    self.term.displayText('*** ' + str(e) + ' ***')
+                    showwarning("Board not responding", TIMEOUT_LIST)
+                finally:
+                    self.comm.retryDialog = True
 
         elif self.portStatus == 'connected':
             # if connected, disconnect from the current port
