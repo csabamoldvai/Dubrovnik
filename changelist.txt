@@ -16,6 +16,8 @@ Added:
   * Command scripts show their comments in the Terminal as they run: a comment
     after a command is shown after it, a comment on its own line where the
     script reaches it.
+  * Read panel, Display Mode "Hex Dump": the issued command is printed above the
+    dump, as in the Binary and DWord modes.
 
 
 VERSION 1.2.1                                                      2026-10-13

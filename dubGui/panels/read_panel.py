@@ -123,10 +123,11 @@ class ReadFrame(LabeledFrame):
             return
         text = self.du.textToDisplay[:-1]
         if self.du.dispmode == 'h':          # laid out here, like a hex editor
-            data = hexdump.bytes_from_reply(
-                self.du.textToDisplay, getattr(self.comm, 'cmdline', ''))
+            cmdline = getattr(self.comm, 'cmdline', '')
+            data = hexdump.bytes_from_reply(self.du.textToDisplay, cmdline)
             if len(data) == readLen:
-                text = hexdump.format_hexdump(
+                text = hexdump.echoed_command(self.du.textToDisplay, cmdline) + '\n'
+                text += hexdump.format_hexdump(
                     data, readStartAddr, per_row=self.settings.hexRow,
                     show_ascii=self.settings.hexAscii, upper=self.settings.hexUpper,
                     gap=self.settings.hexGap)

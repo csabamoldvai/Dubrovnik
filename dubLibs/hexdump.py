@@ -64,6 +64,17 @@ def format_hexdump(data, address=0, per_row=DEFAULT_ROW, show_ascii=True,
     return '\n'.join(lines)
 
 
+def echoed_command(reply, command_line):
+    """The line of the board's reply that echoes the command (as the binary and
+    word display modes show it), or the command itself if the reply has no such
+    line. '' if command_line is empty."""
+    command = command_line.strip()
+    for line in reply.replace('\r', '').split('\n'):
+        if command and line.strip().endswith(command):
+            return line.strip()
+    return command
+
+
 def bytes_from_reply(reply, command_line=''):
     """The data bytes in the board's reply to a read in binary display mode.
     command_line (the command that was sent) is dropped first: it can look

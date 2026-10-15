@@ -58,6 +58,12 @@ class ReplyTests(unittest.TestCase):
         reply = '03 20 10\r\n11 22 33\r\n>>> '
         self.assertEqual(hd.bytes_from_reply(reply, '03 20 10\r'), b'\x11\x22\x33')
 
+    def test_echoed_command(self):
+        reply = '>>> 0b 2000 40\r\n' + ' '.join(['00'] * 32) + ' \r\n>>> '
+        self.assertEqual(hd.echoed_command(reply, '0b 2000 40\r'), '>>> 0b 2000 40')
+        self.assertEqual(hd.echoed_command('11 22\r\n', '0b 2000 2\r'), '0b 2000 2')
+        self.assertEqual(hd.echoed_command('11 22\r\n', ''), '')
+
     def test_no_data_and_noise(self):
         self.assertEqual(hd.bytes_from_reply('Error: bad\r\n>>> ', 'x'), b'')
         self.assertEqual(hd.bytes_from_reply('11 22\r\nwhat\r\n33\r\n'), b'\x11\x22\x33')
