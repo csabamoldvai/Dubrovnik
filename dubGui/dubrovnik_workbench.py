@@ -336,6 +336,7 @@ class App:
             comm.connectToMCU()
             self.term.clear()
             if comm.isFlashPresent() == 0:
+                self.serCom.deviceDetected('', failed=True)
                 showwarning(
                     'Warning', 'No flash device detected\nInstall a device and RESET the board')
             else:                   # show the device in the status bar

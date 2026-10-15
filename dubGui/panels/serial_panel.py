@@ -9,6 +9,7 @@ from dubGui.panels.base import LabeledFrame
 from dubLibs.boardcom import BoardTimeout, TIMEOUT_LIST
 
 SILENT_NOTE = '    Board not responding'      # added to the status bar text of a silent board
+NO_DEVICE_NOTE = '    No device detected'        # ... of a board that found no device in its socket
 
 
 class SerComFrame(LabeledFrame):
@@ -138,7 +139,9 @@ class SerComFrame(LabeledFrame):
                     if self.comm.isFlashPresent():
                         pn = self.du.get_part_number(self.comm)
                         self.serParams += '    Device: ' + pn
-                        self.statusLabel.configure(text=self.serParams)
+                    else:
+                        self.serParams += NO_DEVICE_NOTE
+                    self.statusLabel.configure(text=self.serParams)
                 except BoardTimeout as e:
                     self.term.displayText('*** ' + str(e) + ' ***')
                     self.markSilent()
@@ -197,13 +200,16 @@ class SerComFrame(LabeledFrame):
         if self.scriptRunning:          # a script can't go on without the board
             self.scriptStop[0] = True
 
-    def deviceDetected(self, partNumber):
+    def deviceDetected(self, partNumber, failed=False):
         """The board (re)detected its device, e.g. after being switched off and
-        on again: show it in the status bar ('' = no device)"""
+        on again: show it in the status bar ('' = no device yet; failed=True: the
+        board looked and found none)"""
         if self.portStatus != 'connected':
             return
-        base = self.serParams.split('    Device:')[0].replace(SILENT_NOTE, '')   # it answered
-        self.serParams = base + (f'    Device: {partNumber}' if partNumber else '')
+        base = self.serParams.split('    Device:')[0]
+        base = base.replace(SILENT_NOTE, '').replace(NO_DEVICE_NOTE, '')    # it answered
+        self.serParams = base + (f'    Device: {partNumber}' if partNumber
+                                 else NO_DEVICE_NOTE if failed else '')
         self.statusLabel.configure(text=self.serParams)
 
     def markSilent(self):

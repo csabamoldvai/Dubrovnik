@@ -126,6 +126,9 @@ class Terminal(LabeledFrame):
         if m:
             self.serCom.deviceDetected(m.group(1))
             self.bootBuf = ''
+        elif re.search(r'failed to detect', self.bootBuf, re.I):    # "Failed to detect device"
+            self.serCom.deviceDetected('', failed=True)
+            self.bootBuf = ''
 
     def displayText(self, text):
         self.txt.insert(END, '\n' + text)
