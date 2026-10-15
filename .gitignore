@@ -18,3 +18,6 @@ packaging/*
 .vscode/
 *.code-workspace
 tempCodeRunnerFile.py
+
+# Claude Code local settings (personal)
+.claude/
