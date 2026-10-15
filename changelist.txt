@@ -11,8 +11,7 @@ the top of this file, commit, then tag the commit:  git tag v<VERSION>
 VERSION 1.2.3                                                  (in progress)
 -----------------------------------------------------------------------------
 Added:
-  * Two command-script templates in the Tools menu, to copy and edit: Basic Device Check
-    (read only) and Program Pattern and Verify (erases and programs: edit the addresses first).
+  * A command-script template in the Tools menu, to copy and edit: Basic Device Check (read only).
   * help/assistant_reference.md: a compact reference of the dub object, the board commands
     and example scripts, written for an AI model that writes scripts (not loaded by the
     Assistant yet).
