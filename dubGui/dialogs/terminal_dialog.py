@@ -10,6 +10,9 @@ from dubLibs import termstyle
 TERM_SIZE_MIN, TERM_SIZE_MAX = termstyle.SIZE_MIN, termstyle.SIZE_MAX
 HEX_COLOR = termstyle.HEX_COLOR
 
+THEMES = (('Auto (follow window)', 'auto'), ('Light', 'light'),
+          ('Dark', 'dark'), ('Custom', 'custom'))
+
 
 class TerminalDialog:
     """The window is built when the object is created; win is the window.
@@ -20,181 +23,205 @@ class TerminalDialog:
     fixed-width fonts to offer. defaults: the default settings."""
 
     def __init__(self, root, settings, colors, apply, installedFonts, defaults):
-        saved = (settings.termTheme, settings.termBg, settings.termFg,
-                 settings.termSelect, settings.termFont, settings.termFontSize)
-        dlg = ctk.CTkToplevel(root)
-        self.win = dlg
-        dlg.title('Terminal')
-        dlg.resizable(False, False)
-        dlg.transient(root)
-        font = ctk.CTkFont(size=14)
-        themes = (('Auto (follow window)', 'auto'), ('Light', 'light'),
-                  ('Dark', 'dark'), ('Custom', 'custom'))
-        fonts = list(installedFonts)
-        if settings.termFont not in fonts:
-            fonts.insert(0, settings.termFont)
+        self.root = root
+        self.settings = settings
+        self.colors = colors
+        self.apply = apply
+        self.defaults = defaults
+        self.saved = (settings.termTheme, settings.termBg, settings.termFg,
+                      settings.termSelect, settings.termFont, settings.termFontSize)
+        self.fonts = list(installedFonts)
+        if settings.termFont not in self.fonts:
+            self.fonts.insert(0, settings.termFont)
+        self.swatches = {}
+        self.hexEntries = {}
 
-        def label(row, text):
-            ctk.CTkLabel(dlg, text=text, font=font, anchor='w'
-                         ).grid(row=row, column=0, padx=(24, 12), pady=6,
-                                sticky='w')
+        self.win = ctk.CTkToplevel(root)
+        self.win.title('Terminal')
+        self.win.resizable(False, False)
+        self.win.transient(root)
+        self.font = ctk.CTkFont(size=14)
 
-        label(0, 'Theme')
-        themeMenu = ctk.CTkOptionMenu(
-            dlg, values=[t[0] for t in themes], font=font, dropdown_font=font,
-            width=240, command=lambda name: pickTheme(name))
-        themeMenu.grid(row=0, column=1, columnspan=3, padx=(0, 24), pady=6,
-                       sticky='w')
+        self.buildThemeAndColours()
+        self.buildFontAndSize()
+        self.buildPreview()
+        self.buildButtons()
+        self.refresh()
+        self.centerOnRoot()
 
-        swatches = {}
-        hexEntries = {}
+    # ---- the widgets
+
+    def label(self, row, text):
+        ctk.CTkLabel(self.win, text=text, font=self.font, anchor='w'
+                     ).grid(row=row, column=0, padx=(24, 12), pady=6, sticky='w')
+
+    def buildThemeAndColours(self):
+        self.label(0, 'Theme')
+        self.themeMenu = ctk.CTkOptionMenu(
+            self.win, values=[t[0] for t in THEMES], font=self.font,
+            dropdown_font=self.font, width=240, command=self.pickTheme)
+        self.themeMenu.grid(row=0, column=1, columnspan=3, padx=(0, 24), pady=6,
+                            sticky='w')
         for row, (key, text, attr) in enumerate((
                 ('bg', 'Background', 'termBg'), ('fg', 'Text', 'termFg'),
                 ('select', 'Selection', 'termSelect')), start=1):
-            label(row, text)
-            swatches[key] = ctk.CTkButton(
-                dlg, text='', width=60, height=28, border_width=1,
+            self.label(row, text)
+            swatch = ctk.CTkButton(
+                self.win, text='', width=60, height=28, border_width=1,
                 border_color=PAL['control_border'],
-                command=lambda k=key, a=attr: chooseColour(k, a))
-            swatches[key].grid(row=row, column=1, padx=(0, 8), pady=6, sticky='w')
-            entry = ctk.CTkEntry(dlg, width=100, font=font)
+                command=lambda k=key, a=attr: self.chooseColour(k, a))
+            swatch.grid(row=row, column=1, padx=(0, 8), pady=6, sticky='w')
+            self.swatches[key] = swatch
+            entry = ctk.CTkEntry(self.win, width=100, font=self.font)
             entry.grid(row=row, column=2, columnspan=2, padx=(0, 24), pady=6,
                        sticky='w')
-            entry.bind('<Return>', lambda _e, a=attr, k=key: typedColour(k, a))
-            entry.bind('<FocusOut>', lambda _e, a=attr, k=key: typedColour(k, a))
-            hexEntries[key] = entry
+            entry.bind('<Return>', lambda _e, a=attr, k=key: self.typedColour(k, a))
+            entry.bind('<FocusOut>', lambda _e, a=attr, k=key: self.typedColour(k, a))
+            self.hexEntries[key] = entry
 
-        label(4, 'Font')
-        fontMenu = ctk.CTkOptionMenu(
-            dlg, values=fonts, font=font, dropdown_font=font, width=240,
-            command=lambda name: pickFont(name))
-        fontMenu.grid(row=4, column=1, columnspan=3, padx=(0, 24), pady=6,
-                      sticky='w')
+    def buildFontAndSize(self):
+        win, font, settings = self.win, self.font, self.settings
+        self.label(4, 'Font')
+        self.fontMenu = ctk.CTkOptionMenu(
+            win, values=self.fonts, font=font, dropdown_font=font, width=240,
+            command=self.pickFont)
+        self.fontMenu.grid(row=4, column=1, columnspan=3, padx=(0, 24), pady=6,
+                           sticky='w')
 
-        label(5, 'Size')
-        ctk.CTkButton(dlg, text='-', width=32, font=font,
-                      command=lambda: setSize(settings.termFontSize - 1)
+        self.label(5, 'Size')
+        ctk.CTkButton(win, text='-', width=32, font=font,
+                      command=lambda: self.setSize(settings.termFontSize - 1)
                       ).grid(row=5, column=1, padx=(0, 4), pady=6, sticky='w')
-        sizeEntry = ctk.CTkEntry(dlg, width=56, font=font, justify='center')
-        sizeEntry.grid(row=5, column=2, padx=0, pady=6, sticky='w')
-        ctk.CTkButton(dlg, text='+', width=32, font=font,
-                      command=lambda: setSize(settings.termFontSize + 1)
+        self.sizeEntry = ctk.CTkEntry(win, width=56, font=font, justify='center')
+        self.sizeEntry.grid(row=5, column=2, padx=0, pady=6, sticky='w')
+        ctk.CTkButton(win, text='+', width=32, font=font,
+                      command=lambda: self.setSize(settings.termFontSize + 1)
                       ).grid(row=5, column=3, padx=(4, 24), pady=6, sticky='w')
-        sizeEntry.bind('<Return>', lambda _e: typedSize())
-        sizeEntry.bind('<FocusOut>', lambda _e: typedSize())
+        self.sizeEntry.bind('<Return>', lambda _e: self.typedSize())
+        self.sizeEntry.bind('<FocusOut>', lambda _e: self.typedSize())
 
-        preview = ctk.CTkTextbox(dlg, height=110, width=420, wrap='none',
-                                 border_width=0)
-        preview.grid(row=6, column=0, columnspan=4, padx=24, pady=(10, 4),
-                     sticky='ew')
-        preview.insert('1.0', '>>> freq 64\nFrequency set to 64 MHz\n'
-                       '0000: CA FE 00 00 ')
-        preview.insert('end', 'DE AD BE EF', 'picked')
-        preview.configure(state='disabled')
+    def buildPreview(self):
+        self.preview = ctk.CTkTextbox(self.win, height=110, width=420, wrap='none',
+                                      border_width=0)
+        self.preview.grid(row=6, column=0, columnspan=4, padx=24, pady=(10, 4),
+                          sticky='ew')
+        self.preview.insert('1.0', '>>> freq 64\nFrequency set to 64 MHz\n'
+                            '0000: CA FE 00 00 ')
+        self.preview.insert('end', 'DE AD BE EF', 'picked')
+        self.preview.configure(state='disabled')
 
-        def refresh():
-            if not dlg.winfo_exists():
-                return
-            colours = colors()
-            for key, swatch in swatches.items():
-                swatch.configure(fg_color=colours[key],
-                                 hover_color=colours[key])
-                hexEntries[key].delete(0, END)
-                hexEntries[key].insert(0, colours[key].upper())
-            themeMenu.set(next(n for n, v in themes if v == settings.termTheme))
-            fontMenu.set(settings.termFont)
-            sizeEntry.delete(0, END)
-            sizeEntry.insert(0, str(settings.termFontSize))
-            preview.configure(fg_color=colours['bg'], text_color=colours['fg'],
-                              font=ctk.CTkFont(family=settings.termFont,
-                                               size=settings.termFontSize))
-            preview._textbox.tag_configure(
-                'picked', background=colours['select'], foreground=colours['fg'])
-            apply()
-
-        def pickTheme(name):
-            settings.termTheme = dict(themes)[name]
-            refresh()
-
-        def setColour(attr, value):
-            # editing any colour switches to the Custom theme, starting from
-            # the colours that are shown now
-            colours = colors()
-            settings.termBg, settings.termFg = colours['bg'], colours['fg']
-            settings.termSelect = colours['select']
-            setattr(settings, attr, value.lower())
-            settings.termTheme = 'custom'
-            refresh()
-
-        def chooseColour(key, attr):
-            _rgb, value = askcolor(color=colors()[key], parent=dlg,
-                                   title='Terminal colour')
-            if value:
-                setColour(attr, value)
-
-        def typedColour(key, attr):
-            if not dlg.winfo_exists():
-                return
-            text = hexEntries[key].get().strip()
-            if re.fullmatch(r'[0-9a-fA-F]{6}', text):
-                text = '#' + text
-            if (HEX_COLOR.fullmatch(text)
-                    and text.lower() != colors()[key].lower()):
-                setColour(attr, text)
-            else:
-                refresh()      # unchanged or not a colour: show the real value
-
-        def pickFont(name):
-            settings.termFont = name
-            refresh()
-
-        def setSize(value):
-            settings.termFontSize = min(max(value, TERM_SIZE_MIN), TERM_SIZE_MAX)
-            refresh()
-
-        def typedSize():
-            if not dlg.winfo_exists():
-                return
-            try:
-                setSize(int(sizeEntry.get().strip()))
-            except ValueError:
-                refresh()
-
-        def reset():
-            settings.termTheme = 'dark'
-            settings.termBg = defaults['terminalBg']
-            settings.termFg = defaults['terminalFg']
-            settings.termSelect = defaults['terminalSelect']
-            settings.termFont = defaults['terminalFont']
-            settings.termFontSize = defaults['terminalFontSize']
-            refresh()
-
-        def ok():
-            settings.save()
-            dlg.destroy()
-
-        def cancel():
-            (settings.termTheme, settings.termBg, settings.termFg, settings.termSelect,
-             settings.termFont, settings.termFontSize) = saved
-            apply()
-            dlg.destroy()
-
-        bar = ctk.CTkFrame(dlg, fg_color='transparent')
-        bar.grid(row=7, column=0, columnspan=4, padx=24, pady=(8, 20),
-                 sticky='ew')
+    def buildButtons(self):
+        bar = ctk.CTkFrame(self.win, fg_color='transparent')
+        bar.grid(row=7, column=0, columnspan=4, padx=24, pady=(8, 20), sticky='ew')
         bar.grid_columnconfigure(0, weight=1)
-        ctk.CTkButton(bar, text='Reset to defaults', width=140, font=font,
-                      command=reset).grid(row=0, column=0, sticky='w')
-        ctk.CTkButton(bar, text='OK', width=90, font=font, command=ok
+        ctk.CTkButton(bar, text='Reset to defaults', width=140, font=self.font,
+                      command=self.reset).grid(row=0, column=0, sticky='w')
+        ctk.CTkButton(bar, text='OK', width=90, font=self.font, command=self.ok
                       ).grid(row=0, column=1, padx=(8, 0))
-        ctk.CTkButton(bar, text='Cancel', width=90, font=font, command=cancel
+        ctk.CTkButton(bar, text='Cancel', width=90, font=self.font, command=self.cancel
                       ).grid(row=0, column=2, padx=(8, 0))
-        dlg.bind('<Escape>', lambda _e: cancel())
-        dlg.protocol('WM_DELETE_WINDOW', cancel)
+        self.win.bind('<Escape>', lambda _e: self.cancel())
+        self.win.protocol('WM_DELETE_WINDOW', self.cancel)
 
-        refresh()
-        dlg.update_idletasks()
-        x = root.winfo_x() + (root.winfo_width() - dlg.winfo_width()) // 2
-        y = root.winfo_y() + (root.winfo_height() - dlg.winfo_height()) // 2
-        dlg.geometry(f'+{max(x, 0)}+{max(y, 0)}')
-        dlg.after(150, lambda: (dlg.grab_set(), dlg.focus_set()))
+    def centerOnRoot(self):
+        win, root = self.win, self.root
+        win.update_idletasks()
+        x = root.winfo_x() + (root.winfo_width() - win.winfo_width()) // 2
+        y = root.winfo_y() + (root.winfo_height() - win.winfo_height()) // 2
+        win.geometry(f'+{max(x, 0)}+{max(y, 0)}')
+        win.after(150, lambda: (win.grab_set(), win.focus_set()))
+
+    # ---- showing the settings
+
+    def refresh(self):
+        """Shows the settings in the widgets, the preview and the Terminal"""
+        if not self.win.winfo_exists():
+            return
+        settings = self.settings
+        colours = self.colors()
+        for key, swatch in self.swatches.items():
+            swatch.configure(fg_color=colours[key], hover_color=colours[key])
+            self.hexEntries[key].delete(0, END)
+            self.hexEntries[key].insert(0, colours[key].upper())
+        self.themeMenu.set(next(n for n, v in THEMES if v == settings.termTheme))
+        self.fontMenu.set(settings.termFont)
+        self.sizeEntry.delete(0, END)
+        self.sizeEntry.insert(0, str(settings.termFontSize))
+        self.preview.configure(fg_color=colours['bg'], text_color=colours['fg'],
+                               font=ctk.CTkFont(family=settings.termFont,
+                                                size=settings.termFontSize))
+        self.preview._textbox.tag_configure(
+            'picked', background=colours['select'], foreground=colours['fg'])
+        self.apply()
+
+    # ---- the user's changes
+
+    def pickTheme(self, name):
+        self.settings.termTheme = dict(THEMES)[name]
+        self.refresh()
+
+    def setColour(self, attr, value):
+        # editing any colour switches to the Custom theme, starting from
+        # the colours that are shown now
+        settings = self.settings
+        colours = self.colors()
+        settings.termBg, settings.termFg = colours['bg'], colours['fg']
+        settings.termSelect = colours['select']
+        setattr(settings, attr, value.lower())
+        settings.termTheme = 'custom'
+        self.refresh()
+
+    def chooseColour(self, key, attr):
+        _rgb, value = askcolor(color=self.colors()[key], parent=self.win,
+                               title='Terminal colour')
+        if value:
+            self.setColour(attr, value)
+
+    def typedColour(self, key, attr):
+        if not self.win.winfo_exists():
+            return
+        text = self.hexEntries[key].get().strip()
+        if re.fullmatch(r'[0-9a-fA-F]{6}', text):
+            text = '#' + text
+        if (HEX_COLOR.fullmatch(text)
+                and text.lower() != self.colors()[key].lower()):
+            self.setColour(attr, text)
+        else:
+            self.refresh()      # unchanged or not a colour: show the real value
+
+    def pickFont(self, name):
+        self.settings.termFont = name
+        self.refresh()
+
+    def setSize(self, value):
+        self.settings.termFontSize = min(max(value, TERM_SIZE_MIN), TERM_SIZE_MAX)
+        self.refresh()
+
+    def typedSize(self):
+        if not self.win.winfo_exists():
+            return
+        try:
+            self.setSize(int(self.sizeEntry.get().strip()))
+        except ValueError:
+            self.refresh()
+
+    def reset(self):
+        settings, defaults = self.settings, self.defaults
+        settings.termTheme = 'dark'
+        settings.termBg = defaults['terminalBg']
+        settings.termFg = defaults['terminalFg']
+        settings.termSelect = defaults['terminalSelect']
+        settings.termFont = defaults['terminalFont']
+        settings.termFontSize = defaults['terminalFontSize']
+        self.refresh()
+
+    def ok(self):
+        self.settings.save()
+        self.win.destroy()
+
+    def cancel(self):
+        settings = self.settings
+        (settings.termTheme, settings.termBg, settings.termFg, settings.termSelect,
+         settings.termFont, settings.termFontSize) = self.saved
+        self.apply()
+        self.win.destroy()

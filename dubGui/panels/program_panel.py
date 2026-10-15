@@ -25,9 +25,14 @@ class ProgramFrame(LabeledFrame):
     image = None            # firmware_image.Image loaded with Open
     imageName = ''
 
-    def __init__(self, parent, app, DEBUG=False):
+    def __init__(self, parent, serCom, term, du, settings, scriptStop, showStatus, DEBUG=False):
         LabeledFrame.__init__(self, parent, text='Program')
-        self.app = app
+        self.serCom = serCom        # the connection panel: is the board free and connected?
+        self.term = term
+        self.du = du                # the board library object
+        self.settings = settings
+        self.scriptStop = scriptStop    # [bool]: Esc or a lost connection sets it
+        self.showStatus = showStatus    # showStatus(text, ms): a message in the status bar
         self.DEBUG = DEBUG
         self.start_addr = StringVar()
         self.length = StringVar()
@@ -124,9 +129,9 @@ class ProgramFrame(LabeledFrame):
             text='Offset: 0x' if fileMode else 'Start Address: 0x')
 
     def program(self):
-        if self.app.serCom.scriptBusy():
+        if self.serCom.scriptBusy():
             return
-        if not self.app.serCom.checkConnection():  # check if board is connected
+        if not self.serCom.checkConnection():  # check if board is connected
             return
         try:
             self.get_states()
@@ -134,9 +139,9 @@ class ProgramFrame(LabeledFrame):
             showerror('Program', str(e))
             return
         if self.progModeVar.get() == 'pattern':
-            self.app.du.page_program(
+            self.du.page_program(
                 self.comm, startAddr, dataLen, pattn, incr)
-            self.app.term.tprint(self.app.du.textToDisplay[:-1])
+            self.term.tprint(self.du.textToDisplay[:-1])
         else:   # if programming a content of a file
             if self.image is None:
                 showerror('Program', 'No file is loaded. Click Open first.')
@@ -178,8 +183,8 @@ class ProgramFrame(LabeledFrame):
                             raise ProgramCancelled()
                         state['text'] = f'Programming, {w}address {t:X}'
                         state['done'] = b + n
-                    self.app.du.data_program(comm, data, target, progress)
-                    messages.put(('tprint', self.app.du.textToDisplay[:-1]))
+                    self.du.data_program(comm, data, target, progress)
+                    messages.put(('tprint', self.du.textToDisplay[:-1]))
                     base += len(data)
                 result['finished'] = True
             except ProgramCancelled:
@@ -187,10 +192,10 @@ class ProgramFrame(LabeledFrame):
             except BaseException as e:      # incl. SystemExit from a comm error
                 result['error'] = f'{type(e).__name__}: {e}'
 
-        dialog = ProgressDialog(self.app.root, 'Programming', total)
-        self.app.serCom.scriptRunning = True     # blocks the panels and the Terminal
-        self.app.term.cmdInProgress = True       # and the background serial reader
-        self.app.scriptStop[0] = False           # Esc or a lost connection cancels too
+        dialog = ProgressDialog(self.winfo_toplevel(), 'Programming', total)
+        self.serCom.scriptRunning = True     # blocks the panels and the Terminal
+        self.term.cmdInProgress = True       # and the background serial reader
+        self.scriptStop[0] = False           # Esc or a lost connection cancels too
         worker = threading.Thread(target=work, daemon=True)
         worker.start()
 
@@ -200,43 +205,43 @@ class ProgramFrame(LabeledFrame):
                     kind, text = messages.get_nowait()
                 except queue.Empty:
                     break
-                getattr(self.app.term, kind)(text)
-            if dialog.cancelled or self.app.scriptStop[0]:
+                getattr(self.term, kind)(text)
+            if dialog.cancelled or self.scriptStop[0]:
                 state['cancel'] = True
             dialog.show(state['text'], state['done'])
             if worker.is_alive():
-                self.app.root.after(100, poll)
+                self.after(100, poll)
                 return
             while not messages.empty():     # text posted just before the end
                 kind, text = messages.get_nowait()
-                getattr(self.app.term, kind)(text)
-            self.app.term.cmdInProgress = False
-            self.app.serCom.scriptRunning = False
+                getattr(self.term, kind)(text)
+            self.term.cmdInProgress = False
+            self.serCom.scriptRunning = False
             dialog.close()
             if result['cancelled']:
-                self.app.term.displayText('*** Programming cancelled; the device may be '
+                self.term.displayText('*** Programming cancelled; the device may be '
                                  'partly programmed. ***\n')
             elif result['error']:
-                self.app.term.displayText(f'*** Programming stopped: {result["error"]}. '
+                self.term.displayText(f'*** Programming stopped: {result["error"]}. '
                                  'The device may be partly programmed. ***\n')
             elif count > 1:
-                self.app.term.displayText(f'Programmed {count} segments, '
+                self.term.displayText(f'Programmed {count} segments, '
                                  f'{self.image.size} bytes in total.\n')
-        self.app.root.after(100, poll)
+        self.after(100, poll)
 
     def progVerify(self):
         pass
 
     def openFile(self):
-        folder = self.app.settings.programDir
+        folder = self.settings.programDir
         filename = askopenfilename(
             title='Select File to Program',
             initialdir=folder if os.path.isdir(folder) else os.getcwd(),
             filetypes=firmware_image.FILE_TYPES)
         if not filename:             # dialog cancelled
             return False
-        self.app.settings.programDir = os.path.dirname(filename)   # start here next time
-        self.app.settings.save()
+        self.settings.programDir = os.path.dirname(filename)   # start here next time
+        self.settings.save()
         try:
             self.image = firmware_image.load_image(filename)
         except OSError as e:
@@ -266,16 +271,16 @@ class ProgramFrame(LabeledFrame):
             offset = parseField('Offset', self.start_addr.get())
         except ValueError:
             offset = 0
-        self.app.term.displayText(f'Loaded {self.imageName}: {self.image.describe()}\n')
+        self.term.displayText(f'Loaded {self.imageName}: {self.image.describe()}\n')
         preview, _rows = hexdump.format_segments(
             self.image.segments, offset, limit=PREVIEW_BYTES,
             full_if_at_most=PREVIEW_FULL, max_segments=PREVIEW_SEGMENTS,
-            **self.app.settings.hexOptions())
-        self.app.term.displayText(preview + '\n')
-        self.app.term.displayText(f'Addresses are where the data will be written (file '
+            **self.settings.hexOptions())
+        self.term.displayText(preview + '\n')
+        self.term.displayText(f'Addresses are where the data will be written (file '
                          f'address + Offset 0x{offset:X}). Firmware > View File '
                          'shows everything. Erase first if needed.\n')
-        self.app.showStatus(f'Loaded {self.imageName}: {self.image.describe()}', 8000)
+        self.showStatus(f'Loaded {self.imageName}: {self.image.describe()}', 8000)
 
     def closeFile(self):
         self.image, self.imageName = None, ''

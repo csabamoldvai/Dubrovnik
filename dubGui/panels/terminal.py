@@ -11,9 +11,11 @@ CLEAR_CMD = 'clear'
 
 
 class Terminal(LabeledFrame):
-    def __init__(self, parent, app):
+    def __init__(self, parent, du, menuFont):
         LabeledFrame.__init__(self, parent, text='Terminal')
-        self.app = app
+        self.du = du                # the board library object (its textToDisplay is cleared here)
+        self.menuFont = menuFont
+        self.serCom = None          # the connection panel; set by the App once it exists
         self.comm = None
         self.history = []
         self.historyIndex = 0
@@ -80,7 +82,7 @@ class Terminal(LabeledFrame):
             # same font as the menu bar (the default Tk menu font is tiny);
             # menuFont is set once the window is built. Multiply the size
             # here to make this menu larger.
-            self.ctxMenu.configure(font=(self.app.menuFont[0], int(self.app.menuFont[1] * 1.0)))
+            self.ctxMenu.configure(font=(self.menuFont[0], int(self.menuFont[1] * 1.0)))
             self.ctxMenu.tk_popup(event.x_root, event.y_root)
         finally:
             self.ctxMenu.grab_release()
@@ -96,7 +98,7 @@ class Terminal(LabeledFrame):
                     n = handle.in_waiting
                 except Exception:      # the port vanished: board off or unplugged
                     n = 0
-                    self.app.serCom.connectionLost()
+                    self.serCom.connectionLost()
                 if n > 0:
                     data = handle.read(n).decode('utf-8', errors='replace')
                     data = data.replace('\r', '')
@@ -116,11 +118,11 @@ class Terminal(LabeledFrame):
         clears the device, 'Part info: <part> ...' sets it."""
         self.bootBuf = (getattr(self, 'bootBuf', '') + data)[-2000:]
         if 'Detecting flash part' in self.bootBuf:
-            self.app.serCom.deviceDetected('')
+            self.serCom.deviceDetected('')
             self.bootBuf = self.bootBuf.split('Detecting flash part')[-1]
         m = re.search(r'Part info:\s*(\S+)\s', self.bootBuf)  # whole word received
         if m:
-            self.app.serCom.deviceDetected(m.group(1))
+            self.serCom.deviceDetected(m.group(1))
             self.bootBuf = ''
 
     def displayText(self, text):
@@ -130,7 +132,7 @@ class Terminal(LabeledFrame):
         self.txt.see(INSERT)
 
     def onReturnKey(self, _event):
-        if self.app.serCom.scriptRunning:
+        if self.serCom.scriptRunning:
             return 'break'          # the script owns the board
         cmdstr = self.txt.get("end-1l linestart", "end-1l lineend")[
             len(PROMPT):].strip()
@@ -288,11 +290,11 @@ class Terminal(LabeledFrame):
             print(text)
         elif printOn == 'guiConsole':
             self.displayText(text)
-            self.app.du.textToDisplay = ""
+            self.du.textToDisplay = ""
         else:
             print(text)
             self.displayText(text)
-            self.app.du.textToDisplay = ""
+            self.du.textToDisplay = ""
 
     def callCommand(self):
         pass

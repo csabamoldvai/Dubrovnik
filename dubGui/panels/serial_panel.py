@@ -9,10 +9,13 @@ from dubGui.panels.base import LabeledFrame
 
 
 class SerComFrame(LabeledFrame):
-    def __init__(self, parent, app, DEBUG=False):
+    def __init__(self, parent, settings, du, term, statusLabel, scriptStop, DEBUG=False):
         LabeledFrame.__init__(self, parent, text='Serial Connection')
-        self.app = app
-        self.settings = app.settings          # the remembered settings (dubLibs/settings.py)
+        self.settings = settings              # the remembered settings (dubLibs/settings.py)
+        self.du = du                          # the board library object
+        self.term = term                      # the Terminal: messages about the connection
+        self.statusLabel = statusLabel        # the status bar of the main window
+        self.scriptStop = scriptStop          # [bool]: set True to stop a running script
         self.DEBUG = DEBUG
         self.STANDALONE = False
         self.comm = None                      # object created by boardcom
@@ -69,7 +72,7 @@ class SerComFrame(LabeledFrame):
             self.combo.set(self.portList[0])
         elif self.portStatus == 'disconnected':
             self.combo.set('')
-            self.app.stsBarComm.configure(text='No COM port found: connect the USB cable, '
+            self.statusLabel.configure(text='No COM port found: connect the USB cable, '
                              'turn on the board and press RESET')
 
     def connectPort(self, defaultPort=None, checkIsFlashPresent=True):
@@ -94,7 +97,7 @@ class SerComFrame(LabeledFrame):
             # only if disconnected, connect to selected port
             self.portHandle = self.comm.connect(self.selPort)
             if self.portHandle is None:     # the port could not be opened
-                self.app.stsBarComm.configure(text=f'Could not open {self.selPort}')
+                self.statusLabel.configure(text=f'Could not open {self.selPort}')
                 return
             self.setSerialParams()
             self.btn2.configure(text='Disconnect')  # change button label
@@ -102,23 +105,23 @@ class SerComFrame(LabeledFrame):
             self.serParams = f'Connected: {self.comPort} ({self.comBaudrate},{self.comBytesize},{self.comParity},{self.comStopbits},{self.comXonXoff})'
             if checkIsFlashPresent:  # allow this part to run only when enabled by func argument
                 if self.comm.isFlashPresent():
-                    pn = self.app.du.get_part_number(self.comm)
+                    pn = self.du.get_part_number(self.comm)
                     self.serParams += '    Device: ' + pn
-            self.app.stsBarComm.configure(text=self.serParams)
+            self.statusLabel.configure(text=self.serParams)
 
         elif self.portStatus == 'connected':
             # if connected, disconnect from the current port
             self.disconnectPort(self.selPort)
             self.btn2.configure(text='Connect')  # update button label
             self.portStatus = 'disconnected'  # update connection status
-            self.app.stsBarComm.configure(text='Disconnected')
+            self.statusLabel.configure(text='Disconnected')
         else:
             print('No such port. Try again!!!')
         self.settings.save()
 
     def disconnectPort(self, selPort):
         self.comm.disconnect(selPort)
-        self.app.stsBarComm.configure(text='No COM port found!')
+        self.statusLabel.configure(text='No COM port found!')
 
     def scriptBusy(self):
         """True (with a message) while a script is running: the panels, the
@@ -149,13 +152,13 @@ class SerComFrame(LabeledFrame):
         self.portStatus = 'disconnected'
         self.serParams = ''
         self.btn2.configure(text='Connect')
-        self.app.stsBarComm.configure(text=f'Connection to {lost} lost: the board was '
+        self.statusLabel.configure(text=f'Connection to {lost} lost: the board was '
                          'switched off or unplugged')
-        self.app.term.displayText(f'*** Connection to {lost} lost (board switched off or '
+        self.term.displayText(f'*** Connection to {lost} lost (board switched off or '
                          'unplugged). Switch it on, press RESET and click '
                          'Connect. ***')
         if self.scriptRunning:          # a script can't go on without the board
-            self.app.scriptStop[0] = True
+            self.scriptStop[0] = True
 
     def deviceDetected(self, partNumber):
         """The board (re)detected its device, e.g. after being switched off and
@@ -164,7 +167,7 @@ class SerComFrame(LabeledFrame):
             return
         base = self.serParams.split('    Device:')[0]
         self.serParams = base + (f'    Device: {partNumber}' if partNumber else '')
-        self.app.stsBarComm.configure(text=self.serParams)
+        self.statusLabel.configure(text=self.serParams)
 
     def checkLink(self):
         """Every 2 s: is the COM port of the connected board still there?

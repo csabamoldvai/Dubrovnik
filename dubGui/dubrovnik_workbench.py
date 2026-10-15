@@ -114,18 +114,57 @@ class App:
 
         comm = boardcom.BoardComm()   # create an instance of class Comm
         self.du = dubrovnik.Dubrovnik()
+        self.settings = Settings()
+        self.scriptStop = [False]      # set by Esc or a lost connection: stops scripts and programming
+
+        self.buildStatusBar()
+        portList = self.buildPanels(comm)
+        self.buildMenus()
+        self.bindKeys()
+        self.initState()
+        self.loadAndSync()
+        self.autoConnect(comm, portList)
+        self.focusTerminal()
+        self.placeWindow()
+
+    def buildStatusBar(self):
+        """The status bar at the bottom of the window"""
+        # ***************************
+        # ****** Status Bar *********
+        # ***************************
+        self.stsBarComm = ctk.CTkLabel(self.root, text='Not connected', anchor='w')
+        self.stsBarComm.grid(row=5, column=0, padx=10, pady=4,
+                        columnspan=4, sticky=EW)
+
+
+    def buildPanels(self, comm):
+        """The Terminal, the connection panel and the three panels; returns the list of COM ports found"""
+        # the menu font is also used by the Terminal's pop-up menu
+        self.scale = ScalingTracker.get_widget_scaling(self.root)
+        self.menuFamily = ctk.ThemeManager.theme['CTkFont']['family']
+        self.menuFont = (self.menuFamily, -round(MENU_SIZES[self.settings.menuSize] * self.scale))
+
+        # ***********************************
+        # ******** Terminal Window **********
+        # ***********************************
+        self.term = Terminal(self.root, self.du, self.menuFont)
+        self.term.grid(row=3, column=0, padx=10, pady=4, columnspan=4, sticky=NSEW)
+        self.term.grid_columnconfigure(0, weight=1)
+        self.term.grid_rowconfigure(1, weight=1)  # txt widget lives at row 1
+        self.term.comm = comm
 
         portList = comm.findPorts(exit_if_none=False)   # may be empty: no board yet
 
         # *******************************************
         # ****** Serial Communications Panel ********
         # *******************************************
-        self.settings = Settings()
-        self.serCom = SerComFrame(self.root, self, DEBUG=False)
+        self.serCom = SerComFrame(self.root, self.settings, self.du, self.term, self.stsBarComm,
+                                self.scriptStop, DEBUG=False)
         self.serCom.grid(row=1, column=0, padx=(10, 3), pady=(8, 4), sticky=NSEW)
         if portList:
             self.serCom.combo.set(portList[0])
         self.serCom.comm = comm
+        self.term.serCom = self.serCom
         self.serCom.checkLink()      # notices when the board is switched off
 
         # ******************************
@@ -135,30 +174,22 @@ class App:
         # and the remaining ones close up (see layoutPanels below).
         self.panelRow = ctk.CTkFrame(self.root, fg_color='transparent', corner_radius=0)
         self.panelRow.grid(row=2, column=0, columnspan=4, sticky=NW)
-        self.erase = EraseFrame(self.panelRow, self, DEBUG=False)
+        self.erase = EraseFrame(self.panelRow, self.serCom, self.term, self.du, DEBUG=False)
         self.erase.comm = comm
 
         # ******************************
         # ****** Program Panel *********
         # ******************************
         # TODO rename program to progFrm
-        self.program = ProgramFrame(self.panelRow, self, DEBUG=False)
+        self.program = ProgramFrame(self.panelRow, self.serCom, self.term, self.du, self.settings,
+                                    self.scriptStop, self.showStatus, DEBUG=False)
         self.program.comm = comm
 
         # ***************************
         # ****** Read Panel *********
         # ***************************
-        self.read = ReadFrame(self.panelRow, self, DEBUG=False)
+        self.read = ReadFrame(self.panelRow, self.serCom, self.term, self.du, self.settings, DEBUG=False)
         self.read.comm = comm
-
-        # ***********************************
-        # ******** Terminal Window **********
-        # ***********************************
-        self.term = Terminal(self.root, self)
-        self.term.grid(row=3, column=0, padx=10, pady=4, columnspan=4, sticky=NSEW)
-        self.term.grid_columnconfigure(0, weight=1)
-        self.term.grid_rowconfigure(1, weight=1)  # txt widget lives at row 1
-        self.term.comm = comm     # initializeing self.com in Erase class
 
         # Let the terminal row absorb all extra vertical space, and let the three
         # panel columns share extra horizontal space evenly.
@@ -168,21 +199,14 @@ class App:
         for col in (0, 1, 2):
             self.root.grid_columnconfigure(col, weight=0)
         self.root.grid_columnconfigure(3, weight=1)
+        return portList
 
-        # ***************************
-        # ****** Status Bar *********
-        # ***************************
-        self.stsBarComm = ctk.CTkLabel(self.root, text='Not connected', anchor='w')
-        self.stsBarComm.grid(row=5, column=0, padx=10, pady=4,
-                        columnspan=4, sticky=EW)
-
+    def buildMenus(self):
+        """The menu bar and the menus, from the tables of dubGui/menus.py"""
         # ############ MENU
         # A native Windows menu bar ignores font settings, so build the bar from
         # CTk buttons (row 0) that pop up regular menus, whose font can be set.
         # The menus are described by the tables in dubGui/menus.py.
-        self.scale = ScalingTracker.get_widget_scaling(self.root)
-        self.menuFamily = ctk.ThemeManager.theme['CTkFont']['family']
-        self.menuFont = (self.menuFamily, -round(MENU_SIZES[self.settings.menuSize] * self.scale))
         self.menuButtons = []     # (button, font, label) of the menu bar, see applyMenuSize
         self.menuBar = ctk.CTkFrame(self.root, corner_radius=0, height=30)
         self.menuBar.grid(row=0, column=0, columnspan=4, sticky=EW)
@@ -206,38 +230,38 @@ class App:
         self.view_menu = self.menus['view'].menu
         self.docs_menu = self.menus['help'].sub('documents').menu
 
+
+    def bindKeys(self):
+        """Keyboard shortcuts of the main window"""
         # Scripts (File > Scripts). Both kinds run on the GUI thread and call
         # root.update() between commands, so the window stays alive and Esc is seen.
         #   Command script: a text file, one Terminal command per line
         #                   (see dubLibs/run_cmd_script.py)
         #   Python script : a Python file that uses the `dub` object
         #                   (see dubLibs/run_py_script.py)
-        self.scriptStop = [False]
-
         self.root.bind('<Escape>', lambda _e: self.stopScript())
 
         self.root.bind('<Control-o>', self.fileShortcut(lambda: self.openForProgramming()))
         self.root.bind('<Control-p>', self.fileShortcut(lambda: self.programLoadedFile()))
         self.term.txt.bind('<Control-o>', self.fileShortcut(lambda: self.openForProgramming()))
         self.term.txt.bind('<Control-p>', self.fileShortcut(lambda: self.programLoadedFile()))
-
-        self.zoomState = dict(save=None, restore=None, old=None)
-
         self.term.onZoom = self.zoomTerminal
-
-        self.fileViewer = None
-
-        self.hexDialog = None
-
-        self.fontCache = []
-
-        self.termDialog = None
-
         self.root.bind('<F1>', showHelp)
 
+
+    def initState(self):
+        """The handles of the windows opened later and other state of the App"""
+        self.zoomState = dict(save=None, restore=None, old=None)
+        self.fileViewer = None
+        self.hexDialog = None
+        self.fontCache = []
+        self.termDialog = None
         self.assistant = None             # dubLibs.assistant.Assistant, made when first needed
         self.assistantWindow = None
 
+
+    def loadAndSync(self):
+        """Loads the settings into the panels and the menus"""
         self.loadSettings()  # includes autoConnect and lastUsedPort
         self.menuSizeVar.set(self.settings.menuSize)
         self.applyMenuSize()          # the size just loaded from the settings file
@@ -251,6 +275,9 @@ class App:
         # (Traces are added after loadSettings so loading doesn't trigger a save.)
         self.serCom.chk_var.trace_add('write', self.serCom.autoConnectChanged)
 
+
+    def autoConnect(self, comm, portList):
+        """Connects to the board at start-up if the settings ask for it"""
         # * At this point we have a list of valid COM ports.
         # * Next step is to connect to one of them.
         if self.settings.autoConnect and portList:  # auto connect, if a board was found
@@ -286,6 +313,9 @@ class App:
                 '2. Turn on the board\n3. Press the RESET button\n\n'
                 'Then click Connect (the COM port list refreshes when you open it).')
 
+
+    def focusTerminal(self):
+        """Gives the keyboard focus to the Terminal"""
         # Board commands (volt, freq, config, ...) don't need a flash device, so the
         # terminal must stay usable. The modal warning steals focus: give it back.
         self.root.focus_force()
@@ -294,6 +324,9 @@ class App:
 
         self.stsBarComm.configure(text=self.serCom.serParams)
 
+
+    def placeWindow(self):
+        """Sets the size and the position of the window: minimum, saved or default"""
         # The minimum width is the natural width of the visible panels (with their
         # margins), so those stay fully visible; the window can be freely enlarged
         # or shrunk down to that. Capped to the screen so it still fits on small
@@ -337,6 +370,7 @@ class App:
         self.root.geometry(geom)
 
         self.root.protocol('WM_DELETE_WINDOW', self.onClose)
+
 
     def run(self):
         """Shows the window and handles events until it is closed"""
