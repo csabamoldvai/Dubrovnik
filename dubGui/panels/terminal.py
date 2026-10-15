@@ -5,6 +5,7 @@ import customtkinter as ctk
 from dubGui.look import TERM_THEMES
 from dubGui.panels.base import LabeledFrame
 from dubLibs import run_cmd_script
+from dubLibs.boardcom import BoardTimeout
 
 PROMPT = '>>> '
 CLEAR_CMD = 'clear'
@@ -107,6 +108,7 @@ class Terminal(LabeledFrame):
                         self.txt.mark_set(INSERT, END)
                         self.txt.see(INSERT)
                         self.watchBootMessage(data)
+                        self.serCom.markAnswering()     # the board is talking
         except Exception as e:
             print(f'pollSerial error: {e}')
         finally:
@@ -161,8 +163,11 @@ class Terminal(LabeledFrame):
         try:
             self.comm.send(cmdstr)
             resp = self.comm.response(removeCmd=True, removePrompt=True).strip()
+            self.serCom.markAnswering()
         except Exception as e:
             resp = f'error from boardcom: {e}'
+            if isinstance(e, BoardTimeout):
+                self.serCom.markSilent()
         finally:
             self.cmdInProgress = False
         return resp

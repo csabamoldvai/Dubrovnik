@@ -349,6 +349,7 @@ class App:
                                 'answer. Press the RESET button (its start-up message then '
                                 'appears here), verify that a valid SD card is inserted, or '
                                 'verify that the MCU is functional.', '')
+            self.serCom.markSilent()
 
     def onCallbackError(self, exc, val, tb):
         """Tk calls this for an error in a button, menu or timer callback. A board that does
@@ -356,7 +357,7 @@ class App:
         the Terminal and the status bar and carry on. Anything else is printed as usual."""
         if isinstance(val, boardcom.BoardTimeout):
             self.term.displayText('*** ' + str(val) + ' ***')
-            self.showStatus('The board did not answer', 6000)
+            self.serCom.markSilent()
         else:
             traceback.print_exception(exc, val, tb)
 

@@ -8,6 +8,8 @@ from dubGui.look import CHECKBOX_STYLE
 from dubGui.panels.base import LabeledFrame
 from dubLibs.boardcom import BoardTimeout, TIMEOUT_LIST
 
+SILENT_NOTE = '    Board not responding'      # added to the status bar text of a silent board
+
 
 class SerComFrame(LabeledFrame):
     def __init__(self, parent, settings, du, term, statusLabel, scriptStop, DEBUG=False):
@@ -139,6 +141,7 @@ class SerComFrame(LabeledFrame):
                         self.statusLabel.configure(text=self.serParams)
                 except BoardTimeout as e:
                     self.term.displayText('*** ' + str(e) + ' ***')
+                    self.markSilent()
                     showwarning("Board not responding", TIMEOUT_LIST)
                 finally:
                     self.comm.retryDialog = True
@@ -199,9 +202,22 @@ class SerComFrame(LabeledFrame):
         on again: show it in the status bar ('' = no device)"""
         if self.portStatus != 'connected':
             return
-        base = self.serParams.split('    Device:')[0]
+        base = self.serParams.split('    Device:')[0].replace(SILENT_NOTE, '')   # it answered
         self.serParams = base + (f'    Device: {partNumber}' if partNumber else '')
         self.statusLabel.configure(text=self.serParams)
+
+    def markSilent(self):
+        """Connected to the port, but the board does not answer: say so in the status bar"""
+        if self.portStatus == 'connected' and SILENT_NOTE not in self.serParams:
+            self.serParams += SILENT_NOTE
+            self.statusLabel.configure(text=self.serParams)
+
+    def markAnswering(self):
+        """The board answered (a command, or its start-up message after RESET)"""
+        if SILENT_NOTE in self.serParams:
+            self.serParams = self.serParams.replace(SILENT_NOTE, '')
+            if self.portStatus == 'connected':
+                self.statusLabel.configure(text=self.serParams)
 
     def checkLink(self):
         """Every 2 s: is the COM port of the connected board still there? (Backs up the
