@@ -1,7 +1,12 @@
 import re
 from dubLibs import boardcom
 
-BLOCK64_TYPICAL_S = 0.33        # chip erase time per 64 kB (AT25SL128A: 83.7 s for 16 MB)
+# Chip erase time measured on two devices (programmed cells take a little longer):
+#   AT25SF041B  512 kB   1.388 s        AT25SL128A  16 MB   83.7 s
+# A power law through both points: the time per kB grows with the size of the device.
+ERASE_REF_BYTES = 512 * 1024
+ERASE_REF_S = 1.388
+ERASE_EXPONENT = 1.183
 CHIP_ERASE_DEFAULT_S = 60       # when the capacity of the device is not known
 
 
@@ -338,25 +343,29 @@ class Dubrovnik:
         return self.get_wait_time_us(comm)
 
     def read_density_code(self, comm):
-        """Capacity code (third byte of the JEDEC ID, command 9f) of the device,
-        or None if the reply cannot be read. Capacity in bytes = 2 ** code."""
+        """Capacity code of the device from its JEDEC ID (command 9f): capacity in
+        bytes = 2 ** code. None if the reply cannot be read or understood.
+        Most devices give the code as the third byte (1f 42 18: 0x18 = 16 MB). Adesto
+        / Atmel devices of the older style (1f 84 01) have a third byte that is not
+        a code; their density is the low five bits of the second byte (4 = 4 Mbit)."""
         self.read_id(comm, '9f ', 3, echo=0)
         reply = comm.response(removeCmd=True, removePrompt=True)
-        found = re.findall(r'\b[0-9a-fA-F]{2}\b', reply)
+        found = [int(x, 16) for x in re.findall(r'\b[0-9a-fA-F]{2}\b', reply)]
         if len(found) < 3:
             return None
-        code = int(found[2], 16)
-        return code if 10 <= code <= 40 else None
+        if 10 <= found[2] <= 40:
+            return found[2]
+        if found[0] == 0x1F and 1 <= found[1] & 0x1F <= 20:
+            return (found[1] & 0x1F) + 15       # 4 Mbit = 2 ** 19 bytes
+        return None
 
     @staticmethod
     def chip_erase_estimate_s(density_code):
-        """Expected chip erase time in seconds for a JEDEC density code (None: not
-        known, a default is used). Capacity in bytes = 2 ** code; chip erase takes about
-        0.33 s per 64 kB (measured; programmed cells take a little longer)."""
+        """Expected chip erase time in seconds for a capacity code (None: not known,
+        a default is used), from the two measurements above."""
         if density_code is None:
             return CHIP_ERASE_DEFAULT_S
-        blocks = max(2 ** density_code // 65536, 1)
-        return blocks * BLOCK64_TYPICAL_S
+        return ERASE_REF_S * (2 ** density_code / ERASE_REF_BYTES) ** ERASE_EXPONENT
 
     def chip_erase(self, comm, cancelRequested, trig=False):
         """Chip erase that can be cancelled: cancelRequested() is called about

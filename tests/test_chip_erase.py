@@ -43,6 +43,10 @@ class DensityTests(unittest.TestCase):
     def test_third_byte_is_the_density_code(self):
         self.assertEqual(self.code('ef 40 18'), 0x18)
 
+    def test_old_adesto_style_takes_the_density_from_the_second_byte(self):
+        self.assertEqual(self.code('1f 84 01'), 19)             # AT25SF041B: 4 Mbit
+        self.assertIsNone(self.code('c2 84 01'))                # other makers: unknown
+
     def test_unreadable_reply_gives_none(self):
         self.assertIsNone(self.code('ef 40'))
         self.assertIsNone(self.code('ff ff ff'))
@@ -50,12 +54,14 @@ class DensityTests(unittest.TestCase):
     def test_estimate_grows_with_capacity(self):
         est = dubrovnik.Dubrovnik.chip_erase_estimate_s
         self.assertLess(est(0x16), est(0x18))
-        self.assertAlmostEqual(est(0x18) / est(0x17), 2)
+        self.assertGreater(est(0x18), 2 * est(0x17))
         self.assertEqual(est(None), dubrovnik.CHIP_ERASE_DEFAULT_S)
 
     def test_16_mb_device_takes_about_84_seconds(self):
         # code 0x18 = 2**24 bytes; AT25SL128A measured 83.7 s
-        self.assertAlmostEqual(dubrovnik.Dubrovnik.chip_erase_estimate_s(0x18), 84.5, delta=2)
+        est = dubrovnik.Dubrovnik.chip_erase_estimate_s
+        self.assertAlmostEqual(est(0x18), 83.7, delta=1)
+        self.assertAlmostEqual(est(19), 1.388, delta=0.1)       # AT25SF041B, 512 kB
 
 
 class CancellableSendTests(unittest.TestCase):
