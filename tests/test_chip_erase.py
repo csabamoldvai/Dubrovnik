@@ -53,6 +53,10 @@ class DensityTests(unittest.TestCase):
         self.assertAlmostEqual(est(0x18) / est(0x17), 2)
         self.assertEqual(est(None), dubrovnik.CHIP_ERASE_DEFAULT_S)
 
+    def test_16_mb_device_takes_about_84_seconds(self):
+        # code 0x18 = 2**24 bytes; AT25SL128A measured 83.7 s
+        self.assertAlmostEqual(dubrovnik.Dubrovnik.chip_erase_estimate_s(0x18), 84.5, delta=2)
+
 
 class CancellableSendTests(unittest.TestCase):
     def comm(self, chunks):

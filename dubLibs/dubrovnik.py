@@ -1,7 +1,7 @@
 import re
 from dubLibs import boardcom
 
-BLOCK64_TYPICAL_S = 0.3         # typical time of one 64 kB block erase
+BLOCK64_TYPICAL_S = 0.33        # chip erase time per 64 kB (AT25SL128A: 83.7 s for 16 MB)
 CHIP_ERASE_DEFAULT_S = 60       # when the capacity of the device is not known
 
 
@@ -339,7 +339,7 @@ class Dubrovnik:
 
     def read_density_code(self, comm):
         """Capacity code (third byte of the JEDEC ID, command 9f) of the device,
-        or None if the reply cannot be read. Capacity in bits = 2 ** code."""
+        or None if the reply cannot be read. Capacity in bytes = 2 ** code."""
         self.read_id(comm, '9f ', 3, echo=0)
         reply = comm.response(removeCmd=True, removePrompt=True)
         found = re.findall(r'\b[0-9a-fA-F]{2}\b', reply)
@@ -351,11 +351,11 @@ class Dubrovnik:
     @staticmethod
     def chip_erase_estimate_s(density_code):
         """Expected chip erase time in seconds for a JEDEC density code (None: not
-        known, a default is used). NOR flash chip erase takes about as long as erasing
-        all its 64 kB blocks one after the other at their typical time (about 0.3 s)."""
+        known, a default is used). Capacity in bytes = 2 ** code; chip erase takes about
+        0.33 s per 64 kB (measured; programmed cells take a little longer)."""
         if density_code is None:
             return CHIP_ERASE_DEFAULT_S
-        blocks = max((2 ** density_code) // 8 // 65536, 1)
+        blocks = max(2 ** density_code // 65536, 1)
         return blocks * BLOCK64_TYPICAL_S
 
     def chip_erase(self, comm, cancelRequested, trig=False):
