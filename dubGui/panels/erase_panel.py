@@ -166,7 +166,8 @@ class EraseFrame(LabeledFrame):
             elif self.du.eraseState == 'busy':
                 self.term.displayText('*** Chip erase cancelled, but the board did not '
                                       'answer yet: the device is probably still erasing. '
-                                      'Wait for it to finish or press RESET. ***\n')
+                                      'Wait for it to finish or power-cycle the board, '
+                                      'press RESET and reconnect ***\n')
         self.after(100, poll)
 
     def erase_test(self):
