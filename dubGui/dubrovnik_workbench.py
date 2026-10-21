@@ -195,7 +195,8 @@ class App:
         # ***************************
         # ****** Read Panel *********
         # ***************************
-        self.read = ReadFrame(self.panelRow, self.serCom, self.term, self.du, self.settings, DEBUG=False)
+        self.read = ReadFrame(self.panelRow, self.serCom, self.term, self.du, self.settings,
+                         self.scriptStop, self.showStatus, DEBUG=False)
         self.read.comm = comm
 
         # Let the terminal row absorb all extra vertical space, and let the three

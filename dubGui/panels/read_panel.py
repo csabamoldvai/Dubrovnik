@@ -9,14 +9,18 @@ from dubGui.tooltip import Tooltip
 from dubLibs import hexdump
 from dubLibs.fields import parseField
 
+READ_CHUNK = 0x1000        # a longer read is done in pieces of this size (shown as they arrive)
+
 
 class ReadFrame(LabeledFrame):
-    def __init__(self, parent, serCom, term, du, settings, DEBUG=False):
+    def __init__(self, parent, serCom, term, du, settings, scriptStop, showStatus, DEBUG=False):
         LabeledFrame.__init__(self, parent, text='Read')
         self.serCom = serCom        # the connection panel: is the board free and connected?
         self.term = term
         self.du = du                # the board library object
         self.settings = settings
+        self.scriptStop = scriptStop    # [bool]: Esc or a lost connection sets it
+        self.showStatus = showStatus    # showStatus(text, ms): a message in the status bar
         self.DEBUG = DEBUG
         self.comm = None
         self.spiMode = StringVar()
@@ -117,23 +121,95 @@ class ReadFrame(LabeledFrame):
         except ValueError as e:
             showerror('Read', str(e))
             return
-        try:
-            self.du.read_mode(self.comm, self.spiMode.get(),
-                         start_addr=readStartAddr, length=readLen, echo=0)
-        except ValueError as e:
-            showerror('Read', str(e))
-            return
-        text = self.du.textToDisplay[:-1]
+        if readLen <= READ_CHUNK:
+            try:
+                text = self.readText(readStartAddr, readLen, True, self.spiMode.get())
+            except ValueError as e:
+                showerror('Read', str(e))
+                return
+            self.term.tprint(text, printOn='guiConsole')
+        else:
+            self.readLong(readStartAddr, readLen)
+
+    def readText(self, start, length, first, spiMode):
+        """Reads one piece from the board and returns the text for the Terminal: the
+        board's reply, or in Hex View the hex-editor layout of it. first: this is
+        the first piece of a read, so the echoed command is shown above it. (spiMode
+        is passed in: a Tk variable must not be read in the background thread.)"""
+        self.du.read_mode(self.comm, spiMode,
+                          start_addr=start, length=length, echo=0)
+        reply = self.du.textToDisplay
+        cmdline = getattr(self.comm, 'cmdline', '')
+        text = reply[:-1]
         if self.du.dispmode == 'h':          # laid out here, like a hex editor
-            cmdline = getattr(self.comm, 'cmdline', '')
-            data = hexdump.bytes_from_reply(self.du.textToDisplay, cmdline)
-            if len(data) == readLen:
-                text = hexdump.echoed_command(self.du.textToDisplay, cmdline) + '\n'
-                text += hexdump.format_hexdump(
-                    data, readStartAddr, per_row=self.settings.hexRow,
-                    show_ascii=self.settings.hexAscii, upper=self.settings.hexUpper,
-                    gap=self.settings.hexGap)
-            else:
-                text = (f'(Hex View: expected {readLen} bytes, found '
+            data = hexdump.bytes_from_reply(reply, cmdline)
+            if len(data) != length:
+                return (f'(Hex View: expected {length} bytes at 0x{start:X}, found '
                         f'{len(data)}; raw reply follows)\n' + text)
-        self.term.tprint(text, printOn='guiConsole')
+            text = hexdump.format_hexdump(
+                data, start, per_row=self.settings.hexRow,
+                show_ascii=self.settings.hexAscii, upper=self.settings.hexUpper,
+                gap=self.settings.hexGap)
+            if first:
+                text = hexdump.echoed_command(reply, cmdline) + '\n' + text
+        elif not first:                      # the echo of the command of each piece is noise
+            command = cmdline.strip()
+            lines = text.split('\n')
+            if command and lines[0].strip().endswith(command):
+                text = '\n'.join(lines[1:])
+        return text
+
+    def readLong(self, start, length):
+        """A read of more than READ_CHUNK bytes: the board is asked piece by piece in a
+        background thread and every piece is shown in the Terminal as soon as it has
+        arrived. Esc stops it. The pieces end on multiples of READ_CHUNK, so in Hex
+        View the rows line up from piece to piece."""
+        import queue
+        import threading
+        messages = queue.Queue()        # Terminal text, shown from the GUI thread
+        state = dict(cancel=False)
+        result = dict(error=None, cancelled=False)
+        spiMode = self.spiMode.get()
+
+        def work():
+            """Background thread: talks to the board, never touches widgets"""
+            try:
+                done = 0
+                while done < length:
+                    if state['cancel']:
+                        result['cancelled'] = True
+                        return
+                    address = start + done
+                    size = min(READ_CHUNK - address % READ_CHUNK, length - done)
+                    messages.put(self.readText(address, size, done == 0, spiMode))
+                    done += size
+            except BaseException as e:      # incl. SystemExit from a comm error
+                result['error'] = f'{type(e).__name__}: {e}'
+
+        self.showStatus('Reading... press Esc to stop', 4000)
+        self.serCom.scriptRunning = True     # blocks the panels and the Terminal
+        self.term.cmdInProgress = True       # and the background serial reader
+        self.scriptStop[0] = False
+        worker = threading.Thread(target=work, daemon=True)
+        worker.start()
+
+        def poll():
+            while True:
+                try:
+                    self.term.scriptPrint(messages.get_nowait())
+                except queue.Empty:
+                    break
+            if self.scriptStop[0]:
+                state['cancel'] = True
+            if worker.is_alive():
+                self.after(50, poll)
+                return
+            while not messages.empty():     # text posted just before the end
+                self.term.scriptPrint(messages.get_nowait())
+            self.term.cmdInProgress = False
+            self.serCom.scriptRunning = False
+            if result['cancelled']:
+                self.term.scriptPrint('*** Read stopped. ***')
+            elif result['error']:
+                self.term.scriptPrint(f'*** Read stopped: {result["error"]} ***')
+        self.after(50, poll)
