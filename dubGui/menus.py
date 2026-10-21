@@ -210,6 +210,7 @@ PREFERENCES = [
         Radio('large', 'Large', 'large', 'menuSizeVar', 'setMenuSize'),
     ]),
     Separator(),
+    Item('paths', 'Configure Paths...', 'showPathsDialog'),
     Item('assistant_settings', 'Assistant Settings...', 'showAssistantSettings'),
 ]
 

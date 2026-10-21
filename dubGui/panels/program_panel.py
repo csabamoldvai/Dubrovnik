@@ -11,6 +11,7 @@ from dubGui.panels.base import LabeledFrame
 from dubGui.tooltip import Tooltip
 from dubLibs import firmware_image, hexdump
 from dubLibs.fields import parseField
+from dubLibs.settings import documents_folder
 
 PREVIEW_BYTES = 64         # Terminal preview of a loaded file: bytes per segment
 PREVIEW_FULL = 1024        # segments up to this size are shown in full
@@ -311,7 +312,7 @@ class ProgramFrame(LabeledFrame):
         folder = self.settings.programDir
         filename = askopenfilename(
             title='Select File to Program',
-            initialdir=folder if os.path.isdir(folder) else os.getcwd(),
+            initialdir=folder if os.path.isdir(folder) else documents_folder(),
             filetypes=firmware_image.FILE_TYPES)
         if not filename:             # dialog cancelled
             return False

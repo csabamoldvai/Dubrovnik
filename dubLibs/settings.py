@@ -27,7 +27,8 @@ DEFAULTS = dict(
     progLength='100',
     readSpiMode='SPI', readStartAddr='0', readLength='100',
     appearance='system', terminalTheme='dark', showPanels=True,
-    displayMode='Byte', scriptFolder='', programFolder='',
+    displayMode='Byte', commandScriptFolder='', pythonScriptFolder='', programFolder='',
+    userToolsFolder='',
     menuTextSize='normal',
     # Terminal look (Preferences > Terminal...). terminalTheme is one of TERM_CHOICES;
     # the three colours are used by the 'custom' theme.
@@ -48,6 +49,12 @@ APPEARANCE_CHOICES = ('light', 'dark', 'system')
 TERM_CHOICES = ('auto', 'light', 'dark', 'custom')   # 'auto' follows the window
 
 
+def documents_folder():
+    """The user's Documents folder if there is one, else the current folder"""
+    folder = os.path.join(os.path.expanduser('~'), 'Documents')
+    return folder if os.path.isdir(folder) else os.getcwd()
+
+
 class Settings:
     """Attributes (names as used by the program):
     autoConnect, lastUsedPort            connection panel
@@ -57,7 +64,10 @@ class Settings:
     hexRow, hexAscii, hexUpper, hexGap   Hex View layout
     scriptListing, scriptComments        command scripts: show the listing first, print the comments
     dispMode                             Read panel display mode
-    scriptDir, programDir                last folders used
+    commandDir, pythonDir, programDir    where the Run Command Script, Run Python Script and Open File
+                                         dialogs start ('' = the default); Preferences > Configure Paths,
+                                         and the folder of the last file chosen
+    userToolsDir                         a second folder for the Tools menu ('' = none)
     datasheetUrl
     folder, cfgFile                      where the settings are kept"""
 
@@ -67,8 +77,10 @@ class Settings:
         self.lastUsedPort = ''
         self.winSize = None
         self.winPos = None
-        self.scriptDir = ''
+        self.commandDir = ''
+        self.pythonDir = ''
         self.programDir = ''
+        self.userToolsDir = ''
         self.appearance = d['appearance']
         self.dispMode = d['displayMode']
         self.showPanels = d['showPanels']
@@ -138,7 +150,9 @@ class Settings:
                     'showScriptListing': self.scriptListing,
                     'showScriptComments': self.scriptComments,
                     'displayMode': self.dispMode,
-                    'scriptFolder': self.scriptDir,
+                    'commandScriptFolder': self.commandDir,
+                    'pythonScriptFolder': self.pythonDir,
+                    'userToolsFolder': self.userToolsDir,
                     'programFolder': self.programDir})
         if self.winSize:
             cfg['windowWidth'], cfg['windowHeight'] = self.winSize
@@ -192,7 +206,11 @@ class Settings:
             self.scriptListing = v['showScriptListing']
             self.scriptComments = v['showScriptComments']
             self.dispMode = v['displayMode']
-            self.scriptDir = v['scriptFolder'] if os.path.isdir(v['scriptFolder']) else ''
+            self.commandDir = (v['commandScriptFolder']
+                               if os.path.isdir(v['commandScriptFolder']) else '')
+            self.pythonDir = (v['pythonScriptFolder']
+                              if os.path.isdir(v['pythonScriptFolder']) else '')
+            self.userToolsDir = v['userToolsFolder']     # kept as typed: a network drive may be away
             self.programDir = (v['programFolder']
                                if os.path.isdir(v['programFolder']) else '')
             self.winSize = cfgfile.int_pair(cfg, 'windowWidth', 'windowHeight',

@@ -32,6 +32,7 @@ from dubGui.dialogs.assistant_settings import AssistantSettingsDialog
 from dubGui.dialogs.assistant_window import AssistantWindow, ScriptReview
 from dubGui.dialogs.file_viewer import FileViewer
 from dubGui.dialogs.hex_dialog import HexDialog
+from dubGui.dialogs.paths_dialog import PathRow, PathsDialog
 from dubGui.dialogs.script_preview import ScriptPreview
 from dubGui.dialogs.terminal_dialog import TerminalDialog
 from dubGui.look import TERM_THEMES, styleCombobox, styleMenus
@@ -266,6 +267,7 @@ class App:
         self.zoomState = dict(save=None, restore=None, old=None)
         self.fileViewer = None
         self.hexDialog = None
+        self.pathsDialog = None
         self.fontCache = []
         self.termDialog = None
         self.scriptPreview = None
@@ -592,13 +594,17 @@ class App:
         self.showStatus('Default parameters restored (File > Parameters > Save '
                    'to keep them)')
 
-    def pickScript(self, title, filetypes):
-        """Asks for a script file and remembers its folder; returns the path"""
+    def pickScript(self, title, filetypes, python):
+        """Asks for a script file and remembers its folder (one for command scripts, one
+        for Python scripts; Preferences > Configure Paths sets them); returns the path"""
+        folder = self.settings.pythonDir if python else self.settings.commandDir
         name = askopenfilename(
-            title=title, initialdir=self.settings.scriptDir or defaultScriptDir(),
-            filetypes=filetypes)
+            title=title, initialdir=folder or defaultScriptDir(), filetypes=filetypes)
         if name:
-            self.settings.scriptDir = os.path.dirname(name)      # start here next time
+            if python:
+                self.settings.pythonDir = os.path.dirname(name)  # start here next time
+            else:
+                self.settings.commandDir = os.path.dirname(name)
             self.settings.save()
         return name
 
@@ -622,7 +628,7 @@ class App:
         if not self.scriptReady():
             return
         name = self.pickScript('Run Command Script', (
-            ('Script files', '*.txt *.scr'), ('All files', '*.*')))
+            ('Script files', '*.txt *.scr'), ('All files', '*.*')), python=False)
         if name:
             self.runCommandFile(name)
 
@@ -684,7 +690,7 @@ class App:
         if not self.scriptReady():
             return
         name = self.pickScript('Run Python Script', (
-            ('Python scripts', '*.py'), ('All files', '*.*')))
+            ('Python scripts', '*.py'), ('All files', '*.*')), python=True)
         if not name:
             return
         self.executePython(name)
@@ -730,26 +736,38 @@ class App:
             self.showStatus(tool['description'], 8000)
         self.executePython(tool['path'])
 
-    def openToolsFolder(self):
-        folder = toolsFolder()
+    def openToolsFolder(self, folder=None):
+        folder = folder or toolsFolder()
         if os.path.isdir(folder):
             os.startfile(folder)
         else:
             showerror('Tools', f'The tools folder was not found:\n{folder}')
 
     def refreshTools(self):
-        self.tools_menu.delete(0, 'end')
-        found = tools.find_tools(toolsFolder())
-        for i, tool in enumerate(found):
-            if i and tool['kind'] != found[i - 1]['kind']:
-                self.tools_menu.add_separator()     # Python tools, then command scripts
-            self.tools_menu.add_command(label=tool['name'],
-                                   command=lambda t=tool: self.runTool(t))
-        if not found:
-            self.tools_menu.add_command(label='(no tools found)', state='disabled')
-        self.tools_menu.add_separator()
-        self.tools_menu.add_command(label='Open Tools Folder',
-                               command=self.openToolsFolder)
+        """Fills the Tools menu: the tools of the program's folder, then (after a
+        separator) those of the user's own folder (Preferences > Configure Paths)"""
+        menu = self.tools_menu
+        menu.delete(0, 'end')
+        builtin = tools.find_tools(toolsFolder())
+        mine = tools.find_tools_within(self.settings.userToolsDir)
+        names = {t['name'] for t in builtin}
+        for number, (group, label) in enumerate(((builtin, ''), (mine or [], ' (mine)'))):
+            if group and number and builtin:
+                menu.add_separator()
+            for i, tool in enumerate(group):
+                if i and tool['kind'] != group[i - 1]['kind']:
+                    menu.add_separator()        # Python tools, then command scripts
+                text = tool['name'] + (label if tool['name'] in names and label else '')
+                menu.add_command(label=text, command=lambda t=tool: self.runTool(t))
+        if mine is None:
+            menu.add_command(label='(my tools folder does not answer)', state='disabled')
+        if not builtin and not mine:
+            menu.add_command(label='(no tools found)', state='disabled')
+        menu.add_separator()
+        menu.add_command(label='Open Tools Folder', command=self.openToolsFolder)
+        if self.settings.userToolsDir:
+            menu.add_command(label='Open My Tools Folder',
+                             command=lambda: self.openToolsFolder(self.settings.userToolsDir))
 
     def openForProgramming(self):
         """File > Image Files > Open File: pick a .bin, S-record or Intel HEX file and
@@ -949,6 +967,39 @@ class App:
             return
         self.hexDialog = HexDialog(self.root, self.settings, self.termColors,
                                    CFG_DEFAULTS)
+
+    def showPathsDialog(self):
+        """Preferences > Configure Paths...: where the script and image file dialogs start,
+        the user's own tools folder, and the folders of the program (to open them)"""
+        if self.pathsDialog is not None and self.pathsDialog.win.winfo_exists():
+            self.pathsDialog.win.focus_set()
+            return
+        s = self.settings
+        rows = [
+            PathRow('commandDir', 'Command scripts', s.commandDir, defaultScriptDir(),
+                    hint='Where File > Scripts > Run Command Script starts.'),
+            PathRow('pythonDir', 'Python scripts', s.pythonDir, defaultScriptDir(),
+                    hint='Where File > Scripts > Run Python Script starts.'),
+            PathRow('programDir', 'Image files', s.programDir, settings_lib.documents_folder(),
+                    hint='Where File > Image Files > Open File starts.'),
+            PathRow('userToolsDir', 'My tools', s.userToolsDir, '',
+                    hint='Scripts with a "# TOOL: name" first line in this folder are added to the Tools menu.'),
+            PathRow('', 'Program tools', toolsFolder(), '', editable=False,
+                    hint='The tools that come with the program.'),
+            PathRow('', 'Settings', s.folder, '', editable=False,
+                    hint='Settings, saved parameters and the Assistant credentials (datasheet PDFs can go here too).'),
+            PathRow('', 'Documents', docsFolder(), '', editable=False,
+                    hint='The files of the Help > Documents menu.'),
+        ]
+        self.pathsDialog = PathsDialog(self.root, rows, self.setPaths)
+
+    def setPaths(self, values):
+        """OK of the Configure Paths window"""
+        s = self.settings
+        s.commandDir, s.pythonDir = values['commandDir'], values['pythonDir']
+        s.programDir, s.userToolsDir = values['programDir'], values['userToolsDir']
+        s.save()
+        self.showStatus('Paths saved')
 
     def monospacedFonts(self):
         """Installed fixed-width fonts (found once; see termstyle)"""

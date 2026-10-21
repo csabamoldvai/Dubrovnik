@@ -17,6 +17,7 @@ dubLibs/run_py_script.py). Dropping a new file into the folder is all it takes t
 add a tool; the menu is rebuilt every time it is opened.
 """
 import os
+import threading
 
 HEADER_LINES = 20
 COMMAND_EXTENSIONS = ('.txt', '.scr')
@@ -66,3 +67,15 @@ def find_tools(folder):
             found[kind].append(info)
     return [t for kind in ('python', 'command')
             for t in sorted(found[kind], key=lambda t: t['name'].lower())]
+
+
+def find_tools_within(folder, seconds=1.5):
+    """find_tools(folder), but gives up after `seconds` (an unreachable network folder
+    would block the menu): returns None then. '' or a missing folder gives []."""
+    if not folder:
+        return []
+    result = []
+    worker = threading.Thread(target=lambda: result.append(find_tools(folder)), daemon=True)
+    worker.start()
+    worker.join(seconds)
+    return result[0] if result else None

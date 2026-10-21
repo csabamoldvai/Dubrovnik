@@ -592,7 +592,7 @@ for confirmation first, because they change the device or the board.</p>
       writes the result to the board EEPROM. Follow the instructions in the dialogs: the sockets of the calibrated
       domains must be empty and the board has to be reset twice.</li>
   <li><strong>Template: Basic Device Check</strong> &ndash; a command script (below the divider) that only reads: version, configuration, JEDEC ID, status registers and the first bytes. Nothing is changed on the board.</li>
-  <li><strong>Open Tools Folder</strong> &ndash; opens the folder in Windows Explorer.</li>
+  <li><strong>Open Tools Folder</strong> &ndash; opens the folder in Windows Explorer. Tools from your own folder (<em>Preferences &rarr; Configure Paths &rarr; My tools</em>) follow after a separator, and <strong>Open My Tools Folder</strong> opens that folder.</li>
 </ul>
 <p><strong>Adding your own tool.</strong> Put a Python script in the tools folder and start
 it with a line <code># TOOL: Name in the menu</code> within its first 20 lines. The menu is
@@ -619,6 +619,7 @@ like <em>File &rarr; Scripts &rarr; Run Command Script</em>, with the listing fi
   <li><strong>Hex View</strong> &ndash; the layout of the <em>Hex View</em> Display Mode of the Read panel: <em>Bytes per row</em> (8, 16 or 32), the <em>ASCII column</em>, <em>upper case</em> hex digits and an <em>extra space after every 8 bytes</em>, with a sample. Nothing changes until <em>OK</em>. A row looks like <code>00002000&nbsp; 00 00 02 20 19 70 10 03&nbsp; 37 71 00 00 73 79 00 00&nbsp; |... .p..7q..sy..|</code>; a read that does not start on a row boundary is padded, so the addresses on the left are multiples of the row size. The board still sends plain bytes; the Workbench lays them out. Scripts (<code>dub.read</code>) are not affected. Use a Terminal font that is wide enough: lines that are wider than the Terminal wrap.</li>
   <li><strong>Menu text size</strong> &ndash; <em>Small</em>, <em>Normal</em> or <em>Large</em> text in the menu bar and the menus.
       Use it if the menus look too big or too small on your screen.</li>
+  <li><strong>Configure Paths...</strong> &ndash; the folders the program uses. <em>Command scripts</em>, <em>Python scripts</em> and <em>Image files</em> are the folders where the Run Command Script, Run Python Script and Open File windows start (they also follow the folder of the last file you chose). <em>My tools</em> is a second folder for the Tools menu: any script in it that has the <code># TOOL: name</code> first line is added, after the tools that come with the program, so you can keep your own tools outside the program folder. The folders of the program (<em>Program tools</em>, <em>Settings</em>, <em>Documents</em>) cannot be changed; their <strong>Open</strong> button shows them in Explorer. <strong>Browse...</strong> picks a folder, <strong>Default</strong> goes back to the standard one. Nothing changes until <em>OK</em>; a folder that does not exist is refused.</li>
   <li><strong>Assistant Settings...</strong> &ndash; the credentials of the experimental Assistant (see Help &rarr; Assistant).</li>
 </ul>
 <h3>Help</h3>
@@ -649,7 +650,7 @@ like <em>File &rarr; Scripts &rarr; Run Command Script</em>, with the listing fi
       <li>Panels shown or hidden</li>
       <li>Appearance, Terminal look and menu text size</li>
       <li>Hex View layout, datasheet web address</li>
-      <li>Folder of the last firmware file you opened</li>
+      <li>The folders of Preferences &rarr; Configure Paths (script and image file start folders, My tools)</li>
       <li>Last COM port and Auto connect</li>
       <li>Display Mode</li>
     </ul></td>
