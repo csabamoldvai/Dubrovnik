@@ -8,8 +8,9 @@ To release a new version: change VERSION in dubLibs\version.py, add an entry at
 the top of this file, commit, then tag the commit:  git tag v<VERSION>
 
 
-VERSION 1.2.4 (in development)
+VERSION 1.4.0                                                      2026-10-20
 -----------------------------------------------------------------------------
+(Version 1.3 was skipped on purpose.)
 Changed:
   * Read panel Display Mode: the choices are now Byte, Word and Hex View (were Binary (b),
     DWord (w) and Hex Dump (h)). View > Hex Dump... is now View > Hex View.... The saved

@@ -7,14 +7,14 @@ Current released version: 1.2. Read `README.md` (overview), `FOLDERS.md` (what e
 ## Decisions already made (do not re-ask)
 
 - **Versions:** never change the version, tag, build an installer or create a release unless the user says so.
-  The next release that changes code is 1.2.4 (1.2.3 is released and tagged). A later release after the refactoring and removal of Classic may
+  Version 1.3 was skipped on purpose: after 1.2.3 comes 1.4.0 (the Assistant, working, is planned as 1.5). A later release after the refactoring and removal of Classic may
   be called 2.0 (user's choice, decide then).
 - **Git:** commit only when both test sets pass (check the exit code, not just the output). Add files by name or with
   `git add -u`, never `git add -A` (personal files lie around, e.g. in `tools/`). Never push to `main` or push tags
   without being asked. Never amend or force-push pushed commits (fix forward or `git revert`). Never move or delete
   a pushed tag. The branch `refactor-app-class` was pushed after every step (standing permission for that branch);
   for new work ask which branch to use. Commit messages end with the Co-Authored-By line given by the harness.
-- **Version:** `dubLibs/version.py` is 1.2.3, released 2026-10-15 (tag `v1.2.3`, installer only, no zip or GitHub release). The next release will be 1.2.4 or larger; change the version, tag and build the installer only when the user says so. The tags `tested-on-board-1..7` mark commits the user tried on the real board.
+- **Version:** `dubLibs/version.py` is 1.4.0 (merged into `main`, being tested by the user; no tag yet). 1.2.3 was released 2026-10-15 (tag `v1.2.3`, installer only, no zip or GitHub release). The next release after 1.4.0 will be 1.5 or larger; change the version, tag and build the installer only when the user says so. The tags `tested-on-board-1..7` mark commits the user tried on the real board.
 - **Classic edition** was removed (first step of the refactoring). It lives on in tag `v1.2`; do not bring it back or
   add features for it. There is one program now: `dubGui/dubrovnik_workbench.py`.
 - **Refactoring** (Classic removed, `App` class, dialogs and panels in their own modules, `Settings` object, menu
