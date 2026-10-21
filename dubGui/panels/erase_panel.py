@@ -9,6 +9,7 @@ from dubGui.dialogs.progress import ProgressDialog
 from dubGui.look import ENTRY_HEIGHT, RADIO_STYLE
 from dubGui.panels.base import LabeledFrame
 from dubGui.tooltip import Tooltip
+from dubLibs.dubrovnik import MEASURED_ERASE_S
 from dubLibs.fields import parseField
 
 
@@ -111,9 +112,9 @@ class EraseFrame(LabeledFrame):
         def work():
             """Background thread: talks to the board, never touches widgets"""
             try:
-                code = self.du.read_density_code(comm)
-                state['expected'] = self.du.chip_erase_estimate_s(code)
-                if code is None:
+                jedec = self.du.read_jedec_id(comm)
+                state['expected'] = self.du.chip_erase_estimate_s(jedec)
+                if jedec not in MEASURED_ERASE_S and self.du.density_code(jedec) is None:
                     messages.put(('displayText', 'Capacity of the device not read from '
                                   'the JEDEC ID; the progress bar is a rough guess.\n'))
                 if state['cancel']:         # Cancel while the capacity was read

@@ -37,31 +37,42 @@ class FakeComm:
 
 
 class DensityTests(unittest.TestCase):
+    du = dubrovnik.Dubrovnik()
+
+    def jedec(self, reply):
+        return self.du.read_jedec_id(FakeComm(reply))
+
     def code(self, reply):
-        return dubrovnik.Dubrovnik().read_density_code(FakeComm(reply))
+        return self.du.density_code(self.jedec(reply))
+
+    def test_jedec_id_is_three_bytes(self):
+        self.assertEqual(self.jedec('1f 42 18'), (0x1F, 0x42, 0x18))
+        self.assertIsNone(self.jedec('ef 40'))
 
     def test_third_byte_is_the_density_code(self):
         self.assertEqual(self.code('ef 40 18'), 0x18)
+        self.assertEqual(self.code('1f 42 18'), 0x18)
 
-    def test_old_adesto_style_takes_the_density_from_the_second_byte(self):
-        self.assertEqual(self.code('1f 84 01'), 19)             # AT25SF041B: 4 Mbit
+    def test_older_adesto_ids_take_the_density_from_the_second_byte(self):
+        self.assertEqual(self.code('1f 84 01'), 19)             # AT25SF041B: 4 Mbit = 512 kB
+        self.assertEqual(self.code('1f 47 0c'), 22)             # AT25XE321D: 32 Mbit = 4 MB
         self.assertIsNone(self.code('c2 84 01'))                # other makers: unknown
 
     def test_unreadable_reply_gives_none(self):
         self.assertIsNone(self.code('ef 40'))
         self.assertIsNone(self.code('ff ff ff'))
 
-    def test_estimate_grows_with_capacity(self):
-        est = dubrovnik.Dubrovnik.chip_erase_estimate_s
-        self.assertLess(est(0x16), est(0x18))
-        self.assertGreater(est(0x18), 2 * est(0x17))
-        self.assertEqual(est(None), dubrovnik.CHIP_ERASE_DEFAULT_S)
+    def test_measured_devices_give_the_measured_time(self):
+        est = self.du.chip_erase_estimate_s
+        self.assertEqual(est((0x1F, 0x84, 0x01)), 1.388)
+        self.assertEqual(est((0x1F, 0x47, 0x0C)), 59.376)
+        self.assertEqual(est((0x1F, 0x42, 0x18)), 83.7)
 
-    def test_16_mb_device_takes_about_84_seconds(self):
-        # code 0x18 = 2**24 bytes; AT25SL128A measured 83.7 s
-        est = dubrovnik.Dubrovnik.chip_erase_estimate_s
-        self.assertAlmostEqual(est(0x18), 83.7, delta=1)
-        self.assertAlmostEqual(est(19), 1.388, delta=0.1)       # AT25SF041B, 512 kB
+    def test_other_devices_are_guessed_from_the_capacity(self):
+        est = self.du.chip_erase_estimate_s
+        self.assertLess(est((0xEF, 0x40, 0x16)), est((0xEF, 0x40, 0x18)))
+        self.assertAlmostEqual(est((0xEF, 0x40, 0x18)), 83.7, delta=1)    # the fit passes through it
+        self.assertEqual(est(None), dubrovnik.CHIP_ERASE_DEFAULT_S)
 
 
 class CancellableSendTests(unittest.TestCase):
