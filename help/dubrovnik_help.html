@@ -181,6 +181,7 @@ and are not restored automatically.</div>
   <tr><td>Start Address (0x)</td><td>First flash address to program.</td></tr>
   <tr><td>Length (0x)</td><td>Number of bytes to program.</td></tr>
 </table>
+<p>A progress window shows the page being programmed (page number, address), the percentage and the time left, and has a <strong>Cancel</strong> button (also <kbd>Esc</kbd>) that stops between pages and leaves the device partly programmed. For up to 16 pages the Terminal lists every page with its program time; for a longer run it prints a summary: number of pages, the slowest page and the total time.</p>
 <h3>Load from File</h3>
 <p>Click <strong>Open</strong> (or use <em>File &rarr; Image Files &rarr; Open File</em>, <kbd>Ctrl</kbd>+<kbd>O</kbd>) and choose a
 firmware file. Three formats are accepted, recognised by their content: a raw binary

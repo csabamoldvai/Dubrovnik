@@ -18,6 +18,9 @@ Changed:
   * Erase panel, several blocks: the line of each block (command and erase time) appears in the
     Terminal as soon as the block is erased, not only when the whole job is finished.
 Added:
+  * Program panel, Use Pattern: runs in the background with a progress window (page number,
+    address, percent, time left) and a Cancel button. Runs of more than 16 pages print a summary in
+    the Terminal instead of a line per page.
   * Erase panel, Chip: a progress window with a Cancel button opens. The expected time comes
     from the capacity in the JEDEC ID (command 9F, third byte); the bar is an estimate.
 

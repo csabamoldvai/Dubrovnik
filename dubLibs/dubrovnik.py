@@ -308,7 +308,7 @@ class Dubrovnik:
 
 
     def page_program(self, comm, start_addr=0, length=0, pattern='cafe0000',
-                     increment='0', echo=0):
+                     increment='0', echo=0, progress=None, log_pages=True):
         """Programs content of the write buffer into the memory\n
         Parameters:\n
         * start_addr (int): first memory location to program
@@ -316,9 +316,14 @@ class Dubrovnik:
         * pattern (8 digit hex string): 4-byte hex number to be programmed
         * increment (1-8 digit hex string) : +ve or -ve increment added to the pattern
         * echo (int): 0 or 1. Whether to print the results in the console or not
+        * progress: progress(bytes_done, pages_done, address) is called after each page
+          (it may raise an exception to abort between pages)
+        * log_pages: False puts only a summary (pages, slowest page, total time) into
+          textToDisplay, not one line per page (for large ranges)
         """
         self.textToDisplay = ""  # used by GUI terminal
         prog_time = 0
+        pages, slowest, slowest_addr = 0, 0, start_addr
         # create a pattern in the write buffer
         cmdstr = f'pattern {pattern} {increment}'
         comm.send(cmdstr)
@@ -333,17 +338,25 @@ class Dubrovnik:
             if echo == 1:
                 print(cmdstr)
             comm.send(cmdstr)
-            addr = pageEnd
-            # append cmdstr to display in GUI console
-            self.textToDisplay += (cmdstr + '\t')
+            pageStart, addr = addr, pageEnd
 
             page_prog_time_us = self.get_wait_time_us(comm)
-            page_prog_time = self.time_conv_from_usec(page_prog_time_us)
-            self.textToDisplay += f'(page program time: {page_prog_time})\n'
+            if log_pages:       # the page line for the GUI console
+                page_prog_time = self.time_conv_from_usec(page_prog_time_us)
+                self.textToDisplay += f'{cmdstr}\t(page program time: {page_prog_time})\n'
 
             prog_time += page_prog_time_us  # accumulating time for total time
+            pages += 1
+            if page_prog_time_us > slowest:
+                slowest, slowest_addr = page_prog_time_us, pageStart
+            if progress:
+                progress(addr - start_addr, pages, pageStart)
         # calculating total program time and building the string for the terminal
         total_prog_time = self.time_conv_from_usec(prog_time)
+        if not log_pages:
+            self.textToDisplay += (f'{pages} pages, {length} bytes from {start_addr:x}; '
+                                   f'slowest page {self.time_conv_from_usec(slowest)} '
+                                   f'at {slowest_addr:x}\n')
         self.textToDisplay += f'Total Program time: {total_prog_time}\n'
 
         return self.get_wait_time_us(comm)

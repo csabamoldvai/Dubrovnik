@@ -150,7 +150,7 @@ class EraseFrame(LabeledFrame):
             elapsed = time.time() - state['started'] if state['started'] else 0
             if state['expected']:
                 label = f'Erasing chip, expected about {state["expected"]:.0f} s'
-                dialog.show(label, min(elapsed / state['expected'], 0.95) * 1000)
+                dialog.show(label, min(elapsed / state['expected'], 0.95) * 1000, remaining=False)
             else:
                 dialog.show('Reading the device capacity...', 0)
             if worker.is_alive():
