@@ -18,6 +18,8 @@ Changed:
   * Erase panel, several blocks: the line of each block (command and erase time) appears in the
     Terminal as soon as the block is erased, not only when the whole job is finished.
 Added:
+  * Terminal: Page Up / Page Down scroll by a page (also when the focus is in another box); Home goes
+    to the start of the typed command; Ctrl+Home goes to the top and Ctrl+End to the prompt line.
   * Read panel: a read of more than 0x1000 bytes is done in pieces in the background; each piece
     is shown in the Terminal as it arrives. The Read button becomes Stop (Esc works too), the status
     bar counts the bytes, and Byte/Word view put a '--- 0x3000 ---' separator above each piece.

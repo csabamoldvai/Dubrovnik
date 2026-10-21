@@ -46,6 +46,13 @@ class Terminal(LabeledFrame):
         self.txt.bind('<Up>', self.onUpArrowKey)
         self.txt.bind('<Down>', self.onDownArrowKey)
         self.txt.bind('<Left>', self.onLeftArrowKey)
+        # Page Up / Page Down scroll the Terminal by a page (Tk does it when the text has
+        # the focus; the window-level binding does it when the focus is on another widget)
+        self.winfo_toplevel().bind('<Prior>', lambda e: self.onPageKey(e, -1), add='+')
+        self.winfo_toplevel().bind('<Next>', lambda e: self.onPageKey(e, 1), add='+')
+        self.txt.bind('<Home>', self.onHomeKey)           # start of the typed command
+        self.txt.bind('<Control-Home>', self.onTopKey)    # top of everything shown
+        self.txt.bind('<Control-End>', self.onBottomKey)  # the prompt line
         # Typing/pasting is only allowed on the active prompt line
         self.txt.bind('<Key>', self.onKeyPress)
         self.txt.bind('<<Paste>>', self.onPaste)
@@ -229,6 +236,38 @@ class Terminal(LabeledFrame):
                 return None
             return 'break'               # Tab, Ctrl+X/Z/Y, ...
         return None                      # navigation and modifier keys
+
+    def onPageKey(self, event, pages):
+        """Page Up / Page Down with the focus outside the Terminal text: scroll it"""
+        focus = self.focus_get()
+        if focus is not None and str(focus).startswith(str(self.txt)):
+            return None                  # the text has the focus: Tk scrolls it
+        self.txt.yview_scroll(pages, 'pages')
+        return None
+
+    def onHomeKey(self, _event):
+        """Home on the prompt line goes to the start of the typed command, not
+        in front of the '>>> ' prompt; on earlier output it goes to the line start"""
+        if self.txt.index(INSERT).split('.')[0] != self.txt.index('end-1c').split('.')[0]:
+            return None
+        self.txt.mark_set(INSERT, f'end-1c linestart+{len(PROMPT)}c')
+        self.txt.tag_remove('sel', '1.0', END)
+        self.txt.see(INSERT)
+        return 'break'
+
+    def onTopKey(self, _event):
+        """Ctrl+Home: the top of the Terminal text"""
+        self.txt.tag_remove('sel', '1.0', END)
+        self.txt.mark_set(INSERT, '1.0')
+        self.txt.see(INSERT)
+        return 'break'
+
+    def onBottomKey(self, _event):
+        """Ctrl+End: the end of the text, the prompt line"""
+        self.txt.tag_remove('sel', '1.0', END)
+        self.txt.mark_set(INSERT, 'end-1c')
+        self.txt.see(INSERT)
+        return 'break'
 
     def onPaste(self, _event):
         """Pastes onto the prompt line as ONE clean command line: no '>>>', no
