@@ -211,6 +211,7 @@ PREFERENCES = [
     ]),
     Separator(),
     Item('paths', 'Configure Paths...', 'showPathsDialog'),
+    Item('datasheet_source', 'Datasheet Source...', 'editDatasheetUrl'),
     Item('assistant_settings', 'Assistant Settings...', 'showAssistantSettings'),
 ]
 
@@ -219,7 +220,6 @@ HELP = [
     # Help > Documents: one entry for every file in the docs folder (see dubLibs/documents.py)
     Submenu('documents', 'Documents', postcommand='refreshDocs'),
     Item('datasheet', 'Datasheet', 'openDatasheet'),
-    Item('datasheet_source', 'Datasheet Source...', 'editDatasheetUrl'),
     # Help > Assistant: chat window backed by dubLibs/assistant.py. It answers from the help
     # and proposes scripts; nothing runs without the user's OK.
     Item('assistant', 'Assistant...', 'showAssistant'),

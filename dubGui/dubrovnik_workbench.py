@@ -59,15 +59,13 @@ def toolsFolder():
     return os.path.join(base, 'tools')
 
 
-def defaultScriptDir():
-    """Folder where the Run Script dialog starts the first time: the project's
-    dubScripts folder if it exists, else the user's Documents folder"""
-    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    for folder in (os.path.join(here, 'dubScripts'),
-                   os.path.join(os.path.expanduser('~'), 'Documents')):
-        if os.path.isdir(folder):
-            return folder
-    return os.getcwd()
+def ensureFolder(folder):
+    """Makes the folder (and the ones above it) if it is not there; returns it"""
+    try:
+        os.makedirs(folder, exist_ok=True)
+    except OSError:
+        pass                        # the dialog then starts where it can
+    return folder
 
 
 def helpFilePath():
@@ -599,7 +597,8 @@ class App:
         for Python scripts; Preferences > Configure Paths sets them); returns the path"""
         folder = self.settings.pythonDir if python else self.settings.commandDir
         name = askopenfilename(
-            title=title, initialdir=folder or defaultScriptDir(), filetypes=filetypes)
+            title=title, initialdir=folder or ensureFolder(settings_lib.default_folder(
+                'pythonScripts' if python else 'commandScripts')), filetypes=filetypes)
         if name:
             if python:
                 self.settings.pythonDir = os.path.dirname(name)  # start here next time
@@ -736,6 +735,17 @@ class App:
             self.showStatus(tool['description'], 8000)
         self.executePython(tool['path'])
 
+    def myToolsFolder(self):
+        """The user's own tools folder: the one set in Configure Paths, else the default"""
+        return self.settings.userToolsDir or settings_lib.default_folder('myTools')
+
+    def openMyToolsFolder(self):
+        """Tools > Open My Tools Folder: the default folder is made if it is missing"""
+        folder = self.myToolsFolder()
+        if not self.settings.userToolsDir:
+            ensureFolder(folder)
+        self.openToolsFolder(folder)
+
     def openToolsFolder(self, folder=None):
         folder = folder or toolsFolder()
         if os.path.isdir(folder):
@@ -749,7 +759,7 @@ class App:
         menu = self.tools_menu
         menu.delete(0, 'end')
         builtin = tools.find_tools(toolsFolder())
-        mine = tools.find_tools_within(self.settings.userToolsDir)
+        mine = tools.find_tools_within(self.myToolsFolder())
         names = {t['name'] for t in builtin}
         for number, (group, label) in enumerate(((builtin, ''), (mine or [], ' (mine)'))):
             if group and number and builtin:
@@ -765,9 +775,7 @@ class App:
             menu.add_command(label='(no tools found)', state='disabled')
         menu.add_separator()
         menu.add_command(label='Open Tools Folder', command=self.openToolsFolder)
-        if self.settings.userToolsDir:
-            menu.add_command(label='Open My Tools Folder',
-                             command=lambda: self.openToolsFolder(self.settings.userToolsDir))
+        menu.add_command(label='Open My Tools Folder', command=self.openMyToolsFolder)
 
     def openForProgramming(self):
         """File > Image Files > Open File: pick a .bin, S-record or Intel HEX file and
@@ -976,13 +984,15 @@ class App:
             return
         s = self.settings
         rows = [
-            PathRow('commandDir', 'Command scripts', s.commandDir, defaultScriptDir(),
+            PathRow('commandDir', 'Command scripts', s.commandDir,
+                    settings_lib.default_folder('commandScripts'),
                     hint='Where File > Scripts > Run Command Script starts.'),
-            PathRow('pythonDir', 'Python scripts', s.pythonDir, defaultScriptDir(),
+            PathRow('pythonDir', 'Python scripts', s.pythonDir,
+                    settings_lib.default_folder('pythonScripts'),
                     hint='Where File > Scripts > Run Python Script starts.'),
             PathRow('programDir', 'Image files', s.programDir, settings_lib.documents_folder(),
                     hint='Where File > Image Files > Open File starts.'),
-            PathRow('userToolsDir', 'My tools', s.userToolsDir, '',
+            PathRow('userToolsDir', 'My tools', s.userToolsDir, settings_lib.default_folder('myTools'),
                     hint='Scripts with a "# TOOL: name" first line in this folder are added to the Tools menu.'),
             PathRow('', 'Program tools', toolsFolder(), '', editable=False,
                     hint='The tools that come with the program.'),
@@ -1101,7 +1111,7 @@ class App:
         self.showStatus(f'Datasheet for {part}: opened {url}', 8000)
 
     def editDatasheetUrl(self):
-        """Help > Datasheet Source...: where to look when there is no local file"""
+        """Preferences > Datasheet Source...: where to look when there is no local file"""
         text = self.dialogBox(
             'Datasheet Source',
             'Web address used by Help > Datasheet when no datasheet file is in '

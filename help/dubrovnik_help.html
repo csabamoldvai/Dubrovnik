@@ -592,7 +592,7 @@ for confirmation first, because they change the device or the board.</p>
       writes the result to the board EEPROM. Follow the instructions in the dialogs: the sockets of the calibrated
       domains must be empty and the board has to be reset twice.</li>
   <li><strong>Template: Basic Device Check</strong> &ndash; a command script (below the divider) that only reads: version, configuration, JEDEC ID, status registers and the first bytes. Nothing is changed on the board.</li>
-  <li><strong>Open Tools Folder</strong> &ndash; opens the folder in Windows Explorer. Tools from your own folder (<em>Preferences &rarr; Configure Paths &rarr; My tools</em>) follow after a separator, and <strong>Open My Tools Folder</strong> opens that folder.</li>
+  <li><strong>Open Tools Folder</strong> &ndash; opens the folder in Windows Explorer. Tools from your own folder (<em>Preferences &rarr; Configure Paths &rarr; My tools</em>) follow after a separator, and <strong>Open My Tools Folder</strong> opens that folder (the default one is made if it does not exist yet).</li>
 </ul>
 <p><strong>Adding your own tool.</strong> Put a Python script in the tools folder and start
 it with a line <code># TOOL: Name in the menu</code> within its first 20 lines. The menu is
@@ -619,7 +619,11 @@ like <em>File &rarr; Scripts &rarr; Run Command Script</em>, with the listing fi
   <li><strong>Hex View</strong> &ndash; the layout of the <em>Hex View</em> Display Mode of the Read panel: <em>Bytes per row</em> (8, 16 or 32), the <em>ASCII column</em>, <em>upper case</em> hex digits and an <em>extra space after every 8 bytes</em>, with a sample. Nothing changes until <em>OK</em>. A row looks like <code>00002000&nbsp; 00 00 02 20 19 70 10 03&nbsp; 37 71 00 00 73 79 00 00&nbsp; |... .p..7q..sy..|</code>; a read that does not start on a row boundary is padded, so the addresses on the left are multiples of the row size. The board still sends plain bytes; the Workbench lays them out. Scripts (<code>dub.read</code>) are not affected. Use a Terminal font that is wide enough: lines that are wider than the Terminal wrap.</li>
   <li><strong>Menu text size</strong> &ndash; <em>Small</em>, <em>Normal</em> or <em>Large</em> text in the menu bar and the menus.
       Use it if the menus look too big or too small on your screen.</li>
-  <li><strong>Configure Paths...</strong> &ndash; the folders the program uses. <em>Command scripts</em>, <em>Python scripts</em> and <em>Image files</em> are the folders where the Run Command Script, Run Python Script and Open File windows start (they also follow the folder of the last file you chose). <em>My tools</em> is a second folder for the Tools menu: any script in it that has the <code># TOOL: name</code> first line is added, after the tools that come with the program, so you can keep your own tools outside the program folder. The folders of the program (<em>Program tools</em>, <em>Settings</em>, <em>Documents</em>) cannot be changed; their <strong>Open</strong> button shows them in Explorer. <strong>Browse...</strong> picks a folder, <strong>Default</strong> goes back to the standard one. Nothing changes until <em>OK</em>; a folder that does not exist is refused.</li>
+  <li><strong>Configure Paths...</strong> &ndash; the folders the program uses. <em>Command scripts</em>, <em>Python scripts</em> and <em>Image files</em> are the folders where the Run Command Script, Run Python Script and Open File windows start (they also follow the folder of the last file you chose). <em>My tools</em> is a second folder for the Tools menu: any script in it that has the <code># TOOL: name</code> first line is added, after the tools that come with the program, so you can keep your own tools outside the program folder. The folders of the program (<em>Program tools</em>, <em>Settings</em>, <em>Documents</em>) cannot be changed; their <strong>Open</strong> button shows them in Explorer. <strong>Browse...</strong> picks a folder, <strong>Default</strong> goes back to the standard one, which is a folder under <code>Documents\Dubrovnik</code> (<code>commandScripts</code>, <code>pythonScripts</code>, <code>myTools</code>); it is made when it is first used or when you press <strong>Open</strong>. Nothing changes until <em>OK</em>; a folder that does not exist is refused.</li>
+  <li><strong>Datasheet Source...</strong> &ndash; the web address used when there is no local file. <code>{part}</code> is replaced by the
+      part number. The default is the Renesas website search
+      (<code>https://www.renesas.com/en/search?keywords={part}</code>); an address without <code>{part}</code> is opened as it is.
+      The address is saved with the other settings, so you can change it if the website moves.</li>
   <li><strong>Assistant Settings...</strong> &ndash; the credentials of the experimental Assistant (see Help &rarr; Assistant).</li>
 </ul>
 <h3>Help</h3>
@@ -632,11 +636,7 @@ like <em>File &rarr; Scripts &rarr; Run Command Script</em>, with the listing fi
       shown. <em>Open Documents Folder</em> takes you there.</li>
   <li><strong>Datasheet</strong> &ndash; opens the datasheet of the device shown in the status bar. If a PDF whose name contains the
       part number is in the <code>docs</code> folder (or in <code>%APPDATA%\Dubrovnik\Datasheets</code>) it is opened;
-      otherwise the web address from <em>Datasheet Source</em> is opened in your browser. It needs a connected board with a device.</li>
-  <li><strong>Datasheet Source</strong> &ndash; the web address used when there is no local file. <code>{part}</code> is replaced by the
-      part number. The default is the Renesas website search
-      (<code>https://www.renesas.com/en/search?keywords={part}</code>); an address without <code>{part}</code> is opened as it is.
-      The address is saved with the other settings, so you can change it if the website moves.</li>
+      otherwise the web address from <em>Preferences &rarr; Datasheet Source</em> is opened in your browser. It needs a connected board with a device.</li>
   <li><strong>About</strong> &ndash; version and authors.</li>
 </ul>
 

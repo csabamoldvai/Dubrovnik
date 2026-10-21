@@ -46,7 +46,7 @@ class PathsDialog:
                              state='normal' if row.editable else 'disabled')
         entry.grid(row=line, column=1, padx=(0, 8), pady=(10, 0), sticky='w')
         ctk.CTkButton(win, text='Open', width=70, font=font,
-                      command=lambda v=var: self.openFolder(v.get())
+                      command=lambda v=var, r=row: self.openFolder(v.get(), r)
                       ).grid(row=line, column=2, padx=(0, 6), pady=(10, 0))
         if row.editable:
             self.vars[row.key] = var
@@ -84,7 +84,15 @@ class PathsDialog:
         if folder:
             var.set(os.path.normpath(folder))
 
-    def openFolder(self, folder):
+    def openFolder(self, folder, row):
+        """Shows the folder in Explorer; the default folder of a row is made if it is
+        not there yet (nothing is made for a folder somebody typed)"""
+        if not os.path.isdir(folder) and row.editable and folder and folder == row.default:
+            try:
+                os.makedirs(folder, exist_ok=True)
+            except OSError as e:
+                showerror('Configure Paths', f'The folder could not be made:\n{e}', parent=self.win)
+                return
         if os.path.isdir(folder):
             os.startfile(folder)
         else:

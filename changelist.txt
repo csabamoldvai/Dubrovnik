@@ -20,6 +20,8 @@ Changed:
   * Preferences > Configure Paths...: the folders where the Run Command Script, Run Python Script and Open
     File windows start (two separate folders for the two kinds of script), a "My tools" folder whose
     scripts are added to the Tools menu, and Open buttons for the folders of the program.
+    The standard folders are Documents\Dubrovnik\commandScripts, pythonScripts and myTools. Help >
+    Datasheet Source moved to Preferences > Datasheet Source.
   * Erase panel, several blocks: the line of each block (command and erase time) appears in the
     Terminal as soon as the block is erased, not only when the whole job is finished.
 Added:

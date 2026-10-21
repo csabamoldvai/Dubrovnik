@@ -34,7 +34,7 @@ DEFAULTS = dict(
     # the three colours are used by the 'custom' theme.
     terminalBg='#1B1F24', terminalFg='#D6DBE1', terminalSelect='#34506E',
     terminalFont='Consolas', terminalFontSize=15,
-    datasheetUrl=datasheet.DEFAULT_URL,     # Help > Datasheet Source...
+    datasheetUrl=datasheet.DEFAULT_URL,     # Preferences > Datasheet Source...
     # Preferences > Hex View...: layout of the Read panel's Hex View display mode
     hexBytesPerRow=16, hexAscii=True, hexUpper=True, hexGap=True,
     # File > Scripts: show the listing of a command script before it runs, and print its comments
@@ -47,6 +47,12 @@ PARAM_KEYS = ('eraseBlkSize', 'eraseStartAddr', 'eraseNumBlocks',
 
 APPEARANCE_CHOICES = ('light', 'dark', 'system')
 TERM_CHOICES = ('auto', 'light', 'dark', 'custom')   # 'auto' follows the window
+
+
+def default_folder(name):
+    """The default folder 'name' of the user's own files: Documents\\Dubrovnik\\name (not
+    created here)"""
+    return os.path.join(documents_folder(), 'Dubrovnik', name)
 
 
 def documents_folder():
@@ -67,7 +73,8 @@ class Settings:
     commandDir, pythonDir, programDir    where the Run Command Script, Run Python Script and Open File
                                          dialogs start ('' = the default); Preferences > Configure Paths,
                                          and the folder of the last file chosen
-    userToolsDir                         a second folder for the Tools menu ('' = none)
+    userToolsDir                         a second folder for the Tools menu ('' = the default,
+                                         Documents\\Dubrovnik\\myTools)
     datasheetUrl
     folder, cfgFile                      where the settings are kept"""
 
