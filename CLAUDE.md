@@ -14,7 +14,7 @@ Current released version: 1.2. Read `README.md` (overview), `FOLDERS.md` (what e
   without being asked. Never amend or force-push pushed commits (fix forward or `git revert`). Never move or delete
   a pushed tag. The branch `refactor-app-class` was pushed after every step (standing permission for that branch);
   for new work ask which branch to use. Commit messages end with the Co-Authored-By line given by the harness.
-- **Version:** `dubLibs/version.py` is 1.4.0 (merged into `main`, being tested by the user; no tag yet). 1.2.3 was released 2026-10-15 (tag `v1.2.3`, installer only, no zip or GitHub release). The next release after 1.4.0 will be 1.5 or larger; change the version, tag and build the installer only when the user says so. The tags `tested-on-board-1..7` mark commits the user tried on the real board.
+- **Version:** `dubLibs/version.py` is 1.4.1 (on `main`, pushed, installer built for the coworkers; not released on GitHub and no tag yet). 1.4.0 is released (tag `v1.4.0`). 1.2.3 was released 2026-10-15 (tag `v1.2.3`, installer only, no zip or GitHub release). The next release after 1.4.0 will be 1.5 or larger; change the version, tag and build the installer only when the user says so. The tags `tested-on-board-1..7` mark commits the user tried on the real board.
 - **Classic edition** was removed (first step of the refactoring). It lives on in tag `v1.2`; do not bring it back or
   add features for it. There is one program now: `dubGui/dubrovnik_workbench.py`.
 - **Refactoring** (Classic removed, `App` class, dialogs and panels in their own modules, `Settings` object, menu

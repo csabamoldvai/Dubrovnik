@@ -69,6 +69,20 @@ def styleCombobox(root):
     root.option_add('*TCombobox*Listbox.selectForeground', '#FFFFFF')
 
 
+def scaleCombobox(combo, widgetScale):
+    """Gives a ttk combo box (and the list that drops down from it) the font of the CTk
+    widgets at the given scale. Tk does not rescale such fonts itself, so this is called
+    again when the Windows scale changes (the window moves to another display)."""
+    font = ctk.CTkFont().create_scaled_tuple(widgetScale)
+    combo.configure(font=font)
+    combo.option_add('*TCombobox*Listbox.font', font)
+    try:    # the list is made once, the first time the box opens: change it too
+        popdown = combo.tk.call('ttk::combobox::PopdownWindow', str(combo))
+        combo.tk.call(f'{popdown}.f.l', 'configure', '-font', font)
+    except Exception:
+        pass
+
+
 def styleMenus(menus):
     """Colours the pop-up menus to match the current light/dark appearance"""
     i = 1 if ctk.get_appearance_mode() == 'Dark' else 0

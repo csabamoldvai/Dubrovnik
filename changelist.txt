@@ -8,6 +8,16 @@ To release a new version: change VERSION in dubLibs\version.py, add an entry at
 the top of this file, commit, then tag the commit:  git tag v<VERSION>
 
 
+VERSION 1.4.1                                                      2026-10-20
+-----------------------------------------------------------------------------
+Fixed:
+  * Two displays with different Windows scales (for example 125 % and 150 %): when the window
+    starts on or moves to the other display, the menus and the two drop-down boxes (COM port,
+    Display Mode) now follow the new scale like the rest of the text, and the window grows
+    if the Read panel would otherwise be cut off.
+Changed:
+  * Menu text size Normal is now 13 px like the other text (was 14); Small 11, Large 16.
+
 VERSION 1.4.0                                                      2026-10-20
 -----------------------------------------------------------------------------
 (Version 1.3 was skipped on purpose.)

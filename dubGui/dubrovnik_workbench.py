@@ -35,7 +35,7 @@ from dubGui.dialogs.hex_dialog import HexDialog
 from dubGui.dialogs.paths_dialog import PathRow, PathsDialog
 from dubGui.dialogs.script_preview import ScriptPreview
 from dubGui.dialogs.terminal_dialog import TerminalDialog
-from dubGui.look import TERM_THEMES, styleCombobox, styleMenus
+from dubGui.look import TERM_THEMES, scaleCombobox, styleCombobox, styleMenus
 from dubGui.panels.erase_panel import EraseFrame
 from dubGui.panels.program_panel import ProgramFrame
 from dubGui.panels.read_panel import ReadFrame
@@ -101,7 +101,7 @@ TERM_SIZE_MIN, TERM_SIZE_MAX = termstyle.SIZE_MIN, termstyle.SIZE_MAX
 
 # Preferences > Menu text size: size in unscaled px of the menu bar and the pop-up
 # menus (multiplied by the Windows display scaling)
-MENU_SIZES = {'small': 12, 'normal': 14, 'large': 17}
+MENU_SIZES = {'small': 11, 'normal': 13, 'large': 16}
 
 TERM_MIN_LINES = 8   # minimum visible terminal lines when resizing the window
 
@@ -432,6 +432,7 @@ class App:
         self.root.geometry(geom)
 
         self.root.protocol('WM_DELETE_WINDOW', self.onClose)
+        ScalingTracker.add_widget(self.onScaleChanged, self.root)   # see onScaleChanged
 
 
     def run(self):
@@ -1149,6 +1150,28 @@ class App:
         self.docs_menu.add_separator()
         self.docs_menu.add_command(label='Open Documents Folder',
                               command=self.openDocsFolder)
+
+    def onScaleChanged(self, widgetScale, windowScale):
+        """The Windows scale of the window's display changed (it was moved to another
+        display, or the Windows setting changed). The CTk widgets rescale themselves; what
+        Tk draws with a fixed pixel size does not: the menus and the two combo boxes.
+        This brings those to the new scale and makes the window fit the panels again."""
+        self.wscale, self.scale = widgetScale, windowScale
+        self.applyMenuSize()
+        styleCombobox(self.root)
+        scaleCombobox(self.serCom.combo, widgetScale)
+        scaleCombobox(self.read.dispmode_cb, widgetScale)
+        self.root.after(200, self.fitWindow)
+
+    def fitWindow(self):
+        """After a change of scale: the minimum size follows the panels, and the window
+        grows if it is now too small for them (the right panel would be cut off)"""
+        minW, _, minH = self.computeLimits()
+        self.root.minsize(width=minW, height=minH)
+        width = round(self.root.winfo_width() / self.scale)
+        height = round(self.root.winfo_height() / self.scale)
+        if width < minW or height < minH:
+            self.root.geometry(f'{max(width, minW)}x{max(height, minH)}')
 
     def computeLimits(self):
         """Returns (min width, natural height, min height) in unscaled px for
