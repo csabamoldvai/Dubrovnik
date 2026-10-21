@@ -93,8 +93,12 @@ class EraseFrame(LabeledFrame):
             startAddr = (start_addr // blockSizeKB) * blockSizeKB
             self.term.tprint(f'Erasing 0x{num_blocks:x} {block_size}kB block(s) from address {startAddr:x}',
                         printOn='guiConsole')
+
+            def blockDone(line):
+                self.term.tprint(line)      # shown after each block, not at the end
+                self.update_idletasks()
             self.du.block_erase(
-                self.comm, block_size, start_addr, num_blocks)
+                self.comm, block_size, start_addr, num_blocks, on_block=blockDone)
             self.term.tprint(self.du.textToDisplay[:-1])
         else:
             self.chipErase()

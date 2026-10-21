@@ -15,6 +15,8 @@ Changed:
     DWord (w) and Hex Dump (h)). View > Hex Dump... is now View > Hex View.... The saved
     Display Mode of an older version is not recognised: it starts with Byte once.
   * File > Firmware is now File > Image Files.
+  * Erase panel, several blocks: the line of each block (command and erase time) appears in the
+    Terminal as soon as the block is erased, not only when the whole job is finished.
 Added:
   * Erase panel, Chip: a progress window with a Cancel button opens. The expected time comes
     from the capacity in the JEDEC ID (command 9F, third byte); the bar is an estimate.

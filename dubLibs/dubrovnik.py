@@ -399,7 +399,7 @@ class Dubrovnik:
         return erase_time
 
     def block_erase(self, comm, block_size=4, start_addr=0, num_blocks=1,
-                    trig=False, echo=0):
+                    trig=False, echo=0, on_block=None):
         '''
         Parameters:
         comm       : handle of the communication port
@@ -408,6 +408,8 @@ class Dubrovnik:
         num_blocks : the number of blocks to erase (int)
         trig       : 'True' toggles a GPIO, HIGH at the beginning and LOW at the end of an Erase operation
                     (can be used to trigger a scope)
+        on_block   : called with the text line of each block right after it was erased
+                    (the Workbench prints it at once); textToDisplay then holds only the total
         echo       : '1' turns on printing intermediate commands sent to the flash,
                     also prints Erase Time
 
@@ -445,15 +447,17 @@ class Dubrovnik:
                 else:
                     cmdstr = f'{self.wel}; {opcode} {addr:x}; wait 0'
                 comm.send(cmdstr)
-                # building the cmdstr for each block erase
-                self.textToDisplay += (cmdstr + '\t')
                 if echo == 1:
                     print(comm.response(removePrompt=True))
                 addr += blockSizeKB
                 blk_ers_time_us = self.get_wait_time_us(comm)
                 blk_ers_time = self.time_conv_from_usec(blk_ers_time_us)
-                # appending time for the terminal
-                self.textToDisplay += f'(erase time: {blk_ers_time})\n'
+                # the line for the terminal: at once, or collected in textToDisplay
+                line = f'{cmdstr}\t(erase time: {blk_ers_time})'
+                if on_block:
+                    on_block(line)
+                else:
+                    self.textToDisplay += line + '\n'
 
                 erase_time += blk_ers_time_us  # accumulating block erase time
 
