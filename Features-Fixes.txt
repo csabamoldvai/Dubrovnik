@@ -1,0 +1,33 @@
+Reorganize the menu: 
+a. Create a new top menu item "Preferences".
+b. Inside it create a new item called "Configure Paths..."
+c. This will open a dialog box with all the paths that can be configured. Here are a few paths that are configurable:
+c.1. "Scripts:"
+
+
+Terminal
+<Page Up/Down> buttons to scroll one page at a time. 
+<End> moves to the end
+<Home> to the beginning. 
+
+
+Erase
+Progress bar implemented.
+Erase time estimated based on JEDEC ID and typical 64K block erase times
+If multiple blocks are erased  print erase message after each block
+
+Program
+
+
+Read
+
+
+
+Character sizes on laptop screen vs my large monitor. The font sizes do not scale properly. They should be set such way that it scales.
+
+Create a document the descibes the operation of the Program.
+Show me the lines in the code that implement specific features. Maybe just tell the filename and line number, or create a hyperlink.
+
+* Terminal how it works. How it is interrupted? How often?
+* Progress bar. Same questions as above.
+* which items are running a specific time intervals? Are the threads? Who can interrupt them and how? Show me the lines in the code that implement that.
