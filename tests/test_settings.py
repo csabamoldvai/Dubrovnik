@@ -121,11 +121,14 @@ class SettingsTests(unittest.TestCase):
         status, params = s.load(prefs=False)
         self.assertEqual((status, s.termFontSize, params['progPattern']), ('ok', 15, 'beef'))
 
-    def test_folders_that_do_not_exist_are_dropped(self):
-        self.write({'scriptFolder': os.path.join(self.root, 'nope'), 'programFolder': self.root})
+    def test_start_folders_that_do_not_exist_are_dropped(self):
+        self.write({'commandScriptFolder': os.path.join(self.root, 'nope'),
+                    'pythonScriptFolder': self.root, 'programFolder': self.root,
+                    'userToolsFolder': os.path.join(self.root, 'away')})
         s = Settings(self.folder)
         s.load()
-        self.assertEqual((s.scriptDir, s.programDir), ('', self.root))
+        self.assertEqual((s.commandDir, s.pythonDir, s.programDir), ('', self.root, self.root))
+        self.assertEqual(s.userToolsDir, os.path.join(self.root, 'away'))     # kept as typed
 
     def test_first_run_takes_over_the_old_classic_file_without_its_window_entries(self):
         self.write({'terminalFontSize': 19, 'mainWindowWidth': 800, 'windowWidth': 777},

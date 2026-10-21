@@ -32,6 +32,7 @@ from dubGui.dialogs.assistant_settings import AssistantSettingsDialog
 from dubGui.dialogs.assistant_window import AssistantWindow, ScriptReview
 from dubGui.dialogs.file_viewer import FileViewer
 from dubGui.dialogs.hex_dialog import HexDialog
+from dubGui.dialogs.paths_dialog import PathRow, PathsDialog
 from dubGui.dialogs.script_preview import ScriptPreview
 from dubGui.dialogs.terminal_dialog import TerminalDialog
 from dubGui.look import TERM_THEMES, styleCombobox, styleMenus
@@ -58,15 +59,13 @@ def toolsFolder():
     return os.path.join(base, 'tools')
 
 
-def defaultScriptDir():
-    """Folder where the Run Script dialog starts the first time: the project's
-    dubScripts folder if it exists, else the user's Documents folder"""
-    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    for folder in (os.path.join(here, 'dubScripts'),
-                   os.path.join(os.path.expanduser('~'), 'Documents')):
-        if os.path.isdir(folder):
-            return folder
-    return os.getcwd()
+def ensureFolder(folder):
+    """Makes the folder (and the ones above it) if it is not there; returns it"""
+    try:
+        os.makedirs(folder, exist_ok=True)
+    except OSError:
+        pass                        # the dialog then starts where it can
+    return folder
 
 
 def helpFilePath():
@@ -100,7 +99,7 @@ def showHelp(_event=None):
 CFG_DEFAULTS = settings_lib.DEFAULTS   # see dubLibs/settings.py
 TERM_SIZE_MIN, TERM_SIZE_MAX = termstyle.SIZE_MIN, termstyle.SIZE_MAX
 
-# View > Menu text size: size in unscaled px of the menu bar and the pop-up
+# Preferences > Menu text size: size in unscaled px of the menu bar and the pop-up
 # menus (multiplied by the Windows display scaling)
 MENU_SIZES = {'small': 12, 'normal': 14, 'large': 17}
 
@@ -120,6 +119,7 @@ class App:
         comm = boardcom.BoardComm()   # create an instance of class Comm
         self.du = dubrovnik.Dubrovnik()
         self.settings = Settings()
+        self.busyText, self.busyOld = None, ''     # see showBusy
         self.scriptStop = [False]      # set by Esc or a lost connection: stops scripts and programming
 
         self.buildStatusBar()
@@ -195,7 +195,8 @@ class App:
         # ***************************
         # ****** Read Panel *********
         # ***************************
-        self.read = ReadFrame(self.panelRow, self.serCom, self.term, self.du, self.settings, DEBUG=False)
+        self.read = ReadFrame(self.panelRow, self.serCom, self.term, self.du, self.settings,
+                         self.scriptStop, self.showBusy, DEBUG=False)
         self.read.comm = comm
 
         # Let the terminal row absorb all extra vertical space, and let the three
@@ -237,6 +238,7 @@ class App:
         self.firmware_menu = self.menus['file'].sub('firmware').menu
         self.tools_menu = self.menus['tools'].menu
         self.view_menu = self.menus['view'].menu
+        self.prefs_menu = self.menus['preferences'].menu
         self.docs_menu = self.menus['help'].sub('documents').menu
 
 
@@ -263,6 +265,7 @@ class App:
         self.zoomState = dict(save=None, restore=None, old=None)
         self.fileViewer = None
         self.hexDialog = None
+        self.pathsDialog = None
         self.fontCache = []
         self.termDialog = None
         self.scriptPreview = None
@@ -494,6 +497,20 @@ class App:
         """Modal dialog in the Workbench look: see dubGui/dialogs/messages.py"""
         return messages.dialogBox(self.root, title, text, buttons, entryDefault)
 
+    def showBusy(self, msg=None):
+        """A status bar text that stays while a job runs and is updated by calling this
+        again (a long read: how far it is). showBusy() puts the old text back."""
+        label = self.stsBarComm
+        if msg is None:
+            if self.busyText is not None and label.cget('text') == self.busyText:
+                label.configure(text=self.busyOld)
+            self.busyText = None
+            return
+        if self.busyText is None:
+            self.busyOld = label.cget('text')
+        self.busyText = msg
+        label.configure(text=msg)
+
     def showStatus(self, msg, ms=3000):
         """Shows msg in the status bar for a few seconds"""
         old = self.stsBarComm.cget('text')
@@ -575,13 +592,18 @@ class App:
         self.showStatus('Default parameters restored (File > Parameters > Save '
                    'to keep them)')
 
-    def pickScript(self, title, filetypes):
-        """Asks for a script file and remembers its folder; returns the path"""
+    def pickScript(self, title, filetypes, python):
+        """Asks for a script file and remembers its folder (one for command scripts, one
+        for Python scripts; Preferences > Configure Paths sets them); returns the path"""
+        folder = self.settings.pythonDir if python else self.settings.commandDir
         name = askopenfilename(
-            title=title, initialdir=self.settings.scriptDir or defaultScriptDir(),
-            filetypes=filetypes)
+            title=title, initialdir=folder or ensureFolder(settings_lib.default_folder(
+                'pythonScripts' if python else 'commandScripts')), filetypes=filetypes)
         if name:
-            self.settings.scriptDir = os.path.dirname(name)      # start here next time
+            if python:
+                self.settings.pythonDir = os.path.dirname(name)  # start here next time
+            else:
+                self.settings.commandDir = os.path.dirname(name)
             self.settings.save()
         return name
 
@@ -605,7 +627,7 @@ class App:
         if not self.scriptReady():
             return
         name = self.pickScript('Run Command Script', (
-            ('Script files', '*.txt *.scr'), ('All files', '*.*')))
+            ('Script files', '*.txt *.scr'), ('All files', '*.*')), python=False)
         if name:
             self.runCommandFile(name)
 
@@ -667,7 +689,7 @@ class App:
         if not self.scriptReady():
             return
         name = self.pickScript('Run Python Script', (
-            ('Python scripts', '*.py'), ('All files', '*.*')))
+            ('Python scripts', '*.py'), ('All files', '*.*')), python=True)
         if not name:
             return
         self.executePython(name)
@@ -713,42 +735,63 @@ class App:
             self.showStatus(tool['description'], 8000)
         self.executePython(tool['path'])
 
-    def openToolsFolder(self):
-        folder = toolsFolder()
+    def myToolsFolder(self):
+        """The user's own tools folder: the one set in Configure Paths, else the default"""
+        return self.settings.userToolsDir or settings_lib.default_folder('myTools')
+
+    def openMyToolsFolder(self):
+        """Tools > Open My Tools Folder: the default folder is made if it is missing"""
+        folder = self.myToolsFolder()
+        if not self.settings.userToolsDir:
+            ensureFolder(folder)
+        self.openToolsFolder(folder)
+
+    def openToolsFolder(self, folder=None):
+        folder = folder or toolsFolder()
         if os.path.isdir(folder):
             os.startfile(folder)
         else:
             showerror('Tools', f'The tools folder was not found:\n{folder}')
 
     def refreshTools(self):
-        self.tools_menu.delete(0, 'end')
-        found = tools.find_tools(toolsFolder())
-        for i, tool in enumerate(found):
-            if i and tool['kind'] != found[i - 1]['kind']:
-                self.tools_menu.add_separator()     # Python tools, then command scripts
-            self.tools_menu.add_command(label=tool['name'],
-                                   command=lambda t=tool: self.runTool(t))
-        if not found:
-            self.tools_menu.add_command(label='(no tools found)', state='disabled')
-        self.tools_menu.add_separator()
-        self.tools_menu.add_command(label='Open Tools Folder',
-                               command=self.openToolsFolder)
+        """Fills the Tools menu: the tools of the program's folder, then (after a
+        separator) those of the user's own folder (Preferences > Configure Paths)"""
+        menu = self.tools_menu
+        menu.delete(0, 'end')
+        builtin = tools.find_tools(toolsFolder())
+        mine = tools.find_tools_within(self.myToolsFolder())
+        names = {t['name'] for t in builtin}
+        for number, (group, label) in enumerate(((builtin, ''), (mine or [], ' (mine)'))):
+            if group and number and builtin:
+                menu.add_separator()
+            for i, tool in enumerate(group):
+                if i and tool['kind'] != group[i - 1]['kind']:
+                    menu.add_separator()        # Python tools, then command scripts
+                text = tool['name'] + (label if tool['name'] in names and label else '')
+                menu.add_command(label=text, command=lambda t=tool: self.runTool(t))
+        if mine is None:
+            menu.add_command(label='(my tools folder does not answer)', state='disabled')
+        if not builtin and not mine:
+            menu.add_command(label='(no tools found)', state='disabled')
+        menu.add_separator()
+        menu.add_command(label='Open Tools Folder', command=self.openToolsFolder)
+        menu.add_command(label='Open My Tools Folder', command=self.openMyToolsFolder)
 
     def openForProgramming(self):
-        """File > Firmware > Open File: pick a .bin, S-record or Intel HEX file and
+        """File > Image Files > Open File: pick a .bin, S-record or Intel HEX file and
         set the Program panel up for it ("Load from File" mode)"""
         if self.program.openFile():
             self.program.progModeVar.set('file')
             self.program.grayOutEntry()
 
     def programLoadedFile(self):
-        """File > Firmware > Program Loaded File: with the panels shown it asks for a
+        """File > Image Files > Program Loaded File: with the panels shown it asks for a
         confirmation (the Offset is the one in the Program panel); with the
         panels hidden the question also asks for the Offset."""
         image = self.program.image
         if image is None:
-            showinfo('Program', 'No file is loaded.\nUse File > Open Firmware '
-                     'File first.')
+            showinfo('Program', 'No file is loaded.\nUse File > Image Files > Open File '
+                     'first.')
             return
         if not self.scriptReady():
             return
@@ -784,12 +827,12 @@ class App:
         self.program.program()
 
     def closeLoadedFile(self):
-        """File > Firmware > Close File: forget the loaded file"""
+        """File > Image Files > Close File: forget the loaded file"""
         self.program.closeFile()
         self.showStatus('File closed')
 
     def refreshFileMenu(self):
-        """Firmware menu opens: Program and Close need a loaded file; the grey
+        """Image Files menu opens: Program and Close need a loaded file; the grey
         line says which one is loaded"""
         image = self.program.image
         state = NORMAL if image is not None else DISABLED
@@ -867,7 +910,7 @@ class App:
         self.appearanceVar.set(self.settings.appearance)
         self.applyAppearance()
 
-    # ---- Terminal look: View > Terminal... and Ctrl + mouse wheel ----------
+    # ---- Terminal look: Preferences > Terminal... and Ctrl + mouse wheel ----------
     def termColors(self):
         """The Terminal colours (bg, fg, select) of the chosen theme"""
         theme = self.settings.termTheme
@@ -905,11 +948,11 @@ class App:
         self.zoomState['restore'] = self.root.after(1500, restore)
 
     def showFileViewer(self):
-        """File > Firmware > View File: the whole loaded file as a hex dump, at
+        """File > Image Files > View File: the whole loaded file as a hex dump, at
         the addresses it will be written to (file address + Offset)"""
         image = self.program.image
         if image is None:
-            showinfo('View File', 'No file is loaded.\nUse File > Firmware > '
+            showinfo('View File', 'No file is loaded.\nUse File > Image Files > '
                      'Open File first.')
             return
         try:
@@ -925,13 +968,48 @@ class App:
             self.settings.hexOptions())
 
     def showHexDialog(self):
-        """View > Hex Dump...: layout of the Hex Dump display mode of the Read
+        """Preferences > Hex View...: layout of the Hex View display mode of the Read
         panel, with a sample. Nothing changes until OK."""
         if self.hexDialog is not None and self.hexDialog.win.winfo_exists():
             self.hexDialog.win.focus_set()
             return
         self.hexDialog = HexDialog(self.root, self.settings, self.termColors,
                                    CFG_DEFAULTS)
+
+    def showPathsDialog(self):
+        """Preferences > Configure Paths...: where the script and image file dialogs start,
+        the user's own tools folder, and the folders of the program (to open them)"""
+        if self.pathsDialog is not None and self.pathsDialog.win.winfo_exists():
+            self.pathsDialog.win.focus_set()
+            return
+        s = self.settings
+        rows = [
+            PathRow('commandDir', 'Command scripts', s.commandDir,
+                    settings_lib.default_folder('commandScripts'),
+                    hint='Where File > Scripts > Run Command Script starts.'),
+            PathRow('pythonDir', 'Python scripts', s.pythonDir,
+                    settings_lib.default_folder('pythonScripts'),
+                    hint='Where File > Scripts > Run Python Script starts.'),
+            PathRow('programDir', 'Image files', s.programDir, settings_lib.documents_folder(),
+                    hint='Where File > Image Files > Open File starts.'),
+            PathRow('userToolsDir', 'My tools', s.userToolsDir, settings_lib.default_folder('myTools'),
+                    hint='Scripts with a "# TOOL: name" first line in this folder are added to the Tools menu.'),
+            PathRow('', 'Program tools', toolsFolder(), '', editable=False,
+                    hint='The tools that come with the program.'),
+            PathRow('', 'Settings', s.folder, '', editable=False,
+                    hint='Settings, saved parameters and the Assistant credentials (datasheet PDFs can go here too).'),
+            PathRow('', 'Documents', docsFolder(), '', editable=False,
+                    hint='The files of the Help > Documents menu.'),
+        ]
+        self.pathsDialog = PathsDialog(self.root, rows, self.setPaths)
+
+    def setPaths(self, values):
+        """OK of the Configure Paths window"""
+        s = self.settings
+        s.commandDir, s.pythonDir = values['commandDir'], values['pythonDir']
+        s.programDir, s.userToolsDir = values['programDir'], values['userToolsDir']
+        s.save()
+        self.showStatus('Paths saved')
 
     def monospacedFonts(self):
         """Installed fixed-width fonts (found once; see termstyle)"""
@@ -940,7 +1018,7 @@ class App:
         return list(self.fontCache)
 
     def showTerminalDialog(self):
-        """View > Terminal...: theme, colours, font and size with a preview.
+        """Preferences > Terminal...: theme, colours, font and size with a preview.
         Changes show in the Terminal at once; Cancel puts the old look back."""
         if self.termDialog is not None and self.termDialog.win.winfo_exists():
             self.termDialog.win.focus_set()
@@ -1033,7 +1111,7 @@ class App:
         self.showStatus(f'Datasheet for {part}: opened {url}', 8000)
 
     def editDatasheetUrl(self):
-        """Help > Datasheet Source...: where to look when there is no local file"""
+        """Preferences > Datasheet Source...: where to look when there is no local file"""
         text = self.dialogBox(
             'Datasheet Source',
             'Web address used by Help > Datasheet when no datasheet file is in '

@@ -11,10 +11,12 @@ from dubGui.panels.base import LabeledFrame
 from dubGui.tooltip import Tooltip
 from dubLibs import firmware_image, hexdump
 from dubLibs.fields import parseField
+from dubLibs.settings import documents_folder
 
 PREVIEW_BYTES = 64         # Terminal preview of a loaded file: bytes per segment
 PREVIEW_FULL = 1024        # segments up to this size are shown in full
 PREVIEW_SEGMENTS = 8       # ... for the first few segments
+PATTERN_LOG_PAGES = 16     # a pattern run up to this many pages prints a Terminal line per page
 
 
 class ProgramFrame(LabeledFrame):
@@ -149,9 +151,7 @@ class ProgramFrame(LabeledFrame):
             showerror('Program', str(e))
             return
         if self.progModeVar.get() == 'pattern':
-            self.du.page_program(
-                self.comm, startAddr, dataLen, pattn, incr)
-            self.term.tprint(self.du.textToDisplay[:-1])
+            self.programPattern(startAddr, dataLen, pattn, incr)
         else:   # if programming a content of a file
             if self.image is None:
                 showerror('Program', 'No file is loaded. Click Open first.')
@@ -161,6 +161,72 @@ class ProgramFrame(LabeledFrame):
                           'the 32-bit address range.')
                 return
             self.programFile(startAddr)
+
+    def programPattern(self, start, length, pattern, increment):
+        """Programs a pattern page by page in a background thread, with a progress
+        window (page number, address, time left) and Cancel, like programFile. Up to
+        PATTERN_LOG_PAGES pages the Terminal gets one line per page, above that a summary."""
+        import queue
+        import threading
+        pages = (start + length - 1) // self.du.pageSize - start // self.du.pageSize + 1 if length else 0
+        lastAddr = start + length - 1
+        state = dict(text='Starting...', done=0, cancel=False)
+        messages = queue.Queue()        # Terminal text, shown from the GUI thread
+        result = dict(error=None)
+        comm = self.comm
+
+        def work():
+            """Background thread: talks to the board, never touches widgets"""
+            def progress(done, page, address):
+                if state['cancel']:
+                    raise ProgramCancelled()
+                state['text'] = (f'Programming pattern {pattern.upper()}, page {page:,} of {pages:,}\n'
+                                 f'Address 0x{address:X} (range 0x{start:X} to 0x{lastAddr:X})')
+                state['done'] = done
+            try:
+                self.du.page_program(comm, start, length, pattern, increment,
+                                     progress=progress, log_pages=pages <= PATTERN_LOG_PAGES)
+                messages.put(('tprint', self.du.textToDisplay[:-1]))
+            except ProgramCancelled:
+                result['cancelled'] = True
+            except BaseException as e:      # incl. SystemExit from a comm error
+                result['error'] = f'{type(e).__name__}: {e}'
+
+        self.term.displayText(f'Programming pattern {pattern.upper()} at 0x{start:X}, '
+                              f'{length:,} bytes ({pages:,} pages)...\n')
+        dialog = ProgressDialog(self.winfo_toplevel(), 'Programming', max(length, 1))
+        self.serCom.scriptRunning = True     # blocks the panels and the Terminal
+        self.term.cmdInProgress = True       # and the background serial reader
+        self.scriptStop[0] = False           # Esc or a lost connection cancels too
+        worker = threading.Thread(target=work, daemon=True)
+        worker.start()
+
+        def poll():
+            while True:
+                try:
+                    kind, text = messages.get_nowait()
+                except queue.Empty:
+                    break
+                getattr(self.term, kind)(text)
+            if dialog.cancelled or self.scriptStop[0]:
+                state['cancel'] = True
+            dialog.show(state['text'], state['done'])
+            if worker.is_alive():
+                self.after(100, poll)
+                return
+            while not messages.empty():     # text posted just before the end
+                kind, text = messages.get_nowait()
+                getattr(self.term, kind)(text)
+            self.term.cmdInProgress = False
+            self.serCom.scriptRunning = False
+            dialog.close()
+            if result.get('cancelled'):
+                self.term.displayText('*** Programming cancelled; the device may be '
+                                      'partly programmed. ***\n')
+            elif result['error']:
+                self.term.displayText(f'*** Programming stopped: {result["error"]}. '
+                                      'The device may be partly programmed. ***\n')
+        self.after(100, poll)
 
     def programFile(self, offset):
         """Programs the loaded image segment by segment (the gaps between
@@ -246,7 +312,7 @@ class ProgramFrame(LabeledFrame):
         folder = self.settings.programDir
         filename = askopenfilename(
             title='Select File to Program',
-            initialdir=folder if os.path.isdir(folder) else os.getcwd(),
+            initialdir=folder if os.path.isdir(folder) else documents_folder(),
             filetypes=firmware_image.FILE_TYPES)
         if not filename:             # dialog cancelled
             return False
@@ -276,7 +342,7 @@ class ProgramFrame(LabeledFrame):
 
     def announce(self):
         """Tells the user what was loaded: a summary and a short preview in the
-        Terminal (everything is in File > Firmware > View File...)"""
+        Terminal (everything is in File > Image Files > View File...)"""
         try:
             offset = parseField('Offset', self.start_addr.get())
         except ValueError:
@@ -288,7 +354,7 @@ class ProgramFrame(LabeledFrame):
             **self.settings.hexOptions())
         self.term.displayText(preview + '\n')
         self.term.displayText(f'Addresses are where the data will be written (file '
-                         f'address + Offset 0x{offset:X}). Firmware > View File '
+                         f'address + Offset 0x{offset:X}). Image Files > View File '
                          'shows everything. Erase first if needed.\n')
         self.showStatus(f'Loaded {self.imageName}: {self.image.describe()}', 8000)
 

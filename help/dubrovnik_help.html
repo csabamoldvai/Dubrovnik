@@ -129,7 +129,7 @@ more examples.</p>
 <h2 id="window">2. The main window</h2>
 <table>
   <tr><th style="width:190px">Area</th><th>Purpose</th></tr>
-  <tr><td>Menu bar</td><td>File, Tools, View, Help (see <a href="#menus">Menus</a>).</td></tr>
+  <tr><td>Menu bar</td><td>File, Tools, View, Preferences, Help (see <a href="#menus">Menus</a>).</td></tr>
   <tr><td>Serial Connection</td><td>Choose the COM port and connect to the board.</td></tr>
   <tr><td>Erase / Program / Read</td><td>The three flash operations. They can be hidden with <em>View &rarr; Panels &rarr; Hide</em>.</td></tr>
   <tr><td>Terminal</td><td>Results of all operations, plus a command line to the board.</td></tr>
@@ -164,6 +164,7 @@ device and press RESET. You can still use the Terminal.</p>
 </table>
 <p>Rest the mouse on an entry box (here and in Program and Read) to see the format it accepts.</p>
 <p>The Terminal lists the erase command for each block with its erase time.</p>
+<p><strong>Chip erase</strong> can take from seconds to minutes, so a progress window opens. The Workbench reads the JEDEC ID of the device (command <code>9F</code>); its third byte is the capacity code (capacity in bytes = 2<sup>code</sup>, for example <code>18h</code> = 16&nbsp;MB = 128&nbsp;Mbit); for some Adesto/Atmel IDs such as <code>1F 84 01</code> or <code>1F 47 0C</code> the density is in the second byte (4 = 4&nbsp;Mbit) and the expected time is estimated from it (for devices that were measured, such as the AT25SF041B, AT25XE321D and AT25SL128A, the measured time is used; for others it is a rough guess from the capacity, because devices differ a lot; nothing is erased to measure it). The bar is only an estimate: it waits at 95&nbsp;% until the board reports that the device is ready. <strong>Cancel</strong> (or <kbd>Esc</kbd>) stops waiting and sends <kbd>Ctrl</kbd>+<kbd>C</kbd> to the board. Flash devices usually cannot abort a chip erase, so the device may keep erasing, or be partly erased. If the board does not answer afterwards, wait for the erase to end, or power-cycle the board, press RESET and reconnect.</p>
 <div class="warn"><strong>Erasing cannot be undone.</strong> Check the start
 address and block count before pressing <strong>Erase</strong>. This is why
 these values are kept only when you choose <em>Parameters &rarr; Save</em>
@@ -180,13 +181,14 @@ and are not restored automatically.</div>
   <tr><td>Start Address (0x)</td><td>First flash address to program.</td></tr>
   <tr><td>Length (0x)</td><td>Number of bytes to program.</td></tr>
 </table>
+<p>A progress window shows the page being programmed (page number, address), the percentage and the time left, and has a <strong>Cancel</strong> button (also <kbd>Esc</kbd>) that stops between pages and leaves the device partly programmed. For up to 16 pages the Terminal lists every page with its program time; for a longer run it prints a summary: number of pages, the slowest page and the total time.</p>
 <h3>Load from File</h3>
-<p>Click <strong>Open</strong> (or use <em>File &rarr; Firmware &rarr; Open File</em>, <kbd>Ctrl</kbd>+<kbd>O</kbd>) and choose a
+<p>Click <strong>Open</strong> (or use <em>File &rarr; Image Files &rarr; Open File</em>, <kbd>Ctrl</kbd>+<kbd>O</kbd>) and choose a
 firmware file. Three formats are accepted, recognised by their content: a raw binary
 (<code>.bin</code>), a Motorola S-record (<code>.srec</code>, <code>.s19</code>, <code>.s28</code>,
 <code>.s37</code>, <code>.mot</code>) and Intel HEX (<code>.hex</code>, <code>.ihex</code>). The Terminal lists what was
 loaded and shows a short preview in hex-dump layout (the first 64 bytes of each block; blocks up to 1 KB are shown in full), at the
-addresses where the data will be written. Use <em>File &rarr; Firmware &rarr; View File</em> to see everything. A file with a bad
+addresses where the data will be written. Use <em>File &rarr; Image Files &rarr; View File</em> to see everything. A file with a bad
 checksum or line is refused with the line number. The next time the dialog opens in the folder of
 the last file.</p>
 <p>The pattern, increment and length entries are greyed out, and <em>Start Address</em> becomes <em>Offset</em>:</p>
@@ -195,14 +197,14 @@ the last file.</p>
   <li><strong>S-record and Intel HEX</strong> carry their own addresses. Each block is programmed at its file address plus
       the Offset (normally 0). The gaps between blocks are not touched.</li>
 </ul>
-<p>Click <strong>Program</strong> (or <em>File &rarr; Firmware &rarr; Program Loaded File</em>, <kbd>Ctrl</kbd>+<kbd>P</kbd>) to start. The
+<p>Click <strong>Program</strong> (or <em>File &rarr; Image Files &rarr; Program Loaded File</em>, <kbd>Ctrl</kbd>+<kbd>P</kbd>) to start. The
 menu works also when the panels are hidden: it asks for a confirmation that lists the addresses that will be written, and with the panels
 hidden it also asks for the Offset. A progress window shows the step and the percentage and the Workbench stays responsive meanwhile; <strong>Cancel</strong>
 (or Esc) stops between pages, and the device is then partly programmed. A large image takes minutes (the board accepts 16 bytes per command);
 as a guide, 100 KB takes about two minutes. The Terminal shows the page-program
 commands with the time for each page and the total.
 <strong>Prog/Verify</strong> is reserved for a later version. To check a file against the flash today, read the range back
-(<em>Hex Dump</em> mode helps) or use <code>dub.verify</code> in a script.</p>
+(<em>Hex View</em> mode helps) or use <code>dub.verify</code> in a script.</p>
 <div class="warn">Flash can only change bits from 1 to 0 when programming.
 <strong>Erase the area first</strong>, otherwise the stored data will not match
 what you programmed. The Workbench does not erase for you.</div>
@@ -213,8 +215,9 @@ what you programmed. The Workbench does not erase for you.</div>
   <tr><th style="width:190px">Control</th><th>Meaning</th></tr>
   <tr><td>SPI / Dual / Quad (114) / Quad (144)</td><td>How the data is transferred. See the table below.</td></tr>
   <tr><td>Start Address (0x), Length (0x)</td><td>Where to start and how many bytes to read (hexadecimal).</td></tr>
-  <tr><td>Display Mode</td><td><em>Binary (b)</em> shows bytes, <em>DWord (w)</em> shows 32-bit words, <em>Hex Dump (h)</em> shows a hex-editor layout (address, hex bytes, ASCII; see <em>View &rarr; Hex Dump</em>). The choice is remembered.</td></tr>
+  <tr><td>Display Mode</td><td><em>Byte</em> shows bytes, <em>Word</em> shows 32-bit words, <em>Hex View</em> shows a hex-editor layout (address, hex bytes, ASCII; see <em>Preferences &rarr; Hex View</em>). The choice is remembered.</td></tr>
 </table>
+<p>A read of more than 4&nbsp;kB (0x1000 bytes) is done in pieces of 4&nbsp;kB, and each piece appears in the Terminal as soon as it has arrived, so you can follow a long read. While it runs the <strong>Read</strong> button becomes <strong>Stop</strong> and the status bar shows how far it is; <strong>Stop</strong> or <kbd>Esc</kbd> ends the read after the current piece. In <em>Byte</em> and <em>Word</em> mode a line such as <code>--- 0x3000 ---</code> marks the start of each piece after the first, so you can see the read advance even when the data is all <code>ff</code>.</p>
 <table>
   <tr><th style="width:190px">Mode</th><th>Opcode</th><th>Description</th></tr>
   <tr><td>SPI</td><td><code>0B</code></td><td>Fast read, one data line</td></tr>
@@ -242,13 +245,14 @@ for the board. Type after the <code>&gt;&gt;&gt;</code> prompt and press
 <ul>
   <li><kbd>&uarr;</kbd> / <kbd>&darr;</kbd> step through the commands you typed earlier.</li>
   <li><code>clear</code> (or right-click &rarr; <em>Clear</em>) empties the Terminal.</li>
+  <li><kbd>Page Up</kbd> / <kbd>Page Down</kbd> scroll the Terminal by a page (also when the focus is in another box of the window). <kbd>Home</kbd> goes to the start of the command you are typing, <kbd>Ctrl</kbd>+<kbd>Home</kbd> to the top of the Terminal text and <kbd>Ctrl</kbd>+<kbd>End</kbd> back to the prompt line.</li>
   <li>Earlier output is read-only. You can click and select it and copy it with
       <kbd>Ctrl</kbd>+<kbd>C</kbd>. If you start typing while the cursor is in
       old text, the cursor jumps back to the prompt line.</li>
   <li>Messages the board sends by itself, for example after you press RESET, are
       shown automatically.</li>
   <li><strong>File &rarr; Save Terminal Log</strong> writes the whole Terminal to a text file.</li>
-  <li>The Terminal colours, font and text size can be changed under <em>View &rarr; Terminal</em>. To change the text size quickly, hold <kbd>Ctrl</kbd> and turn the mouse wheel over the Terminal.</li>
+  <li>The Terminal colours, font and text size can be changed under <em>Preferences &rarr; Terminal</em>. To change the text size quickly, hold <kbd>Ctrl</kbd> and turn the mouse wheel over the Terminal.</li>
 </ul>
 <h3>Examples</h3>
 <pre>&gt;&gt;&gt; config           show the board configuration
@@ -526,7 +530,7 @@ if "caba0000" not in data:
   <tr><td><code>dub.program_bytes(address, data)</code></td><td>Programs a <code>bytes</code> object, for example the contents of a file you opened in the script.</td></tr>
   <tr><td><code>dub.read(address, length, mode="SPI", show=True)</code></td><td>Same as the Read panel (<code>"SPI"</code>, <code>"Dual"</code>, <code>"Quad (114)"</code>, <code>"Quad (144)"</code>); Quad Enable is handled as usual. Returns the data as text, without the echoed command. <code>show=False</code> keeps it out of the Terminal.</td></tr>
   <tr><td><code>dub.read_bytes(address, length, mode="SPI")</code></td><td>Like <code>dub.read</code>, but returns a <code>bytes</code> object of exactly <code>length</code> bytes and prints nothing. Works whatever the Read panel's Display Mode is. Long reads are done in pieces, so <kbd>Esc</kbd> still stops them; an unexpected number of bytes from the board is an error.</td></tr>
-  <tr><td><code>dub.hexdump(data, address=0)</code></td><td>Text dump of a <code>bytes</code> object in the hex-editor layout (address, hex, ASCII), using the settings of <em>View &rarr; Hex Dump</em>. Options for one call: <code>per_row</code> (8, 16 or 32), <code>show_ascii</code>, <code>upper</code>, <code>gap</code> (<code>True</code> or <code>False</code>). Example: <code>print(dub.hexdump(dub.read_bytes(0x2000, 64), 0x2000))</code>.</td></tr>
+  <tr><td><code>dub.hexdump(data, address=0)</code></td><td>Text dump of a <code>bytes</code> object in the hex-editor layout (address, hex, ASCII), using the settings of <em>Preferences &rarr; Hex View</em>. Options for one call: <code>per_row</code> (8, 16 or 32), <code>show_ascii</code>, <code>upper</code>, <code>gap</code> (<code>True</code> or <code>False</code>). Example: <code>print(dub.hexdump(dub.read_bytes(0x2000, 64), 0x2000))</code>.</td></tr>
   <tr><td><code>dub.load_image(path)</code></td><td>Reads a <code>.bin</code>, S-record or Intel HEX file (format recognised from its content). Returns an image: <code>image.segments</code> is a list of <code>(address, bytes)</code>; also <code>image.size</code>, <code>image.start</code>, <code>image.end</code>. A missing or invalid file stops the script with a message (with the line number for a bad record).</td></tr>
   <tr><td><code>dub.program_image(image, offset=0)</code></td><td>Programs every segment of an image (or of the file at a given path) at its address plus <code>offset</code>; the gaps between segments are not touched and nothing is erased first. Returns the total time in &micro;s.</td></tr>
   <tr><td><code>dub.verify(address, data, mode="SPI", limit=32)</code></td><td>Compares the flash with a <code>bytes</code> object. Returns a list of <code>(address, expected, actual)</code> for the first <code>limit</code> differing bytes; an empty list means the flash matches.</td></tr>
@@ -553,9 +557,9 @@ if "caba0000" not in data:
 <h2 id="menus">10. Menus</h2>
 <h3>File</h3>
 <ul>
-  <li><strong>Firmware</strong> &ndash; a submenu for programming a file:</li>
+  <li><strong>Image Files</strong> &ndash; a submenu for programming a file:</li>
   <li style="margin-left:1.5em"><strong>Open File...</strong> (<kbd>Ctrl</kbd>+<kbd>O</kbd>) &ndash; choose a <code>.bin</code>, S-record or Intel HEX file to program and switch the Program panel to <em>Load from File</em>.</li>
-  <li style="margin-left:1.5em"><strong>View File...</strong> &ndash; opens a window with the whole loaded file as a hex dump, in the layout chosen under <em>View &rarr; Hex Dump</em>, at the addresses where the data will be written (file address + Offset; the Offset is in the window title). A heading line starts every block and tells the size of the gap before it. <em>Go to address</em> jumps to a row (an address inside a gap jumps to the next block). The window is a snapshot: after changing the Offset, open it again.</li>
+  <li style="margin-left:1.5em"><strong>View File...</strong> &ndash; opens a window with the whole loaded file as a hex dump, in the layout chosen under <em>Preferences &rarr; Hex View</em>, at the addresses where the data will be written (file address + Offset; the Offset is in the window title). A heading line starts every block and tells the size of the gap before it. <em>Go to address</em> jumps to a row (an address inside a gap jumps to the next block). The window is a snapshot: after changing the Offset, open it again.</li>
   <li style="margin-left:1.5em"><strong>Program Loaded File</strong> (<kbd>Ctrl</kbd>+<kbd>P</kbd>) &ndash; program the loaded file. It asks for a confirmation that lists the address ranges (with the panels hidden it also asks for the Offset). Nothing is erased first. Greyed out until a file is loaded.</li>
   <li style="margin-left:1.5em"><strong>Loaded: ...</strong> &ndash; a grey line showing which file is loaded and its size.</li>
   <li style="margin-left:1.5em"><strong>Close File</strong> &ndash; forget the loaded file.</li>
@@ -588,7 +592,7 @@ for confirmation first, because they change the device or the board.</p>
       writes the result to the board EEPROM. Follow the instructions in the dialogs: the sockets of the calibrated
       domains must be empty and the board has to be reset twice.</li>
   <li><strong>Template: Basic Device Check</strong> &ndash; a command script (below the divider) that only reads: version, configuration, JEDEC ID, status registers and the first bytes. Nothing is changed on the board.</li>
-  <li><strong>Open Tools Folder</strong> &ndash; opens the folder in Windows Explorer.</li>
+  <li><strong>Open Tools Folder</strong> &ndash; opens the folder in Windows Explorer. Tools from your own folder (<em>Preferences &rarr; Configure Paths &rarr; My tools</em>) follow after a separator, and <strong>Open My Tools Folder</strong> opens that folder (the default one is made if it does not exist yet).</li>
 </ul>
 <p><strong>Adding your own tool.</strong> Put a Python script in the tools folder and start
 it with a line <code># TOOL: Name in the menu</code> within its first 20 lines. The menu is
@@ -602,6 +606,9 @@ like <em>File &rarr; Scripts &rarr; Run Command Script</em>, with the listing fi
 <h3>View</h3>
 <ul>
   <li><strong>Hide Panels (Erase/Program/Read)</strong> / <strong>Show Panels</strong> &ndash; one item that does the opposite of the current state: it reads <em>Hide</em> while the three panels are shown and <em>Show</em> while they are hidden. Hiding them gives the Terminal more room, which suits users who work mainly with commands.</li>
+</ul>
+<h3>Preferences</h3>
+<ul>
   <li><strong>Appearance</strong> &ndash; <em>Light</em>, <em>Dark</em> or <em>System</em> (follow Windows).</li>
   <li><strong>Terminal</strong> &ndash; opens a dialog for the Terminal look. <em>Theme</em> is <em>Auto</em> (light or dark like the window),
       <em>Light</em>, <em>Dark</em> or <em>Custom</em>; changing a colour switches to <em>Custom</em>. Pick the
@@ -609,9 +616,15 @@ like <em>File &rarr; Scripts &rarr; Run Command Script</em>, with the listing fi
       <code>#1B1F24</code>. <em>Font</em> lists the fixed-width fonts installed on the PC and <em>Size</em> sets the text size
       (8 to 32). The preview and the Terminal change as you go; <em>Cancel</em> puts the old look back and
       <em>Reset to defaults</em> restores the dark theme with Consolas 15.</li>
-  <li><strong>Hex Dump</strong> &ndash; the layout of the <em>Hex Dump (h)</em> Display Mode of the Read panel: <em>Bytes per row</em> (8, 16 or 32), the <em>ASCII column</em>, <em>upper case</em> hex digits and an <em>extra space after every 8 bytes</em>, with a sample. Nothing changes until <em>OK</em>. A row looks like <code>00002000&nbsp; 00 00 02 20 19 70 10 03&nbsp; 37 71 00 00 73 79 00 00&nbsp; |... .p..7q..sy..|</code>; a read that does not start on a row boundary is padded, so the addresses on the left are multiples of the row size. The board still sends plain bytes; the Workbench lays them out. Scripts (<code>dub.read</code>) are not affected. Use a Terminal font that is wide enough: lines that are wider than the Terminal wrap.</li>
+  <li><strong>Hex View</strong> &ndash; the layout of the <em>Hex View</em> Display Mode of the Read panel: <em>Bytes per row</em> (8, 16 or 32), the <em>ASCII column</em>, <em>upper case</em> hex digits and an <em>extra space after every 8 bytes</em>, with a sample. Nothing changes until <em>OK</em>. A row looks like <code>00002000&nbsp; 00 00 02 20 19 70 10 03&nbsp; 37 71 00 00 73 79 00 00&nbsp; |... .p..7q..sy..|</code>; a read that does not start on a row boundary is padded, so the addresses on the left are multiples of the row size. The board still sends plain bytes; the Workbench lays them out. Scripts (<code>dub.read</code>) are not affected. Use a Terminal font that is wide enough: lines that are wider than the Terminal wrap.</li>
   <li><strong>Menu text size</strong> &ndash; <em>Small</em>, <em>Normal</em> or <em>Large</em> text in the menu bar and the menus.
       Use it if the menus look too big or too small on your screen.</li>
+  <li><strong>Configure Paths...</strong> &ndash; the folders the program uses. <em>Command scripts</em>, <em>Python scripts</em> and <em>Image files</em> are the folders where the Run Command Script, Run Python Script and Open File windows start (they also follow the folder of the last file you chose). <em>My tools</em> is a second folder for the Tools menu: any script in it that has the <code># TOOL: name</code> first line is added, after the tools that come with the program, so you can keep your own tools outside the program folder. The folders of the program (<em>Program tools</em>, <em>Settings</em>, <em>Documents</em>) cannot be changed; their <strong>Open</strong> button shows them in Explorer. <strong>Browse...</strong> picks a folder, <strong>Default</strong> goes back to the standard one, which is a folder under <code>Documents\Dubrovnik</code> (<code>commandScripts</code>, <code>pythonScripts</code>, <code>myTools</code>); it is made when it is first used or when you press <strong>Open</strong>. Nothing changes until <em>OK</em>; a folder that does not exist is refused.</li>
+  <li><strong>Datasheet Source...</strong> &ndash; the web address used when there is no local file. <code>{part}</code> is replaced by the
+      part number. The default is the Renesas website search
+      (<code>https://www.renesas.com/en/search?keywords={part}</code>); an address without <code>{part}</code> is opened as it is.
+      The address is saved with the other settings, so you can change it if the website moves.</li>
+  <li><strong>Assistant Settings...</strong> &ndash; the credentials of the experimental Assistant (see Help &rarr; Assistant).</li>
 </ul>
 <h3>Help</h3>
 <ul>
@@ -623,11 +636,7 @@ like <em>File &rarr; Scripts &rarr; Run Command Script</em>, with the listing fi
       shown. <em>Open Documents Folder</em> takes you there.</li>
   <li><strong>Datasheet</strong> &ndash; opens the datasheet of the device shown in the status bar. If a PDF whose name contains the
       part number is in the <code>docs</code> folder (or in <code>%APPDATA%\Dubrovnik\Datasheets</code>) it is opened;
-      otherwise the web address from <em>Datasheet Source</em> is opened in your browser. It needs a connected board with a device.</li>
-  <li><strong>Datasheet Source</strong> &ndash; the web address used when there is no local file. <code>{part}</code> is replaced by the
-      part number. The default is the Renesas website search
-      (<code>https://www.renesas.com/en/search?keywords={part}</code>); an address without <code>{part}</code> is opened as it is.
-      The address is saved with the other settings, so you can change it if the website moves.</li>
+      otherwise the web address from <em>Preferences &rarr; Datasheet Source</em> is opened in your browser. It needs a connected board with a device.</li>
   <li><strong>About</strong> &ndash; version and authors.</li>
 </ul>
 
@@ -640,8 +649,8 @@ like <em>File &rarr; Scripts &rarr; Run Command Script</em>, with the listing fi
       <li>Window size and position</li>
       <li>Panels shown or hidden</li>
       <li>Appearance, Terminal look and menu text size</li>
-      <li>Hex Dump layout, datasheet web address</li>
-      <li>Folder of the last firmware file you opened</li>
+      <li>Hex View layout, datasheet web address</li>
+      <li>The folders of Preferences &rarr; Configure Paths (script and image file start folders, My tools)</li>
       <li>Last COM port and Auto connect</li>
       <li>Display Mode</li>
     </ul></td>

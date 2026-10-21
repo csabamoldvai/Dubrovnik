@@ -157,8 +157,8 @@ class MenuBar:
 # ---- the tables --------------------------------------------------------------------------
 
 FILE = [
-    # File > Firmware: open a firmware file and program it (like Scripts below)
-    Submenu('firmware', 'Firmware', [
+    # File > Image Files: open a firmware file and program it (like Scripts below)
+    Submenu('firmware', 'Image Files', [
         Item('open_file', 'Open File...', 'openForProgramming', accelerator='Ctrl+O'),
         Item('view_file', 'View File...', 'showFileViewer'),
         Item('program', 'Program Loaded File', 'programLoadedFile', accelerator='Ctrl+P'),
@@ -189,23 +189,30 @@ FILE = [
     Item('exit', 'Exit', 'onClose'),
 ]
 
-# View menu: panel visibility, window appearance and Terminal colours.
-# (Radio items mark the current choice.)
+# View menu: the panels.
 VIEW = [
     Item('panels', 'Hide Panels (Erase/Program/Read)', 'onPanelToggle'),   # the label follows the state
-    Separator(),
+]
+
+# Preferences menu: how the program looks and where things are kept.
+# (Radio items mark the current choice.)
+PREFERENCES = [
     Submenu('appearance', 'Appearance', [
         Radio('light', 'Light', 'light', 'appearanceVar', 'setAppearance'),
         Radio('dark', 'Dark', 'dark', 'appearanceVar', 'setAppearance'),
         Radio('system', 'System (follow Windows)', 'system', 'appearanceVar', 'setAppearance'),
     ]),
     Item('terminal', 'Terminal...', 'showTerminalDialog'),
-    Item('hexdump', 'Hex Dump...', 'showHexDialog'),
+    Item('hexdump', 'Hex View...', 'showHexDialog'),
     Submenu('menu_size', 'Menu text size', [
         Radio('small', 'Small', 'small', 'menuSizeVar', 'setMenuSize'),
         Radio('normal', 'Normal', 'normal', 'menuSizeVar', 'setMenuSize'),
         Radio('large', 'Large', 'large', 'menuSizeVar', 'setMenuSize'),
     ]),
+    Separator(),
+    Item('paths', 'Configure Paths...', 'showPathsDialog'),
+    Item('datasheet_source', 'Datasheet Source...', 'editDatasheetUrl'),
+    Item('assistant_settings', 'Assistant Settings...', 'showAssistantSettings'),
 ]
 
 HELP = [
@@ -213,11 +220,9 @@ HELP = [
     # Help > Documents: one entry for every file in the docs folder (see dubLibs/documents.py)
     Submenu('documents', 'Documents', postcommand='refreshDocs'),
     Item('datasheet', 'Datasheet', 'openDatasheet'),
-    Item('datasheet_source', 'Datasheet Source...', 'editDatasheetUrl'),
     # Help > Assistant: chat window backed by dubLibs/assistant.py. It answers from the help
     # and proposes scripts; nothing runs without the user's OK.
     Item('assistant', 'Assistant...', 'showAssistant'),
-    Item('assistant_settings', 'Assistant Settings...', 'showAssistantSettings'),
     Separator(),
     Item('about', 'About', 'showAbout'),
 ]
@@ -228,5 +233,6 @@ MENUS = [
     Submenu('file', 'File', FILE),
     Submenu('tools', 'Tools', postcommand='refreshTools'),
     Submenu('view', 'View', VIEW),
+    Submenu('preferences', 'Preferences', PREFERENCES),
     Submenu('help', 'Help', HELP),
 ]

@@ -262,6 +262,40 @@ class BoardComm:
 
         return numBytesSent
 
+    def send_cancellable(self, cmdstr, cancelRequested, grace=3.0):
+        """Like send(), for a command that keeps the board busy for a long time (chip erase).
+        The reply is read in short steps; cancelRequested() is asked after each step (it may
+        also update a progress window). When it returns True a Ctrl+C is sent and the board
+        gets `grace` seconds to give the prompt back.
+        Returns 'done' (the prompt arrived), 'cancelled' (cancelled, prompt is back) or
+        'busy' (cancelled, but the board is still busy: it may print its prompt later)."""
+        self.handle.reset_input_buffer()
+        if cmdstr[-1] != '\r':
+            cmdstr += '\r'
+        self.cmdline = cmdstr
+        self.handle.write(cmdstr.encode('utf-8'))
+        self.raw, self.cooked = "", ""
+        saved = self.handle.timeout
+        self.handle.timeout = 0.1
+        buf = b''
+        try:
+            cancelled, deadline = False, 0
+            while not buf.endswith(self.prompt):
+                buf += self.handle.read(max(1, self.handle.in_waiting))
+                if not cancelled and cancelRequested():
+                    cancelled = True
+                    self.handle.write(b'\x03')
+                    deadline = time.time() + grace
+                if cancelled and time.time() > deadline:
+                    break
+        finally:
+            self.handle.timeout = saved
+        self.raw = buf.decode('utf-8', errors='replace')
+        self.cooked = self.raw.lower()
+        if not buf.endswith(self.prompt):
+            return 'busy'
+        return 'cancelled' if cancelled else 'done'
+
     def response(self, removeCmd=False, removePrompt=True, returnAsList=False, readInBuffer=False):
         """### Get a response from Tiberias
         (send() is the call that waits for the board: when it gets no answer it asks the user to

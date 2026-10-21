@@ -4,6 +4,16 @@ import time
 import customtkinter as ctk
 
 
+def format_seconds(seconds):
+    """'45 s', '3 min 20 s' or '2 h 05 min'"""
+    seconds = int(round(seconds))
+    if seconds < 60:
+        return f'{seconds} s'
+    if seconds < 3600:
+        return f'{seconds // 60} min {seconds % 60:02d} s'
+    return f'{seconds // 3600} h {seconds % 3600 // 60:02d} min'
+
+
 class ProgramCancelled(Exception):
     """Raised by the progress dialog when the user clicks Cancel"""
 
@@ -46,14 +56,19 @@ class ProgressDialog:
         self.cancelled = True
         self.label.configure(text='Cancelling...')
 
-    def show(self, text, done):
+    def show(self, text, done, remaining=True):
+        """text may have two lines. remaining: also tell the time left, worked out
+        from the part done so far (after a few seconds, when it is meaningful)"""
         pct = min(done / self.total, 1.0)
         if self.cancelled:
             text = 'Cancelling...'
         self.label.configure(text=text)
         self.bar.set(pct)
-        self.info.configure(
-            text=f'{pct * 100:.0f} %    {time.time() - self.start:.0f} s elapsed')
+        elapsed = time.time() - self.start
+        info = f'{pct * 100:.0f} %    {elapsed:.0f} s elapsed'
+        if remaining and elapsed >= 3 and 0.01 <= pct < 1 and not self.cancelled:
+            info += f', about {format_seconds(elapsed * (1 - pct) / pct)} left'
+        self.info.configure(text=info)
 
     def close(self):
         try:

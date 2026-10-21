@@ -1,0 +1,107 @@
+"""Tests for the chip erase helpers: JEDEC density, time estimate, cancellable send.
+Run:  python -m unittest discover -s tests"""
+import os
+import sys
+import unittest
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+from dubLibs import boardcom, dubrovnik
+
+
+class FakePort:
+    """Serial port that answers with `chunks`, one per read() call, then nothing"""
+    def __init__(self, chunks):
+        self.chunks, self.written, self.timeout = list(chunks), [], 5
+        self.in_waiting = 0
+
+    def reset_input_buffer(self):
+        pass
+
+    def write(self, data):
+        self.written.append(data)
+        return len(data)
+
+    def read(self, n=1):
+        return self.chunks.pop(0) if self.chunks else b''
+
+
+class FakeComm:
+    def __init__(self, reply):
+        self.reply = reply
+
+    def send(self, cmd):
+        self.cmdline = cmd
+
+    def response(self, removeCmd=False, removePrompt=True, returnAsList=False):
+        return self.reply
+
+
+class DensityTests(unittest.TestCase):
+    du = dubrovnik.Dubrovnik()
+
+    def jedec(self, reply):
+        return self.du.read_jedec_id(FakeComm(reply))
+
+    def code(self, reply):
+        return self.du.density_code(self.jedec(reply))
+
+    def test_jedec_id_is_three_bytes(self):
+        self.assertEqual(self.jedec('1f 42 18'), (0x1F, 0x42, 0x18))
+        self.assertIsNone(self.jedec('ef 40'))
+
+    def test_third_byte_is_the_density_code(self):
+        self.assertEqual(self.code('ef 40 18'), 0x18)
+        self.assertEqual(self.code('1f 42 18'), 0x18)
+
+    def test_older_adesto_ids_take_the_density_from_the_second_byte(self):
+        self.assertEqual(self.code('1f 84 01'), 19)             # AT25SF041B: 4 Mbit = 512 kB
+        self.assertEqual(self.code('1f 47 0c'), 22)             # AT25XE321D: 32 Mbit = 4 MB
+        self.assertIsNone(self.code('c2 84 01'))                # other makers: unknown
+
+    def test_unreadable_reply_gives_none(self):
+        self.assertIsNone(self.code('ef 40'))
+        self.assertIsNone(self.code('ff ff ff'))
+
+    def test_measured_devices_give_the_measured_time(self):
+        est = self.du.chip_erase_estimate_s
+        self.assertEqual(est((0x1F, 0x84, 0x01)), 1.388)
+        self.assertEqual(est((0x1F, 0x47, 0x0C)), 59.376)
+        self.assertEqual(est((0x1F, 0x42, 0x18)), 83.7)
+
+    def test_other_devices_are_guessed_from_the_capacity(self):
+        est = self.du.chip_erase_estimate_s
+        self.assertLess(est((0xEF, 0x40, 0x16)), est((0xEF, 0x40, 0x18)))
+        self.assertAlmostEqual(est((0xEF, 0x40, 0x18)), 83.7, delta=1)    # the fit passes through it
+        self.assertEqual(est(None), dubrovnik.CHIP_ERASE_DEFAULT_S)
+
+
+class CancellableSendTests(unittest.TestCase):
+    def comm(self, chunks):
+        comm = boardcom.BoardComm()
+        comm.handle = FakePort(chunks)
+        return comm
+
+    def test_done_when_the_prompt_arrives(self):
+        comm = self.comm([b'06; c7', b' ok\r\n', b'>>> '])
+        self.assertEqual(comm.send_cancellable('06; c7; wait 0', lambda: False), 'done')
+        self.assertEqual(comm.handle.timeout, 5)            # restored
+
+    def test_cancel_sends_ctrl_c_and_reports_the_prompt(self):
+        comm = self.comm([b'x', b'x'])
+        state = {'n': 0}
+
+        def cancel():
+            state['n'] += 1
+            if state['n'] == 2:
+                comm.handle.chunks.append(b'>>> ')          # board reacts to Ctrl+C
+            return state['n'] >= 2
+        self.assertEqual(comm.send_cancellable('c7', cancel), 'cancelled')
+        self.assertIn(b'\x03', comm.handle.written)
+
+    def test_cancel_with_a_busy_board(self):
+        comm = self.comm([])
+        self.assertEqual(comm.send_cancellable('c7', lambda: True, grace=0.2), 'busy')
+
+
+if __name__ == '__main__':
+    unittest.main()

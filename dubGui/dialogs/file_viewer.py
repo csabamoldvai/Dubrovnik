@@ -1,4 +1,4 @@
-"""File > Firmware > View File: the whole loaded file as a hex dump, at the
+"""File > Image Files > View File: the whole loaded file as a hex dump, at the
 addresses it will be written to, with a "Go to address" box."""
 import customtkinter as ctk
 from tkinter import NSEW

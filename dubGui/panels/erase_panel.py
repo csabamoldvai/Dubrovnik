@@ -1,10 +1,15 @@
 """The Erase panel: erase blocks of the flash."""
+import queue
+import threading
+import time
 from tkinter import E, SW, StringVar, W
 from tkinter.messagebox import showerror
 import customtkinter as ctk
+from dubGui.dialogs.progress import ProgressDialog
 from dubGui.look import ENTRY_HEIGHT, RADIO_STYLE
 from dubGui.panels.base import LabeledFrame
 from dubGui.tooltip import Tooltip
+from dubLibs.dubrovnik import MEASURED_ERASE_S
 from dubLibs.fields import parseField
 
 
@@ -88,13 +93,87 @@ class EraseFrame(LabeledFrame):
             startAddr = (start_addr // blockSizeKB) * blockSizeKB
             self.term.tprint(f'Erasing 0x{num_blocks:x} {block_size}kB block(s) from address {startAddr:x}',
                         printOn='guiConsole')
-            self.du.block_erase(
-                self.comm, block_size, start_addr, num_blocks)
-        else:
-            self.term.tprint('Erasing chip', printOn='guiConsole')
-            self.du.block_erase(self.comm, blkSzStr)
 
-        self.term.tprint(self.du.textToDisplay[:-1])
+            def blockDone(line):
+                self.term.tprint(line)      # shown after each block, not at the end
+                self.update_idletasks()
+            self.du.block_erase(
+                self.comm, block_size, start_addr, num_blocks, on_block=blockDone)
+            self.term.tprint(self.du.textToDisplay[:-1])
+        else:
+            self.chipErase()
+
+    def chipErase(self):
+        """Chip erase with a progress window and a Cancel button. The erase runs in a
+        background thread; this method returns at once and the window is fed from a
+        timer. The bar is an estimate from the capacity of the device (JEDEC ID); it
+        stops at 95 % until the board reports that the erase is finished."""
+        messages = queue.Queue()        # Terminal text, shown from the GUI thread
+        state = dict(cancel=False, expected=0, started=0.0)
+        result = dict(error=None)
+        comm = self.comm
+
+        def work():
+            """Background thread: talks to the board, never touches widgets"""
+            try:
+                jedec = self.du.read_jedec_id(comm)
+                state['expected'] = self.du.chip_erase_estimate_s(jedec)
+                if jedec not in MEASURED_ERASE_S and self.du.density_code(jedec) is None:
+                    messages.put(('displayText', 'Capacity of the device not read from '
+                                  'the JEDEC ID; the progress bar is a rough guess.\n'))
+                if state['cancel']:         # Cancel while the capacity was read
+                    self.du.eraseState = 'cancelled'
+                    return
+                state['started'] = time.time()
+                self.du.chip_erase(comm, lambda: state['cancel'])
+                messages.put(('tprint', self.du.textToDisplay[:-1]))
+            except BaseException as e:      # incl. SystemExit from a comm error
+                result['error'] = f'{type(e).__name__}: {e}'
+
+        self.term.tprint('Erasing chip', printOn='guiConsole')
+        self.du.eraseState = 'error'
+        dialog = ProgressDialog(self.winfo_toplevel(), 'Chip Erase', 1000)
+        self.serCom.scriptRunning = True     # blocks the panels and the Terminal
+        self.term.cmdInProgress = True       # and the background serial reader
+        worker = threading.Thread(target=work, daemon=True)
+        worker.start()
+
+        def poll():
+            while True:
+                try:
+                    kind, text = messages.get_nowait()
+                except queue.Empty:
+                    break
+                getattr(self.term, kind)(text)
+            if dialog.cancelled:
+                state['cancel'] = True
+            elapsed = time.time() - state['started'] if state['started'] else 0
+            if state['expected']:
+                label = f'Erasing chip, expected about {state["expected"]:.0f} s'
+                dialog.show(label, min(elapsed / state['expected'], 0.95) * 1000, remaining=False)
+            else:
+                dialog.show('Reading the device capacity...', 0)
+            if worker.is_alive():
+                self.after(100, poll)
+                return
+            while not messages.empty():     # text posted just before the end
+                kind, text = messages.get_nowait()
+                getattr(self.term, kind)(text)
+            self.term.cmdInProgress = False
+            self.serCom.scriptRunning = False
+            dialog.close()
+            if result['error']:
+                self.term.displayText(f'*** Chip erase stopped: {result["error"]}. '
+                                      'The device may be partly erased. ***\n')
+            elif self.du.eraseState == 'cancelled':
+                self.term.displayText('*** Chip erase cancelled; the device may be '
+                                      'partly erased. ***\n')
+            elif self.du.eraseState == 'busy':
+                self.term.displayText('*** Chip erase cancelled, but the board did not '
+                                      'answer yet: the device is probably still erasing. '
+                                      'Wait for it to finish or power-cycle the board, '
+                                      'press RESET and reconnect ***\n')
+        self.after(100, poll)
 
     def erase_test(self):
         print(f'Selected Erase Block Size : {self.blockSize.get()}')

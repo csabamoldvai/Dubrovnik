@@ -4,17 +4,17 @@ PC application for the **Dubrovnik** flash test board. It erases, programs and r
 board's socket, and gives you a terminal, scripts and ready-made tools for talking to the board's
 **Tiberias** firmware.
 
-Current version: **1.2.3** (see [changelist.txt](changelist.txt)).
+Current version: **1.4.0** (see [changelist.txt](changelist.txt)).
 
 ## Features
 
 - **Erase, Program, Read** panels for the flash in the socket. Read supports SPI, Dual, Quad (1-1-4) and
   Quad (1-4-4); the Quad Enable bit is handled automatically.
-- **Firmware files** (File > Firmware): open a `.bin`, Motorola S-record (`.srec`, `.s19`, `.mot` ...) or Intel HEX
+- **Image files** (File > Image Files): open a `.bin`, Motorola S-record (`.srec`, `.s19`, `.mot` ...) or Intel HEX
   file, preview it, view all of it as a hex dump, and program it block by block at its own addresses plus an Offset,
   with a progress window and Cancel. It works also with the panels hidden.
-- **Hex Dump** display mode for Read (address, hex bytes, ASCII, like a hex editor) with its own settings
-  (View > Hex Dump).
+- **Hex View** display mode for Read (address, hex bytes, ASCII, like a hex editor) with its own settings
+  (Preferences > Hex View).
 - **Terminal** for any Tiberias command (`volt`, `freq`, `config`, flash opcodes, ...). It works without a
   flash device in the socket. Command history, read-only history area, save the log to a file.
 - **Scripts** (File > Scripts): run a text file of Terminal commands, or a Python script that uses the
@@ -25,7 +25,7 @@ Current version: **1.2.3** (see [changelist.txt](changelist.txt)).
   Icc Read Measurement and INA230 Calibration. A new tool is a Python file, or a command script (`.txt`/`.scr`), with a `# TOOL: name` header (the first line for a command script).
 - Remembers window size and position, panels, theme, COM port and display mode. The Erase/Program/Read entry
   values are saved only when you choose File > Parameters > Save.
-- Terminal look (View > Terminal): theme, colours, font and size, and Ctrl + mouse wheel zoom. Menu text size and a
+- Terminal look (Preferences > Terminal): theme, colours, font and size, and Ctrl + mouse wheel zoom. Menu text size and a
   one-click Hide/Show Panels item in the View menu.
 - Help > Datasheet opens the datasheet of the device in the socket (a file in `docs`, or a web search).
 - Notices when the board is switched off or unplugged.

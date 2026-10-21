@@ -1,4 +1,19 @@
+import re
 from dubLibs import boardcom
+
+# Chip erase times measured on the board (programmed cells take a little longer), by
+# JEDEC ID (manufacturer, type, capacity byte). Add a line when you measure a device.
+MEASURED_ERASE_S = {
+    (0x1F, 0x84, 0x01): 1.388,      # AT25SF041B   512 kB
+    (0x1F, 0x47, 0x0C): 59.376,     # AT25XE321D   4 MB
+    (0x1F, 0x42, 0x18): 83.7,       # AT25SL128A   16 MB
+}
+# Other devices: a power law through the AT25SF041B and AT25SL128A points. Devices differ a
+# lot (the AT25XE321D is 3.7 times slower than this), so the estimate is a rough guess.
+ERASE_REF_BYTES = 512 * 1024
+ERASE_REF_S = 1.388
+ERASE_EXPONENT = 1.183
+CHIP_ERASE_DEFAULT_S = 60       # when the capacity of the device is not known
 
 
 class Dubrovnik:
@@ -293,7 +308,7 @@ class Dubrovnik:
 
 
     def page_program(self, comm, start_addr=0, length=0, pattern='cafe0000',
-                     increment='0', echo=0):
+                     increment='0', echo=0, progress=None, log_pages=True):
         """Programs content of the write buffer into the memory\n
         Parameters:\n
         * start_addr (int): first memory location to program
@@ -301,9 +316,14 @@ class Dubrovnik:
         * pattern (8 digit hex string): 4-byte hex number to be programmed
         * increment (1-8 digit hex string) : +ve or -ve increment added to the pattern
         * echo (int): 0 or 1. Whether to print the results in the console or not
+        * progress: progress(bytes_done, pages_done, address) is called after each page
+          (it may raise an exception to abort between pages)
+        * log_pages: False puts only a summary (pages, slowest page, total time) into
+          textToDisplay, not one line per page (for large ranges)
         """
         self.textToDisplay = ""  # used by GUI terminal
         prog_time = 0
+        pages, slowest, slowest_addr = 0, 0, start_addr
         # create a pattern in the write buffer
         cmdstr = f'pattern {pattern} {increment}'
         comm.send(cmdstr)
@@ -318,23 +338,81 @@ class Dubrovnik:
             if echo == 1:
                 print(cmdstr)
             comm.send(cmdstr)
-            addr = pageEnd
-            # append cmdstr to display in GUI console
-            self.textToDisplay += (cmdstr + '\t')
+            pageStart, addr = addr, pageEnd
 
             page_prog_time_us = self.get_wait_time_us(comm)
-            page_prog_time = self.time_conv_from_usec(page_prog_time_us)
-            self.textToDisplay += f'(page program time: {page_prog_time})\n'
+            if log_pages:       # the page line for the GUI console
+                page_prog_time = self.time_conv_from_usec(page_prog_time_us)
+                self.textToDisplay += f'{cmdstr}\t(page program time: {page_prog_time})\n'
 
             prog_time += page_prog_time_us  # accumulating time for total time
+            pages += 1
+            if page_prog_time_us > slowest:
+                slowest, slowest_addr = page_prog_time_us, pageStart
+            if progress:
+                progress(addr - start_addr, pages, pageStart)
         # calculating total program time and building the string for the terminal
         total_prog_time = self.time_conv_from_usec(prog_time)
+        if not log_pages:
+            self.textToDisplay += (f'{pages} pages, {length} bytes from {start_addr:x}; '
+                                   f'slowest page {self.time_conv_from_usec(slowest)} '
+                                   f'at {slowest_addr:x}\n')
         self.textToDisplay += f'Total Program time: {total_prog_time}\n'
 
         return self.get_wait_time_us(comm)
 
+    def read_jedec_id(self, comm):
+        """The JEDEC ID (command 9f 3) as a tuple of three ints, or None if the reply
+        cannot be read"""
+        self.read_id(comm, '9f ', 3, echo=0)
+        reply = comm.response(removeCmd=True, removePrompt=True)
+        found = [int(x, 16) for x in re.findall(r'\b[0-9a-fA-F]{2}\b', reply)]
+        return tuple(found[:3]) if len(found) >= 3 else None
+
+    @staticmethod
+    def density_code(jedec):
+        """Capacity code of a JEDEC ID: capacity in bytes = 2 ** code. None if unknown.
+        Most devices give the code as the third byte (1f 42 18: 0x18 = 16 MB). Some
+        Adesto / Atmel devices have a third byte that is not a code (1f 84 01, 1f 47 0c);
+        their density is the low five bits of the second byte (4 = 4 Mbit, 7 = 32 Mbit)."""
+        if not jedec:
+            return None
+        if 16 <= jedec[2] <= 40:                # 64 kB or more
+            return jedec[2]
+        if jedec[0] == 0x1F and 1 <= jedec[1] & 0x1F <= 20:
+            return (jedec[1] & 0x1F) + 15       # 4 Mbit = 2 ** 19 bytes
+        return None
+
+    @staticmethod
+    def chip_erase_estimate_s(jedec):
+        """Expected chip erase time in seconds for a JEDEC ID: the measured time of a
+        known device, else a guess from its capacity, else a default."""
+        if jedec in MEASURED_ERASE_S:
+            return MEASURED_ERASE_S[jedec]
+        code = Dubrovnik.density_code(jedec)
+        if code is None:
+            return CHIP_ERASE_DEFAULT_S
+        return ERASE_REF_S * (2 ** code / ERASE_REF_BYTES) ** ERASE_EXPONENT
+
+    def chip_erase(self, comm, cancelRequested, trig=False):
+        """Chip erase that can be cancelled: cancelRequested() is called about
+        every 0.1 s while the board waits for the device. Returns the erase time in
+        us, or None when it was cancelled (the device may be partly erased).
+        self.eraseState is 'done', 'cancelled' or 'busy' (see BoardComm.send_cancellable)."""
+        self.textToDisplay = ""
+        if trig:
+            cmdstr = f'{self.wel}; trig 1; c7; wait 0; trig 0\n'
+        else:
+            cmdstr = f'{self.wel}; c7; wait 0\n'
+        self.eraseState = comm.send_cancellable(cmdstr, cancelRequested)
+        if self.eraseState != 'done':
+            return None
+        erase_time = self.get_wait_time_us(comm)
+        self.textToDisplay = f'Total Erase time: {self.time_conv_from_usec(erase_time)}\n'
+        return erase_time
+
     def block_erase(self, comm, block_size=4, start_addr=0, num_blocks=1,
-                    trig=False, echo=0):
+                    trig=False, echo=0, on_block=None):
         '''
         Parameters:
         comm       : handle of the communication port
@@ -343,6 +421,8 @@ class Dubrovnik:
         num_blocks : the number of blocks to erase (int)
         trig       : 'True' toggles a GPIO, HIGH at the beginning and LOW at the end of an Erase operation
                     (can be used to trigger a scope)
+        on_block   : called with the text line of each block right after it was erased
+                    (the Workbench prints it at once); textToDisplay then holds only the total
         echo       : '1' turns on printing intermediate commands sent to the flash,
                     also prints Erase Time
 
@@ -380,15 +460,17 @@ class Dubrovnik:
                 else:
                     cmdstr = f'{self.wel}; {opcode} {addr:x}; wait 0'
                 comm.send(cmdstr)
-                # building the cmdstr for each block erase
-                self.textToDisplay += (cmdstr + '\t')
                 if echo == 1:
                     print(comm.response(removePrompt=True))
                 addr += blockSizeKB
                 blk_ers_time_us = self.get_wait_time_us(comm)
                 blk_ers_time = self.time_conv_from_usec(blk_ers_time_us)
-                # appending time for the terminal
-                self.textToDisplay += f'(erase time: {blk_ers_time})\n'
+                # the line for the terminal: at once, or collected in textToDisplay
+                line = f'{cmdstr}\t(erase time: {blk_ers_time})'
+                if on_block:
+                    on_block(line)
+                else:
+                    self.textToDisplay += line + '\n'
 
                 erase_time += blk_ers_time_us  # accumulating block erase time
 

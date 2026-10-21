@@ -8,6 +8,35 @@ To release a new version: change VERSION in dubLibs\version.py, add an entry at
 the top of this file, commit, then tag the commit:  git tag v<VERSION>
 
 
+VERSION 1.4.0                                                      2026-10-20
+-----------------------------------------------------------------------------
+(Version 1.3 was skipped on purpose.)
+Changed:
+  * Read panel Display Mode: the choices are now Byte, Word and Hex View (were Binary (b),
+    DWord (w) and Hex Dump (h)). View > Hex Dump... is now View > Hex View.... The saved
+    Display Mode of an older version is not recognised: it starts with Byte once.
+  * File > Firmware is now File > Image Files.
+  * New top menu Preferences: Appearance, Terminal..., Hex View..., Menu text size (moved from View)
+    and Assistant Settings... (moved from Help). View keeps Hide/Show Panels.
+  * Preferences > Configure Paths...: the folders where the Run Command Script, Run Python Script and Open
+    File windows start (two separate folders for the two kinds of script), a "My tools" folder whose
+    scripts are added to the Tools menu, and Open buttons for the folders of the program.
+    The standard folders are Documents\Dubrovnik\commandScripts, pythonScripts and myTools. Help >
+    Datasheet Source moved to Preferences > Datasheet Source.
+  * Erase panel, several blocks: the line of each block (command and erase time) appears in the
+    Terminal as soon as the block is erased, not only when the whole job is finished.
+Added:
+  * Terminal: Page Up / Page Down scroll by a page (also when the focus is in another box); Home goes
+    to the start of the typed command; Ctrl+Home goes to the top and Ctrl+End to the prompt line.
+  * Read panel: a read of more than 0x1000 bytes is done in pieces in the background; each piece
+    is shown in the Terminal as it arrives. The Read button becomes Stop (Esc works too), the status
+    bar counts the bytes, and Byte/Word view put a '--- 0x3000 ---' separator above each piece.
+  * Program panel, Use Pattern: runs in the background with a progress window (page number,
+    address, percent, time left) and a Cancel button. Runs of more than 16 pages print a summary in
+    the Terminal instead of a line per page.
+  * Erase panel, Chip: a progress window with a Cancel button opens. The expected time comes
+    from the capacity in the JEDEC ID (command 9F, third byte); the bar is an estimate.
+
 VERSION 1.2.3                                                      2026-10-15
 -----------------------------------------------------------------------------
 Added:
