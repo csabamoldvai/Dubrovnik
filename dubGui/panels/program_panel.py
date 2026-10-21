@@ -276,7 +276,7 @@ class ProgramFrame(LabeledFrame):
 
     def announce(self):
         """Tells the user what was loaded: a summary and a short preview in the
-        Terminal (everything is in File > Firmware > View File...)"""
+        Terminal (everything is in File > Image Files > View File...)"""
         try:
             offset = parseField('Offset', self.start_addr.get())
         except ValueError:
@@ -288,7 +288,7 @@ class ProgramFrame(LabeledFrame):
             **self.settings.hexOptions())
         self.term.displayText(preview + '\n')
         self.term.displayText(f'Addresses are where the data will be written (file '
-                         f'address + Offset 0x{offset:X}). Firmware > View File '
+                         f'address + Offset 0x{offset:X}). Image Files > View File '
                          'shows everything. Erase first if needed.\n')
         self.showStatus(f'Loaded {self.imageName}: {self.image.describe()}', 8000)
 

@@ -1,4 +1,8 @@
+import re
 from dubLibs import boardcom
+
+BLOCK64_TYPICAL_S = 0.3         # typical time of one 64 kB block erase
+CHIP_ERASE_DEFAULT_S = 60       # when the capacity of the device is not known
 
 
 class Dubrovnik:
@@ -332,6 +336,44 @@ class Dubrovnik:
         self.textToDisplay += f'Total Program time: {total_prog_time}\n'
 
         return self.get_wait_time_us(comm)
+
+    def read_density_code(self, comm):
+        """Capacity code (third byte of the JEDEC ID, command 9f) of the device,
+        or None if the reply cannot be read. Capacity in bits = 2 ** code."""
+        self.read_id(comm, '9f ', 3, echo=0)
+        reply = comm.response(removeCmd=True, removePrompt=True)
+        found = re.findall(r'\b[0-9a-fA-F]{2}\b', reply)
+        if len(found) < 3:
+            return None
+        code = int(found[2], 16)
+        return code if 10 <= code <= 40 else None
+
+    @staticmethod
+    def chip_erase_estimate_s(density_code):
+        """Expected chip erase time in seconds for a JEDEC density code (None: not
+        known, a default is used). NOR flash chip erase takes about as long as erasing
+        all its 64 kB blocks one after the other at their typical time (about 0.3 s)."""
+        if density_code is None:
+            return CHIP_ERASE_DEFAULT_S
+        blocks = max((2 ** density_code) // 8 // 65536, 1)
+        return blocks * BLOCK64_TYPICAL_S
+
+    def chip_erase(self, comm, cancelRequested, trig=False):
+        """Chip erase that can be cancelled: cancelRequested() is called about
+        every 0.1 s while the board waits for the device. Returns the erase time in
+        us, or None when it was cancelled (the device may be partly erased).
+        self.eraseState is 'done', 'cancelled' or 'busy' (see BoardComm.send_cancellable)."""
+        self.textToDisplay = ""
+        if trig:
+            cmdstr = f'{self.wel}; trig 1; c7; wait 0; trig 0\n'
+        else:
+            cmdstr = f'{self.wel}; c7; wait 0\n'
+        self.eraseState = comm.send_cancellable(cmdstr, cancelRequested)
+        if self.eraseState != 'done':
+            return None
+        erase_time = self.get_wait_time_us(comm)
+        self.textToDisplay = f'Total Erase time: {self.time_conv_from_usec(erase_time)}\n'
+        return erase_time
 
     def block_erase(self, comm, block_size=4, start_addr=0, num_blocks=1,
                     trig=False, echo=0):

@@ -19,7 +19,7 @@ class FakeDu:
     """Stands in for the Dubrovnik library: reads come from MEMORY in the
     board's binary display mode (32 values per line)"""
     def __init__(self):
-        self.dispmode = 'w'                  # the panel is set to DWord
+        self.dispmode = 'w'                  # the panel is set to Word
         self.textToDisplay = ''
         self.programmed = []
         self.modes_seen = []

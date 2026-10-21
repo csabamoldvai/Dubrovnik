@@ -157,8 +157,8 @@ class MenuBar:
 # ---- the tables --------------------------------------------------------------------------
 
 FILE = [
-    # File > Firmware: open a firmware file and program it (like Scripts below)
-    Submenu('firmware', 'Firmware', [
+    # File > Image Files: open a firmware file and program it (like Scripts below)
+    Submenu('firmware', 'Image Files', [
         Item('open_file', 'Open File...', 'openForProgramming', accelerator='Ctrl+O'),
         Item('view_file', 'View File...', 'showFileViewer'),
         Item('program', 'Program Loaded File', 'programLoadedFile', accelerator='Ctrl+P'),
@@ -200,7 +200,7 @@ VIEW = [
         Radio('system', 'System (follow Windows)', 'system', 'appearanceVar', 'setAppearance'),
     ]),
     Item('terminal', 'Terminal...', 'showTerminalDialog'),
-    Item('hexdump', 'Hex Dump...', 'showHexDialog'),
+    Item('hexdump', 'Hex View...', 'showHexDialog'),
     Submenu('menu_size', 'Menu text size', [
         Radio('small', 'Small', 'small', 'menuSizeVar', 'setMenuSize'),
         Radio('normal', 'Normal', 'normal', 'menuSizeVar', 'setMenuSize'),

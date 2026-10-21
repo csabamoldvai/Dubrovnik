@@ -10,11 +10,11 @@ Current version: **1.2.3** (see [changelist.txt](changelist.txt)).
 
 - **Erase, Program, Read** panels for the flash in the socket. Read supports SPI, Dual, Quad (1-1-4) and
   Quad (1-4-4); the Quad Enable bit is handled automatically.
-- **Firmware files** (File > Firmware): open a `.bin`, Motorola S-record (`.srec`, `.s19`, `.mot` ...) or Intel HEX
+- **Image files** (File > Image Files): open a `.bin`, Motorola S-record (`.srec`, `.s19`, `.mot` ...) or Intel HEX
   file, preview it, view all of it as a hex dump, and program it block by block at its own addresses plus an Offset,
   with a progress window and Cancel. It works also with the panels hidden.
-- **Hex Dump** display mode for Read (address, hex bytes, ASCII, like a hex editor) with its own settings
-  (View > Hex Dump).
+- **Hex View** display mode for Read (address, hex bytes, ASCII, like a hex editor) with its own settings
+  (View > Hex View).
 - **Terminal** for any Tiberias command (`volt`, `freq`, `config`, flash opcodes, ...). It works without a
   flash device in the socket. Command history, read-only history area, save the log to a file.
 - **Scripts** (File > Scripts): run a text file of Terminal commands, or a Python script that uses the

@@ -69,8 +69,7 @@ class ReadFrame(LabeledFrame):
         dispmode_lbl.grid(row=5, column=1, padx=5, sticky="E")
 
         # add "HexView (h)": 'h'}
-        self.dispmodeOptions = {"Binary (b)": 'b', "DWord (w)": 'w',
-                                "Hex Dump (h)": 'h'}
+        self.dispmodeOptions = {"Byte": 'b', "Word": 'w', "Hex View": 'h'}
         options = list(self.dispmodeOptions.keys())
         # Same kind of box as the COM port list (ttk, styled by styleCombobox),
         # so both have the same arrow, colours and font.
@@ -135,6 +134,6 @@ class ReadFrame(LabeledFrame):
                     show_ascii=self.settings.hexAscii, upper=self.settings.hexUpper,
                     gap=self.settings.hexGap)
             else:
-                text = (f'(Hex Dump: expected {readLen} bytes, found '
+                text = (f'(Hex View: expected {readLen} bytes, found '
                         f'{len(data)}; raw reply follows)\n' + text)
         self.term.tprint(text, printOn='guiConsole')

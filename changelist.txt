@@ -8,6 +8,17 @@ To release a new version: change VERSION in dubLibs\version.py, add an entry at
 the top of this file, commit, then tag the commit:  git tag v<VERSION>
 
 
+VERSION 1.2.4 (in development)
+-----------------------------------------------------------------------------
+Changed:
+  * Read panel Display Mode: the choices are now Byte, Word and Hex View (were Binary (b),
+    DWord (w) and Hex Dump (h)). View > Hex Dump... is now View > Hex View.... The saved
+    Display Mode of an older version is not recognised: it starts with Byte once.
+  * File > Firmware is now File > Image Files.
+Added:
+  * Erase panel, Chip: a progress window with a Cancel button opens. The expected time comes
+    from the capacity in the JEDEC ID (command 9F, third byte); the bar is an estimate.
+
 VERSION 1.2.3                                                      2026-10-15
 -----------------------------------------------------------------------------
 Added:

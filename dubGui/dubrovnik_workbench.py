@@ -735,20 +735,20 @@ class App:
                                command=self.openToolsFolder)
 
     def openForProgramming(self):
-        """File > Firmware > Open File: pick a .bin, S-record or Intel HEX file and
+        """File > Image Files > Open File: pick a .bin, S-record or Intel HEX file and
         set the Program panel up for it ("Load from File" mode)"""
         if self.program.openFile():
             self.program.progModeVar.set('file')
             self.program.grayOutEntry()
 
     def programLoadedFile(self):
-        """File > Firmware > Program Loaded File: with the panels shown it asks for a
+        """File > Image Files > Program Loaded File: with the panels shown it asks for a
         confirmation (the Offset is the one in the Program panel); with the
         panels hidden the question also asks for the Offset."""
         image = self.program.image
         if image is None:
-            showinfo('Program', 'No file is loaded.\nUse File > Open Firmware '
-                     'File first.')
+            showinfo('Program', 'No file is loaded.\nUse File > Image Files > Open File '
+                     'first.')
             return
         if not self.scriptReady():
             return
@@ -784,12 +784,12 @@ class App:
         self.program.program()
 
     def closeLoadedFile(self):
-        """File > Firmware > Close File: forget the loaded file"""
+        """File > Image Files > Close File: forget the loaded file"""
         self.program.closeFile()
         self.showStatus('File closed')
 
     def refreshFileMenu(self):
-        """Firmware menu opens: Program and Close need a loaded file; the grey
+        """Image Files menu opens: Program and Close need a loaded file; the grey
         line says which one is loaded"""
         image = self.program.image
         state = NORMAL if image is not None else DISABLED
@@ -905,11 +905,11 @@ class App:
         self.zoomState['restore'] = self.root.after(1500, restore)
 
     def showFileViewer(self):
-        """File > Firmware > View File: the whole loaded file as a hex dump, at
+        """File > Image Files > View File: the whole loaded file as a hex dump, at
         the addresses it will be written to (file address + Offset)"""
         image = self.program.image
         if image is None:
-            showinfo('View File', 'No file is loaded.\nUse File > Firmware > '
+            showinfo('View File', 'No file is loaded.\nUse File > Image Files > '
                      'Open File first.')
             return
         try:
@@ -925,7 +925,7 @@ class App:
             self.settings.hexOptions())
 
     def showHexDialog(self):
-        """View > Hex Dump...: layout of the Hex Dump display mode of the Read
+        """View > Hex View...: layout of the Hex View display mode of the Read
         panel, with a sample. Nothing changes until OK."""
         if self.hexDialog is not None and self.hexDialog.win.winfo_exists():
             self.hexDialog.win.focus_set()

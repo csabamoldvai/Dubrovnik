@@ -1,4 +1,4 @@
-"""View > Hex Dump...: the layout of the Hex Dump display mode of the Read panel,
+"""View > Hex View...: the layout of the Hex View display mode of the Read panel,
 with a sample. Nothing changes until OK."""
 from tkinter import END, IntVar, StringVar
 import customtkinter as ctk
@@ -20,7 +20,7 @@ class HexDialog:
         self.colors = colors
         self.defaults = defaults
         self.win = ctk.CTkToplevel(root)
-        self.win.title('Hex Dump')
+        self.win.title('Hex View')
         self.win.resizable(False, False)
         self.win.transient(root)
         self.font = ctk.CTkFont(size=14)

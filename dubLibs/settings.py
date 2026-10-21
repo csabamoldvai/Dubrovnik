@@ -27,14 +27,14 @@ DEFAULTS = dict(
     progLength='100',
     readSpiMode='SPI', readStartAddr='0', readLength='100',
     appearance='system', terminalTheme='dark', showPanels=True,
-    displayMode='Binary (b)', scriptFolder='', programFolder='',
+    displayMode='Byte', scriptFolder='', programFolder='',
     menuTextSize='normal',
     # Terminal look (View > Terminal...). terminalTheme is one of TERM_CHOICES;
     # the three colours are used by the 'custom' theme.
     terminalBg='#1B1F24', terminalFg='#D6DBE1', terminalSelect='#34506E',
     terminalFont='Consolas', terminalFontSize=15,
     datasheetUrl=datasheet.DEFAULT_URL,     # Help > Datasheet Source...
-    # View > Hex Dump...: layout of the Read panel's Hex Dump display mode
+    # View > Hex View...: layout of the Read panel's Hex View display mode
     hexBytesPerRow=16, hexAscii=True, hexUpper=True, hexGap=True,
     # File > Scripts: show the listing of a command script before it runs, and print its comments
     showScriptListing=True, showScriptComments=True)
@@ -54,7 +54,7 @@ class Settings:
     appearance, showPanels, menuSize     window
     winSize (width, height) or None, winPos (x, y) or None
     termTheme, termBg, termFg, termSelect, termFont, termFontSize   Terminal
-    hexRow, hexAscii, hexUpper, hexGap   Hex Dump layout
+    hexRow, hexAscii, hexUpper, hexGap   Hex View layout
     scriptListing, scriptComments        command scripts: show the listing first, print the comments
     dispMode                             Read panel display mode
     scriptDir, programDir                last folders used
@@ -95,7 +95,7 @@ class Settings:
         self.migrateOldConfig()
 
     def hexOptions(self):
-        """The Hex Dump layout as keyword arguments of the hexdump functions"""
+        """The Hex View layout as keyword arguments of the hexdump functions"""
         return dict(per_row=self.hexRow, show_ascii=self.hexAscii,
                     upper=self.hexUpper, gap=self.hexGap)
 
