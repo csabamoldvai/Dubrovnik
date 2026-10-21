@@ -19,7 +19,8 @@ Changed:
     Terminal as soon as the block is erased, not only when the whole job is finished.
 Added:
   * Read panel: a read of more than 0x1000 bytes is done in pieces in the background; each piece
-    is shown in the Terminal as it arrives and Esc stops the read.
+    is shown in the Terminal as it arrives. The Read button becomes Stop (Esc works too), the status
+    bar counts the bytes, and Byte/Word view put a '--- 0x3000 ---' separator above each piece.
   * Program panel, Use Pattern: runs in the background with a progress window (page number,
     address, percent, time left) and a Cancel button. Runs of more than 16 pages print a summary in
     the Terminal instead of a line per page.

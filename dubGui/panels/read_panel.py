@@ -13,14 +13,14 @@ READ_CHUNK = 0x1000        # a longer read is done in pieces of this size (shown
 
 
 class ReadFrame(LabeledFrame):
-    def __init__(self, parent, serCom, term, du, settings, scriptStop, showStatus, DEBUG=False):
+    def __init__(self, parent, serCom, term, du, settings, scriptStop, showBusy, DEBUG=False):
         LabeledFrame.__init__(self, parent, text='Read')
         self.serCom = serCom        # the connection panel: is the board free and connected?
         self.term = term
         self.du = du                # the board library object
         self.settings = settings
         self.scriptStop = scriptStop    # [bool]: Esc or a lost connection sets it
-        self.showStatus = showStatus    # showStatus(text, ms): a message in the status bar
+        self.showBusy = showBusy        # showBusy(text) / showBusy(): status bar text while reading
         self.DEBUG = DEBUG
         self.comm = None
         self.spiMode = StringVar()
@@ -86,7 +86,7 @@ class ReadFrame(LabeledFrame):
         self.dispmode_cb.set(options[0])
         self.du.dispmode = self.dispmodeOptions[options[0]]
 
-        btn1_read = ctk.CTkButton(self, text='Read', width=80,
+        self.btn_read = btn1_read = ctk.CTkButton(self, text='Read', width=80,
                                   command=self.readFlash)
         btn1_read.grid(row=6, column=2, padx=(0, 10), sticky='sew', pady=(2, 10))
         self.grid_rowconfigure(6, weight=1)    # button row sits at the panel bottom
@@ -152,22 +152,27 @@ class ReadFrame(LabeledFrame):
                 gap=self.settings.hexGap)
             if first:
                 text = hexdump.echoed_command(reply, cmdline) + '\n' + text
-        elif not first:                      # the echo of the command of each piece is noise
+        elif not first:     # a separator with the address instead of the echoed command
             command = cmdline.strip()
             lines = text.split('\n')
             if command and lines[0].strip().endswith(command):
-                text = '\n'.join(lines[1:])
+                lines = lines[1:]
+            text = f'--- 0x{start:X} ---\n' + '\n'.join(lines)
         return text
+
+    def stopRead(self):
+        """The Stop button (the Read button while a long read runs): same as Esc"""
+        self.scriptStop[0] = True
 
     def readLong(self, start, length):
         """A read of more than READ_CHUNK bytes: the board is asked piece by piece in a
         background thread and every piece is shown in the Terminal as soon as it has
-        arrived. Esc stops it. The pieces end on multiples of READ_CHUNK, so in Hex
+        arrived. Esc or the Stop button stops it; the status bar tells how far it is. The pieces end on multiples of READ_CHUNK, so in Hex
         View the rows line up from piece to piece."""
         import queue
         import threading
         messages = queue.Queue()        # Terminal text, shown from the GUI thread
-        state = dict(cancel=False)
+        state = dict(cancel=False, done=0)
         result = dict(error=None, cancelled=False)
         spiMode = self.spiMode.get()
 
@@ -183,10 +188,12 @@ class ReadFrame(LabeledFrame):
                     size = min(READ_CHUNK - address % READ_CHUNK, length - done)
                     messages.put(self.readText(address, size, done == 0, spiMode))
                     done += size
+                    state['done'] = done
             except BaseException as e:      # incl. SystemExit from a comm error
                 result['error'] = f'{type(e).__name__}: {e}'
 
-        self.showStatus('Reading... press Esc to stop', 4000)
+        self.btn_read.configure(text='Stop', command=self.stopRead)    # back to Read at the end
+        self.showBusy(f'Reading 0x0 of 0x{length:X} bytes - Esc or Stop to stop')
         self.serCom.scriptRunning = True     # blocks the panels and the Terminal
         self.term.cmdInProgress = True       # and the background serial reader
         self.scriptStop[0] = False
@@ -202,12 +209,19 @@ class ReadFrame(LabeledFrame):
             if self.scriptStop[0]:
                 state['cancel'] = True
             if worker.is_alive():
+                if state['cancel']:
+                    self.showBusy('Stopping the read after the current piece...')
+                else:
+                    self.showBusy(f'Reading 0x{state["done"]:X} of 0x{length:X} bytes '
+                                  f'({state["done"] * 100 // length} %) - Esc or Stop to stop')
                 self.after(50, poll)
                 return
             while not messages.empty():     # text posted just before the end
                 self.term.scriptPrint(messages.get_nowait())
             self.term.cmdInProgress = False
             self.serCom.scriptRunning = False
+            self.btn_read.configure(text='Read', command=self.readFlash)
+            self.showBusy()
             if result['cancelled']:
                 self.term.scriptPrint('*** Read stopped. ***')
             elif result['error']:

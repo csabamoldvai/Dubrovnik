@@ -217,7 +217,7 @@ what you programmed. The Workbench does not erase for you.</div>
   <tr><td>Start Address (0x), Length (0x)</td><td>Where to start and how many bytes to read (hexadecimal).</td></tr>
   <tr><td>Display Mode</td><td><em>Byte</em> shows bytes, <em>Word</em> shows 32-bit words, <em>Hex View</em> shows a hex-editor layout (address, hex bytes, ASCII; see <em>View &rarr; Hex View</em>). The choice is remembered.</td></tr>
 </table>
-<p>A read of more than 4&nbsp;kB (0x1000 bytes) is done in pieces of 4&nbsp;kB, and each piece appears in the Terminal as soon as it has arrived, so you can follow a long read. <kbd>Esc</kbd> stops it between pieces. In <em>Byte</em> and <em>Word</em> mode the echoed command is shown only for the first piece.</p>
+<p>A read of more than 4&nbsp;kB (0x1000 bytes) is done in pieces of 4&nbsp;kB, and each piece appears in the Terminal as soon as it has arrived, so you can follow a long read. While it runs the <strong>Read</strong> button becomes <strong>Stop</strong> and the status bar shows how far it is; <strong>Stop</strong> or <kbd>Esc</kbd> ends the read after the current piece. In <em>Byte</em> and <em>Word</em> mode a line such as <code>--- 0x3000 ---</code> marks the start of each piece after the first, so you can see the read advance even when the data is all <code>ff</code>.</p>
 <table>
   <tr><th style="width:190px">Mode</th><th>Opcode</th><th>Description</th></tr>
   <tr><td>SPI</td><td><code>0B</code></td><td>Fast read, one data line</td></tr>

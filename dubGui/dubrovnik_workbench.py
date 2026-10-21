@@ -120,6 +120,7 @@ class App:
         comm = boardcom.BoardComm()   # create an instance of class Comm
         self.du = dubrovnik.Dubrovnik()
         self.settings = Settings()
+        self.busyText, self.busyOld = None, ''     # see showBusy
         self.scriptStop = [False]      # set by Esc or a lost connection: stops scripts and programming
 
         self.buildStatusBar()
@@ -196,7 +197,7 @@ class App:
         # ****** Read Panel *********
         # ***************************
         self.read = ReadFrame(self.panelRow, self.serCom, self.term, self.du, self.settings,
-                         self.scriptStop, self.showStatus, DEBUG=False)
+                         self.scriptStop, self.showBusy, DEBUG=False)
         self.read.comm = comm
 
         # Let the terminal row absorb all extra vertical space, and let the three
@@ -494,6 +495,20 @@ class App:
     def dialogBox(self, title, text, buttons, entryDefault=None):
         """Modal dialog in the Workbench look: see dubGui/dialogs/messages.py"""
         return messages.dialogBox(self.root, title, text, buttons, entryDefault)
+
+    def showBusy(self, msg=None):
+        """A status bar text that stays while a job runs and is updated by calling this
+        again (a long read: how far it is). showBusy() puts the old text back."""
+        label = self.stsBarComm
+        if msg is None:
+            if self.busyText is not None and label.cget('text') == self.busyText:
+                label.configure(text=self.busyOld)
+            self.busyText = None
+            return
+        if self.busyText is None:
+            self.busyOld = label.cget('text')
+        self.busyText = msg
+        label.configure(text=msg)
 
     def showStatus(self, msg, ms=3000):
         """Shows msg in the status bar for a few seconds"""
