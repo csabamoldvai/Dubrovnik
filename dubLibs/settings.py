@@ -29,7 +29,6 @@ DEFAULTS = dict(
     appearance='system', terminalTheme='dark', showPanels=True,
     displayMode='Byte', commandScriptFolder='', pythonScriptFolder='', programFolder='',
     userToolsFolder='',
-    menuTextSize='normal',
     # Terminal look (Preferences > Terminal...). terminalTheme is one of TERM_CHOICES;
     # the three colours are used by the 'custom' theme.
     terminalBg='#1B1F24', terminalFg='#D6DBE1', terminalSelect='#34506E',
@@ -64,7 +63,7 @@ def documents_folder():
 class Settings:
     """Attributes (names as used by the program):
     autoConnect, lastUsedPort            connection panel
-    appearance, showPanels, menuSize     window
+    appearance, showPanels               window
     winSize (width, height) or None, winPos (x, y) or None
     termTheme, termBg, termFg, termSelect, termFont, termFontSize   Terminal
     hexRow, hexAscii, hexUpper, hexGap   Hex View layout
@@ -97,7 +96,6 @@ class Settings:
         self.termSelect = d['terminalSelect']
         self.termFont = d['terminalFont']
         self.termFontSize = d['terminalFontSize']
-        self.menuSize = d['menuTextSize']
         self.datasheetUrl = d['datasheetUrl']
         self.hexRow = d['hexBytesPerRow']
         self.hexAscii = d['hexAscii']
@@ -138,6 +136,7 @@ class Settings:
         kept, and so is everything else in it that this program does not know.
         Returns True on success."""
         cfg, _ = cfgfile.read_json(self.cfgFile)    # keeps the stored values
+        cfg.pop('menuTextSize', None)               # the old Menu text size setting is gone
         cfg.update({'autoConnect': self.autoConnect,
                     'lastUsedPort': self.lastUsedPort,
                     'appearance': self.appearance,
@@ -147,7 +146,6 @@ class Settings:
                     'terminalSelect': self.termSelect,
                     'terminalFont': self.termFont,
                     'terminalFontSize': self.termFontSize,
-                    'menuTextSize': self.menuSize,
                     'datasheetUrl': self.datasheetUrl,
                     'hexBytesPerRow': self.hexRow,
                     'hexAscii': self.hexAscii,
@@ -180,7 +178,7 @@ class Settings:
         the caller sets the panels to their defaults and saves.
 
         choices: {key: allowed values} for the keys whose allowed values the
-        caller knows (eraseBlkSize, readSpiMode, displayMode, menuTextSize)."""
+        caller knows (eraseBlkSize, readSpiMode, displayMode)."""
         cfg, status = cfgfile.read_json(self.cfgFile)
         if status != 'ok':
             self.autoConnect = 0
@@ -205,7 +203,6 @@ class Settings:
             self.termSelect = v['terminalSelect']
             self.termFont = v['terminalFont']
             self.termFontSize = v['terminalFontSize']
-            self.menuSize = v['menuTextSize']
             self.datasheetUrl = datasheet.clean_url(v['datasheetUrl'])
             self.hexRow, self.hexAscii = v['hexBytesPerRow'], v['hexAscii']
             self.hexUpper, self.hexGap = v['hexUpper'], v['hexGap']

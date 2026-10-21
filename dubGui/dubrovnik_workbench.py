@@ -99,9 +99,9 @@ def showHelp(_event=None):
 CFG_DEFAULTS = settings_lib.DEFAULTS   # see dubLibs/settings.py
 TERM_SIZE_MIN, TERM_SIZE_MAX = termstyle.SIZE_MIN, termstyle.SIZE_MAX
 
-# Preferences > Menu text size: size in unscaled px of the menu bar and the pop-up
-# menus (multiplied by the Windows display scaling)
-MENU_SIZES = {'small': 11, 'normal': 13, 'large': 16}
+# Size in unscaled px of the menu bar and the pop-up menus (multiplied by the Windows display
+# scaling; follows it when the window moves to another display, see onScaleChanged)
+MENU_SIZE = 14
 
 TERM_MIN_LINES = 8   # minimum visible terminal lines when resizing the window
 
@@ -149,7 +149,7 @@ class App:
         # the menu font is also used by the Terminal's pop-up menu
         self.scale = ScalingTracker.get_widget_scaling(self.root)
         self.menuFamily = ctk.ThemeManager.theme['CTkFont']['family']
-        self.menuFont = (self.menuFamily, -round(MENU_SIZES[self.settings.menuSize] * self.scale))
+        self.menuFont = (self.menuFamily, -round(MENU_SIZE * self.scale))
 
         # ***********************************
         # ******** Terminal Window **********
@@ -221,11 +221,10 @@ class App:
 
         # the Tk variables behind the radio items of the View menu
         self.appearanceVar = StringVar(value=self.settings.appearance)
-        self.menuSizeVar = StringVar(value=self.settings.menuSize)
         self.scriptListingVar = BooleanVar(value=self.settings.scriptListing)
         self.scriptCommentsVar = BooleanVar(value=self.settings.scriptComments)
 
-        bar = menus.MenuBar(self.menuBar, self.menuButtons, self.settings, MENU_SIZES)
+        bar = menus.MenuBar(self.menuBar, self.menuButtons, MENU_SIZE)
         self.allMenus = []        # every Tk menu, to restyle and resize them together
         self.menus = {}           # key -> menus.BuiltMenu, to find an item by its key
         for spec in menus.MENUS:
@@ -278,10 +277,9 @@ class App:
     def loadAndSync(self):
         """Loads the settings into the panels and the menus"""
         self.loadSettings()  # includes autoConnect and lastUsedPort
-        self.menuSizeVar.set(self.settings.menuSize)
         self.scriptListingVar.set(self.settings.scriptListing)
         self.scriptCommentsVar.set(self.settings.scriptComments)
-        self.applyMenuSize()          # the size just loaded from the settings file
+        self.applyMenuSize()          # the menu font for the scale of the display
         self.syncTheme()
         self.watchSystemAppearance()
         self.syncPanels()
@@ -567,8 +565,7 @@ class App:
         status, stored = self.settings.load(prefs=prefs, choices=dict(
             eraseBlkSize=self.erase.blockSizes,
             readSpiMode=self.read.spiModes,
-            displayMode=tuple(self.read.dispmodeOptions),
-            menuTextSize=tuple(MENU_SIZES)))
+            displayMode=tuple(self.read.dispmodeOptions)))
         if status == 'defaults':     # first run, or unreadable (kept as .bad)
             self.serCom.chk_var.set(0)
             self.loadDefaultParams()
@@ -870,19 +867,13 @@ class App:
         self.showStatus('Terminal log saved')
 
     def applyMenuSize(self):
-        """Applies settings.menuSize to the menu bar and all pop-up menus"""
-        size = MENU_SIZES[self.settings.menuSize]
-        self.menuFont = (self.menuFamily, -round(size * self.scale))
+        """Sets the font of the menu bar and all pop-up menus for the current scale"""
+        self.menuFont = (self.menuFamily, -round(MENU_SIZE * self.scale))
         for btn, font, label in self.menuButtons:
-            font.configure(size=size)
+            font.configure(size=MENU_SIZE)
             btn.configure(width=font.measure(label) + 20)
         for m in self.allMenus:
             m.configure(font=self.menuFont)
-
-    def setMenuSize(self):
-        self.settings.menuSize = self.menuSizeVar.get()
-        self.applyMenuSize()
-        self.settings.save()
 
     def applyAppearance(self):
         ctk.set_appearance_mode(self.settings.appearance)

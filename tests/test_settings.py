@@ -36,7 +36,7 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual((s.appearance, s.termTheme, s.termFont, s.termFontSize),
                          ('system', 'dark', 'Consolas', 15))
         self.assertEqual((s.hexRow, s.hexAscii, s.hexUpper, s.hexGap), (16, True, True, True))
-        self.assertEqual((s.showPanels, s.menuSize, s.winSize, s.winPos), (True, 'normal', None, None))
+        self.assertEqual((s.showPanels, s.winSize, s.winPos), (True, None, None))
 
     def test_no_file_gives_defaults_status_and_resets_the_connection_settings(self):
         s = Settings(self.folder)
@@ -83,12 +83,12 @@ class SettingsTests(unittest.TestCase):
 
     def test_bad_values_fall_back_to_their_defaults(self):
         self.write({'appearance': 'purple', 'terminalTheme': 'neon', 'terminalFontSize': 'big',
-                    'hexBytesPerRow': 12, 'menuTextSize': 'huge', 'terminalBg': 'red',
+                    'hexBytesPerRow': 12, 'terminalBg': 'red',
                     'windowWidth': 5, 'windowHeight': 5})
         s = Settings(self.folder)
-        self.assertEqual(s.load(choices={'menuTextSize': ('small', 'normal', 'large')})[0], 'ok')
-        self.assertEqual((s.appearance, s.termTheme, s.termFontSize, s.hexRow, s.menuSize),
-                         ('system', 'dark', 15, 16, 'normal'))
+        self.assertEqual(s.load()[0], 'ok')
+        self.assertEqual((s.appearance, s.termTheme, s.termFontSize, s.hexRow),
+                         ('system', 'dark', 15, 16))
         self.assertEqual(s.termBg, DEFAULTS['terminalBg'])
         self.assertIsNone(s.winSize)               # outside 200..20000
 

@@ -4,7 +4,7 @@ PC application for the **Dubrovnik** flash test board. It erases, programs and r
 board's socket, and gives you a terminal, scripts and ready-made tools for talking to the board's
 **Tiberias** firmware.
 
-Current version: **1.4.1** (see [changelist.txt](changelist.txt)).
+Current version: **1.4.2** (see [changelist.txt](changelist.txt)).
 
 ## Features
 
@@ -25,7 +25,7 @@ Current version: **1.4.1** (see [changelist.txt](changelist.txt)).
   Icc Read Measurement and INA230 Calibration. A new tool is a Python file, or a command script (`.txt`/`.scr`), with a `# TOOL: name` header (the first line for a command script).
 - Remembers window size and position, panels, theme, COM port and display mode. The Erase/Program/Read entry
   values are saved only when you choose File > Parameters > Save.
-- Terminal look (Preferences > Terminal): theme, colours, font and size, and Ctrl + mouse wheel zoom. Menu text size and a
+- Terminal look (Preferences > Terminal): theme, colours, font and size, and Ctrl + mouse wheel zoom. A
   one-click Hide/Show Panels item in the View menu.
 - Help > Datasheet opens the datasheet of the device in the socket (a file in `docs`, or a web search).
 - Notices when the board is switched off or unplugged.

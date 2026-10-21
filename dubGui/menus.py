@@ -133,8 +133,8 @@ class MenuBar:
     add(label, menu) adds a button that pops the menu up just below itself.
     buttons collects (button, font, label) so the text size can be changed later."""
 
-    def __init__(self, frame, buttons, settings, sizes):
-        self.frame, self.buttons, self.settings, self.sizes = frame, buttons, settings, sizes
+    def __init__(self, frame, buttons, size):
+        self.frame, self.buttons, self.size = frame, buttons, size
         self.col = 0
 
     def add(self, label, menu):
@@ -143,7 +143,7 @@ class MenuBar:
                 menu.tk_popup(btn.winfo_rootx(), btn.winfo_rooty() + btn.winfo_height())
             finally:
                 menu.grab_release()
-        font = ctk.CTkFont(size=self.sizes[self.settings.menuSize])
+        font = ctk.CTkFont(size=self.size)
         btn = ctk.CTkButton(
             self.frame, text=label, width=font.measure(label) + 20, height=26,
             corner_radius=4, fg_color='transparent',
@@ -204,11 +204,6 @@ PREFERENCES = [
     ]),
     Item('terminal', 'Terminal...', 'showTerminalDialog'),
     Item('hexdump', 'Hex View...', 'showHexDialog'),
-    Submenu('menu_size', 'Menu text size', [
-        Radio('small', 'Small', 'small', 'menuSizeVar', 'setMenuSize'),
-        Radio('normal', 'Normal', 'normal', 'menuSizeVar', 'setMenuSize'),
-        Radio('large', 'Large', 'large', 'menuSizeVar', 'setMenuSize'),
-    ]),
     Separator(),
     Item('paths', 'Configure Paths...', 'showPathsDialog'),
     Item('datasheet_source', 'Datasheet Source...', 'editDatasheetUrl'),
