@@ -1,4 +1,4 @@
-"""View > Terminal...: theme, colours, font and size of the Terminal, with a
+"""Preferences > Terminal...: theme, colours, font and size of the Terminal, with a
 preview. Changes show in the Terminal at once; Cancel puts the old look back."""
 import re
 from tkinter import END

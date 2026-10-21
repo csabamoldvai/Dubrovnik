@@ -79,7 +79,7 @@ class DubApi:
         pump: function that lets the GUI update; stopped: returns True once
         the user asked to stop the script; ask(prompt, default) -> str or None,
         confirm(question) -> bool and notify(text) show dialogs;
-        hex_options() -> the View > Hex View settings for hexdump()"""
+        hex_options() -> the Preferences > Hex View settings for hexdump()"""
         self._term, self.du, self._pump, self._stopped = term, du, pump, stopped
         self._hex_options = hex_options
         self._ask, self._confirm, self._notify = ask, confirm, notify
@@ -245,7 +245,7 @@ class DubApi:
 
     def hexdump(self, data, address=0, **options):
         """Text dump of ``data`` like a hex editor: address, hex bytes, ASCII.
-        Uses the layout chosen in View > Hex View; options override it for this
+        Uses the layout chosen in Preferences > Hex View; options override it for this
         call: per_row (8, 16 or 32), show_ascii, upper, gap (True/False)."""
         settings = dict(self._hex_options()) if self._hex_options else {}
         settings.update(options)

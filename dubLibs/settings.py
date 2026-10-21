@@ -29,12 +29,12 @@ DEFAULTS = dict(
     appearance='system', terminalTheme='dark', showPanels=True,
     displayMode='Byte', scriptFolder='', programFolder='',
     menuTextSize='normal',
-    # Terminal look (View > Terminal...). terminalTheme is one of TERM_CHOICES;
+    # Terminal look (Preferences > Terminal...). terminalTheme is one of TERM_CHOICES;
     # the three colours are used by the 'custom' theme.
     terminalBg='#1B1F24', terminalFg='#D6DBE1', terminalSelect='#34506E',
     terminalFont='Consolas', terminalFontSize=15,
     datasheetUrl=datasheet.DEFAULT_URL,     # Help > Datasheet Source...
-    # View > Hex View...: layout of the Read panel's Hex View display mode
+    # Preferences > Hex View...: layout of the Read panel's Hex View display mode
     hexBytesPerRow=16, hexAscii=True, hexUpper=True, hexGap=True,
     # File > Scripts: show the listing of a command script before it runs, and print its comments
     showScriptListing=True, showScriptComments=True)

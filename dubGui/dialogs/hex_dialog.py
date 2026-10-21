@@ -1,4 +1,4 @@
-"""View > Hex View...: the layout of the Hex View display mode of the Read panel,
+"""Preferences > Hex View...: the layout of the Hex View display mode of the Read panel,
 with a sample. Nothing changes until OK."""
 from tkinter import END, IntVar, StringVar
 import customtkinter as ctk

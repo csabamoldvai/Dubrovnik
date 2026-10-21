@@ -100,7 +100,7 @@ def showHelp(_event=None):
 CFG_DEFAULTS = settings_lib.DEFAULTS   # see dubLibs/settings.py
 TERM_SIZE_MIN, TERM_SIZE_MAX = termstyle.SIZE_MIN, termstyle.SIZE_MAX
 
-# View > Menu text size: size in unscaled px of the menu bar and the pop-up
+# Preferences > Menu text size: size in unscaled px of the menu bar and the pop-up
 # menus (multiplied by the Windows display scaling)
 MENU_SIZES = {'small': 12, 'normal': 14, 'large': 17}
 
@@ -239,6 +239,7 @@ class App:
         self.firmware_menu = self.menus['file'].sub('firmware').menu
         self.tools_menu = self.menus['tools'].menu
         self.view_menu = self.menus['view'].menu
+        self.prefs_menu = self.menus['preferences'].menu
         self.docs_menu = self.menus['help'].sub('documents').menu
 
 
@@ -883,7 +884,7 @@ class App:
         self.appearanceVar.set(self.settings.appearance)
         self.applyAppearance()
 
-    # ---- Terminal look: View > Terminal... and Ctrl + mouse wheel ----------
+    # ---- Terminal look: Preferences > Terminal... and Ctrl + mouse wheel ----------
     def termColors(self):
         """The Terminal colours (bg, fg, select) of the chosen theme"""
         theme = self.settings.termTheme
@@ -941,7 +942,7 @@ class App:
             self.settings.hexOptions())
 
     def showHexDialog(self):
-        """View > Hex View...: layout of the Hex View display mode of the Read
+        """Preferences > Hex View...: layout of the Hex View display mode of the Read
         panel, with a sample. Nothing changes until OK."""
         if self.hexDialog is not None and self.hexDialog.win.winfo_exists():
             self.hexDialog.win.focus_set()
@@ -956,7 +957,7 @@ class App:
         return list(self.fontCache)
 
     def showTerminalDialog(self):
-        """View > Terminal...: theme, colours, font and size with a preview.
+        """Preferences > Terminal...: theme, colours, font and size with a preview.
         Changes show in the Terminal at once; Cancel puts the old look back."""
         if self.termDialog is not None and self.termDialog.win.winfo_exists():
             self.termDialog.win.focus_set()

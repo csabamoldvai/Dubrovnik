@@ -189,11 +189,14 @@ FILE = [
     Item('exit', 'Exit', 'onClose'),
 ]
 
-# View menu: panel visibility, window appearance and Terminal colours.
-# (Radio items mark the current choice.)
+# View menu: the panels.
 VIEW = [
     Item('panels', 'Hide Panels (Erase/Program/Read)', 'onPanelToggle'),   # the label follows the state
-    Separator(),
+]
+
+# Preferences menu: how the program looks and where things are kept.
+# (Radio items mark the current choice.)
+PREFERENCES = [
     Submenu('appearance', 'Appearance', [
         Radio('light', 'Light', 'light', 'appearanceVar', 'setAppearance'),
         Radio('dark', 'Dark', 'dark', 'appearanceVar', 'setAppearance'),
@@ -206,6 +209,8 @@ VIEW = [
         Radio('normal', 'Normal', 'normal', 'menuSizeVar', 'setMenuSize'),
         Radio('large', 'Large', 'large', 'menuSizeVar', 'setMenuSize'),
     ]),
+    Separator(),
+    Item('assistant_settings', 'Assistant Settings...', 'showAssistantSettings'),
 ]
 
 HELP = [
@@ -217,7 +222,6 @@ HELP = [
     # Help > Assistant: chat window backed by dubLibs/assistant.py. It answers from the help
     # and proposes scripts; nothing runs without the user's OK.
     Item('assistant', 'Assistant...', 'showAssistant'),
-    Item('assistant_settings', 'Assistant Settings...', 'showAssistantSettings'),
     Separator(),
     Item('about', 'About', 'showAbout'),
 ]
@@ -228,5 +232,6 @@ MENUS = [
     Submenu('file', 'File', FILE),
     Submenu('tools', 'Tools', postcommand='refreshTools'),
     Submenu('view', 'View', VIEW),
+    Submenu('preferences', 'Preferences', PREFERENCES),
     Submenu('help', 'Help', HELP),
 ]
