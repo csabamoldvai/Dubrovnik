@@ -1,7 +1,8 @@
 # Project notes for Claude Code sessions
 
 Dubrovnik Workbench: a PC program (Tkinter / CustomTkinter) for the Dubrovnik SPI flash test board.
-Current released version: 1.4.3. Read `README.md` (overview), `FOLDERS.md` (what each folder is for) and
+Current released version: 1.4.3 (1.4.4 is prepared on the pushed branch `new-features`, commit edeaa7d: version
+number set, not merged to `main`, not tagged, no installer built). Read `README.md` (overview), `FOLDERS.md` (what each folder is for) and
 `TODO_refactoring.md` (the code review and the planned refactoring) before changing code.
 
 ## Decisions already made (do not re-ask)
@@ -38,6 +39,47 @@ Current released version: 1.4.3. Read `README.md` (overview), `FOLDERS.md` (what
   merge or a release.
 - **Personal folders** `dubScripts/`, `dubUtils/`, `packaging/` are not tracked (only the two README.txt files).
   Do not add their files to git. `packaging/` holds `build.bat`, `dubrovnik.spec`, `installer.iss`.
+
+## Remind the user about version control (reminders only: never act without being asked)
+
+The user is not a full-time software developer and does not always think of the housekeeping. Your job
+is to **notice and say so, in one short line**; the decision stays theirs, and every rule above still
+holds (no commit, push, version change, tag, build or release unless they say so).
+
+Remind at natural checkpoints, not on every message: when a task or a feature is finished, before the
+user switches to a different topic, when the user says "looks good" / "it works", and at the end of a
+session. Say what is waiting and offer the next step, for example: "Uncommitted: the Terminal focus
+change (3 files). Commit it?"
+
+- **Uncommitted work:** commit finished, tested work in small steps, one topic per commit, with a message
+  that says what and why. Remind when finished work sits uncommitted, or when one working copy holds more
+  than one topic (offer to split it *before* it becomes one big commit). Untested or half-done work stays
+  uncommitted or goes to a WIP branch. Never commit personal files (see Git above).
+- **Unpushed commits:** remind that commits only on this PC are not backed up and not visible to anyone
+  else. The user decides when to push; a feature branch may be pushed freely once asked.
+- **Branch:** work on a feature branch, not on `main`. Remind when edits start while on `main`. `main`
+  holds only what was board-tested; merge a branch after the user has tried it on the real board.
+- **Docs travel with the change:** when a user-visible change is made, remind (or just do it, it is not a
+  version-control action) that `help/dubrovnik_help.html` and `changelist.txt` need an entry in the same
+  commit. Check that the tests were run (both sets) before suggesting a commit.
+- **Version number:** the version changes once per release, in the release commit, together with the
+  `changelist.txt` heading and the `README.md` line. Remind the user to decide the number when user-visible
+  changes have piled up on `main`, or when they mention giving someone a build ("for the coworker", "for
+  training"). Suggest the number by semantic versioning (bug fix: third number, new feature: second
+  number, a break in how scripts or settings work: first number) and let them choose.
+- **Release steps:** when the user says "release" or "new installer", walk the release recipe below and
+  remind of what is still open: tests, merge to `main`, tag (after the merge, on the released commit),
+  push the tag, build, release notes, GitHub release. Never move a tag that was pushed.
+- **Backup of the unversioned work:** the personal folders (`dubScripts/`, `dubUtils/`, `packaging/`) are
+  not in git. When the user changes something there that cannot be recreated (the installer script, the
+  window checks, the golden menu file), remind them it exists only on this PC.
+- **Do not nag:** if the user answers "not now", do not repeat the same reminder until the situation
+  changes (more files, a new topic, the end of the session).
+
+Why: git only protects what is committed and pushed, so a reminder turns "lost an afternoon's work" and
+"which change broke it?" into a non-event. Small single-topic commits can be reviewed, reverted one by one
+and bisected; a version number set once, at release, always matches the installer, the tag and the
+change list, so a coworker's bug report ("version 1.4.3") points at exactly one commit.
 
 ## Commands (run from the project folder, C:\MyLibs\Dubrovnik)
 
