@@ -20,6 +20,7 @@ class Dubrovnik:
     def __init__(self):
         self.pageSize = 0x100
         self.wel = '06'
+        self.stsForms = None        # (comm, commands) of status_forms()
         self.led_dict = {'r1': '9', 'g1': '11', 'b1': '10',
                          'r2': '14', 'g2': '13', 'b2': '12'}
         # used by other modules to display text(e.g. the Workbench)
@@ -137,6 +138,7 @@ class Dubrovnik:
 
     def get_part_number(self, comm):
         """Returns the part number of the detected device"""
+        self.forget_status_forms()      # asked at connect and when the device is detected again
         cfg = self.get_config(comm)  # returns a dictionary
         return cfg['Part#']
 
@@ -553,11 +555,63 @@ class Dubrovnik:
     QUAD_MODES = ('Quad (114)', 'Quad (144)')
     QE_MASK = 0x02                       # Quad Enable = bit 1 of status reg 2
 
+    # The board's command table depends on the device. Opcode 35 is "Read Status Register 2" on
+    # most devices, but "Read Sector Lockdown Registers 35 <address>" on others; there STS2 is
+    # read with 05 2 (05 <count>: STS1 followed by STS2), and some devices take 05 without a
+    # count. The board's own "help <opcode>" tells what a command is, so ask it (once per
+    # connection) instead of keeping a list of devices. The wording is matched loosely:
+    # "Status Register 2", "Status Register-2".
+    STS2_HELP = re.compile(r'status\s*register[\s-]*2', re.IGNORECASE)
+
+    def status_forms(self, comm):
+        """How this device reads and writes the status registers, from the board's help:
+        {'read2': '35' | '05 2' (STS1 then STS2), 'read1': '05' | '05 1', 'write2': '31' | '01'}.
+        Asked once per connection (forget_status_forms() makes it ask again, e.g. when the
+        device was changed). Anything the help does not make clear keeps the commands used
+        so far (35, 05 and 31)."""
+        if self.stsForms and self.stsForms[0] is comm:
+            return self.stsForms[1]
+        helps = {}
+        for opcode in ('35', '5', '31', '1'):
+            comm.send(f'help {opcode}')
+            helps[opcode] = comm.response(removeCmd=True, removePrompt=True)
+        counted = '<count>' in helps['5']
+        forms = {
+            'read1': '05 1' if counted else '05',
+            'read2': ('35' if self.STS2_HELP.search(helps['35']) or not counted else '05 2'),
+            'write2': ('31' if self.STS2_HELP.search(helps['31']) or helps['1'].count('<data>') < 2
+                       else '01'),        # 01 <sts1> <sts2>
+        }
+        self.stsForms = (comm, forms)
+        return forms
+
+    def forget_status_forms(self):
+        """The device (or the connection) changed: ask the board again next time"""
+        self.stsForms = None
+
+    def status_byte(self, comm, command):
+        """Sends a status register read; the last byte of the reply is the register"""
+        comm.send(command)
+        reply = comm.response(removeCmd=True, removePrompt=True)
+        try:
+            return int(reply.split()[-1], 16)
+        except (ValueError, IndexError):
+            self.forget_status_forms()
+            raise ValueError(f'Unexpected reply to "{command}" (status register): '
+                             f'{reply.strip()!r}')
+
     def read_status2(self, comm):
-        """Reads status register 2 (opcode 35h; the board returns 1 byte)"""
-        comm.send('35')
-        resp = comm.response(removeCmd=True, removePrompt=True).split()
-        return int(resp[-1], 16)
+        """Reads status register 2: 35, or 05 2 on the devices without 35 (see status_forms)"""
+        return self.status_byte(comm, self.status_forms(comm)['read2'])
+
+    def status2_write_command(self, comm, value):
+        """The command that writes status register 2 (the caller sends it after the Write
+        Enable): 31 <value>, or 01 <status register 1> <value> on the devices that write
+        both registers together"""
+        forms = self.status_forms(comm)
+        if forms['write2'] == '01':
+            return f'01 {self.status_byte(comm, forms["read1"]):02x} {value:02x}'
+        return f'31 {value:02x}'
 
     def set_quad_enable(self, comm, enable):
         """Sets (enable=True) or clears the Quad Enable bit in status register 2.
@@ -567,7 +621,7 @@ class Dubrovnik:
         sr2 = self.read_status2(comm)
         new = (sr2 | self.QE_MASK) if enable else (sr2 & ~self.QE_MASK)
         if new != sr2:
-            comm.send(f'{self.wel}; 31 {new:02x}; wait 0')  # write status reg 2
+            comm.send(f'{self.wel}; {self.status2_write_command(comm, new)}; wait 0')
             if self.read_status2(comm) != new:
                 raise ValueError(
                     f'Quad Enable could not be {"set" if enable else "cleared"}'
