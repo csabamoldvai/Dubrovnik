@@ -26,8 +26,11 @@ Fixed:
     the main window, the title bar is coloured first, and the window is shown once.
     Nothing is recalculated while a window is open unless it or the main window really moves
     to a display with another scale, or the Windows scale changes.
+Changed:
+  * Preferences > Configure Paths: the order of the folders is now Command scripts, Python
+    scripts, Image files, My tools, Documents, Program tools, Settings.
 
-VERSION 1.4.2                                                      2026-10-20
+VERSION 1.4.2                                                     2026-10-20
 -----------------------------------------------------------------------------
 Removed:
   * Preferences > Menu text size. The menus now have one size (14 px, like before), which

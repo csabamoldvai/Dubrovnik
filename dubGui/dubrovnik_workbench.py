@@ -986,12 +986,12 @@ class App:
                     hint='Where File > Image Files > Open File starts.'),
             PathRow('userToolsDir', 'My tools', s.userToolsDir, settings_lib.default_folder('myTools'),
                     hint='Scripts with a "# TOOL: name" first line in this folder are added to the Tools menu.'),
+            PathRow('', 'Documents', docsFolder(), '', editable=False,
+                    hint='The files of the Help > Documents menu.'),
             PathRow('', 'Program tools', toolsFolder(), '', editable=False,
                     hint='The tools that come with the program.'),
             PathRow('', 'Settings', s.folder, '', editable=False,
                     hint='Settings, saved parameters and the Assistant credentials (datasheet PDFs can go here too).'),
-            PathRow('', 'Documents', docsFolder(), '', editable=False,
-                    hint='The files of the Help > Documents menu.'),
         ]
         self.pathsDialog = PathsDialog(self.root, rows, self.setPaths)
 
