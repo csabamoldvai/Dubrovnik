@@ -21,3 +21,6 @@ tempCodeRunnerFile.py
 
 # Claude Code local settings (personal)
 .claude/
+
+# Personal reminders (not shared)
+TODO List Dubrovnik*.txt
