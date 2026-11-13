@@ -91,7 +91,24 @@ def newToplevel(root):
     CTkScalingBaseClass._set_scaling(win, dpi * ScalingTracker.widget_scaling,
                                      dpi * ScalingTracker.window_scaling)
     titleBarColour(win)
+    # a dialog dragged to a display with another scale: see fitToContent
+    ScalingTracker.add_window(lambda *_scales: win.after(1700, lambda: fitToContent(win)), win)
     return win
+
+
+def fitToContent(win):
+    """After a change of display scale, a dialog of fixed size (resizable(False, False)) takes
+    the size its widgets now ask for. When the user drags a dialog to a display with another
+    scale, the widgets are rescaled at once but Windows ignores the new window size CustomTkinter
+    sets while the mouse button is still down: the window keeps its old size and cuts the
+    content off. Called after CustomTkinter has finished (it resets the size limits at 1 s)."""
+    try:
+        if not win.winfo_exists() or any(tkinter.Toplevel.resizable(win)):
+            return                      # gone, or the user can resize it and scroll
+        win.update_idletasks()
+        tkinter.Toplevel.geometry(win, f'{win.winfo_reqwidth()}x{win.winfo_reqheight()}')
+    except tkinter.TclError:
+        pass                            # closed meanwhile
 
 
 def showCentered(win, root, size=None):
