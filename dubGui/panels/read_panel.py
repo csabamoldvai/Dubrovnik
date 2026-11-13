@@ -58,6 +58,7 @@ class ReadFrame(LabeledFrame):
         lbl_read.grid(row=1, column=1, padx=10, pady=2, sticky=E)
         ent1_read = ctk.CTkEntry(self, textvariable=self.startAddr, width=80, height=ENTRY_HEIGHT)
         ent1_read.grid(row=1, column=2, padx=(0, 10), sticky=EW)
+        self.focusWidget = ent1_read        # where Ctrl+4 / F6 put the keyboard focus
 
         self.startAddr.set('0')
         self.readLength.set('200')

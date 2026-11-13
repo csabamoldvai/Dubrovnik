@@ -59,5 +59,39 @@ class PageProgramTests(unittest.TestCase):
         self.assertIn('Total Program time: 25.600 ms', du.textToDisplay)
 
 
+class ContinuousPatternTests(unittest.TestCase):
+    @staticmethod
+    def patterns(comm):
+        return [c for c in comm.sent if c.startswith('pattern')]
+
+    def test_default_sends_the_pattern_once(self):
+        comm = Comm()
+        make_du().page_program(comm, 0, 0x400, 'cafe0000', '1')
+        self.assertEqual(self.patterns(comm), ['pattern cafe0000 1'])
+
+    def test_continuous_sends_the_running_value_before_each_page(self):
+        comm = Comm()
+        make_du().page_program(comm, 0, 0x400, '00000000', '00010001', continuous=True)
+        self.assertEqual(self.patterns(comm), ['pattern 00000000 00010001',
+                                               'pattern 00400040 00010001',
+                                               'pattern 00800080 00010001',
+                                               'pattern 00c000c0 00010001'])
+
+    def test_continuous_wraps_at_32_bits(self):
+        comm = Comm()
+        make_du().page_program(comm, 0, 0x200, 'ffffffc0', '1', continuous=True)
+        self.assertEqual(self.patterns(comm)[1], 'pattern 00000000 1')
+
+    def test_continuous_negative_increment(self):
+        comm = Comm()
+        make_du().page_program(comm, 0, 0x200, '00000040', '-1', continuous=True)
+        self.assertEqual(self.patterns(comm)[1], 'pattern 00000000 -1')
+
+    def test_continuous_partial_first_page_counts_the_words_used(self):
+        comm = Comm()       # first page 0x1F0..0x1FF = 16 bytes = 4 words
+        make_du().page_program(comm, 0x1F0, 0x110, '0', '1', continuous=True)
+        self.assertEqual(self.patterns(comm), ['pattern 0 1', 'pattern 00000004 1'])
+
+
 if __name__ == '__main__':
     unittest.main()

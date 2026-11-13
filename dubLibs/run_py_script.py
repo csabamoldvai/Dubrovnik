@@ -169,16 +169,19 @@ class DubApi:
         self._check()
         return elapsed
 
-    def program(self, address, length, pattern='cafe0000', increment=1):
+    def program(self, address, length, pattern='cafe0000', increment=1, continuous=False):
         """Programs a pattern like the Program panel. pattern and increment
-        may be hex strings or integers. Returns the program time in us."""
+        may be hex strings or integers. continuous=True keeps the counter
+        going across pages (see Dubrovnik.page_program). Returns the program
+        time in us."""
         self._check()
         if isinstance(pattern, int):
             pattern = f'{pattern & 0xFFFFFFFF:08x}'
         if isinstance(increment, int):
             increment = f'{increment:x}'
         elapsed = self.du.page_program(self.comm, address, length,
-                                       str(pattern), str(increment))
+                                       str(pattern), str(increment),
+                                       continuous=continuous)
         self._show()
         self._check()
         return elapsed

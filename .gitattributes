@@ -3,3 +3,6 @@ tests/data/* -text
 *.bin binary
 *.pdf binary
 *.exe binary
+
+# Demo files installed into Documents\Dubrovnik by the installer: byte-for-byte
+demo/imageFiles/* -text

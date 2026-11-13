@@ -1,0 +1,14 @@
+# Example script: read-only device check.
+# Run it with File > Run Script... (Esc stops it).
+# Measure program current while programming 100 bytes of data
+
+ver                   # Tiberias software version
+config                # current board configuration
+9f 2                  # read the 2-byte JEDEC ID of the flash
+65 4                  # status register 4
+# pattern 5a5a5a5a 0  # fill write buffer
+pmon 5 start          # start measurements
+# 6; 2 0 100; wait 0  # program 100 bytes
+6; 20 0; wait 0       # erase 4kB of memory
+pmon 5 stop           # stop measurements
+pmon 5 calc           # calculate and display measurements.

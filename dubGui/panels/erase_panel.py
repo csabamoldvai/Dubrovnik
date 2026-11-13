@@ -48,6 +48,7 @@ class EraseFrame(LabeledFrame):
         lbl_ers.grid(row=1, column=1, padx=10, pady=2, sticky=E)
         ent1_ers = ctk.CTkEntry(self, textvariable=self.startAddr, width=80, height=ENTRY_HEIGHT)
         ent1_ers.grid(row=1, column=2, padx=(0, 10), sticky=W)
+        self.focusWidget = ent1_ers         # where Ctrl+2 / F6 put the keyboard focus
 
         self.startAddr.set('0')
         Tooltip(ent1_ers, 'Hex digits only, no 0x. Example: 1000\n'

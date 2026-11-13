@@ -310,7 +310,8 @@ class Dubrovnik:
 
 
     def page_program(self, comm, start_addr=0, length=0, pattern='cafe0000',
-                     increment='0', echo=0, progress=None, log_pages=True):
+                     increment='0', echo=0, progress=None, log_pages=True,
+                     continuous=False):
         """Programs content of the write buffer into the memory\n
         Parameters:\n
         * start_addr (int): first memory location to program
@@ -322,6 +323,10 @@ class Dubrovnik:
           (it may raise an exception to abort between pages)
         * log_pages: False puts only a summary (pages, slowest page, total time) into
           textToDisplay, not one line per page (for large ranges)
+        * continuous: False (default): the pattern is put in the write buffer once and every
+          page gets the same words, so the counter restarts on each page. True: the pattern
+          command is sent again before each page, with the value the counter has reached,
+          so it keeps counting across pages (one more command per page)
         """
         self.textToDisplay = ""  # used by GUI terminal
         prog_time = 0
@@ -329,6 +334,9 @@ class Dubrovnik:
         # create a pattern in the write buffer
         cmdstr = f'pattern {pattern} {increment}'
         comm.send(cmdstr)
+        if continuous:
+            value = int(pattern, 16) & 0xFFFFFFFF
+            step = int(increment, 16)       # may be negative
         addr = start_addr
         end_addr = start_addr + length
         while addr < end_addr:
@@ -336,11 +344,15 @@ class Dubrovnik:
             if pageEnd > end_addr:
                 pageEnd = end_addr
             progSize = pageEnd - addr
+            if continuous and addr != start_addr:
+                comm.send(f'pattern {value:08x} {increment}')
             cmdstr = f'06; 02 {addr:x} {progSize:x}; wait 0'
             if echo == 1:
                 print(cmdstr)
             comm.send(cmdstr)
             pageStart, addr = addr, pageEnd
+            if continuous:      # the counter after the words this page used
+                value = (value + (progSize // 4) * step) & 0xFFFFFFFF
 
             page_prog_time_us = self.get_wait_time_us(comm)
             if log_pages:       # the page line for the GUI console
@@ -644,7 +656,7 @@ class Dubrovnik:
                          mode_byte=self.READ_MODE_BYTES.get(opcode))
 
     def pattern_program(self, comm, start_addr=0, end_addr=0,
-                        pattern='cafe0000', increment=0, echo=0):
+                        pattern='cafe0000', increment=0, echo=0, continuous=False):
         """Programs the range [start_addr, end_addr) with a pattern (page by
         page). Same as page_program(), but takes an end address instead of a
         length, and accepts the increment as an integer or a hex string.
@@ -653,7 +665,7 @@ class Dubrovnik:
         if isinstance(increment, int):
             increment = f'{increment:x}'
         return self.page_program(comm, start_addr, end_addr - start_addr,
-                                 pattern, increment, echo)
+                                 pattern, increment, echo, continuous=continuous)
 
     def echo(self, comm, onoff):
         """Turns the board's command echo 'on' or 'off' (the 'echo' command).

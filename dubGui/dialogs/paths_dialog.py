@@ -8,6 +8,12 @@ import customtkinter as ctk
 from dubGui.look import newToplevel, showCentered
 
 
+def tidy(folder):
+    """A folder with one kind of separator (backslashes on Windows): file dialogs give '/',
+    the program's own folders '\\'. An empty text stays empty."""
+    return os.path.normpath(folder) if folder.strip() else ''
+
+
 class PathRow:
     """One line of the window. key: name used in the result. value: the folder now set
     ('' = the default). default: what '' stands for (shown; may be ''). editable: False for
@@ -42,7 +48,7 @@ class PathsDialog:
         win, font = self.win, self.font
         ctk.CTkLabel(win, text=row.label, font=font, anchor='w').grid(
             row=line, column=0, padx=(24, 12), pady=(10, 0), sticky='w')
-        var = StringVar(value=row.value or row.default)
+        var = StringVar(value=tidy(row.value or row.default))
         entry = ctk.CTkEntry(win, textvariable=var, width=470, font=font,
                              state='normal' if row.editable else 'disabled')
         entry.grid(row=line, column=1, padx=(0, 8), pady=(10, 0), sticky='w')
@@ -55,7 +61,7 @@ class PathsDialog:
                           command=lambda v=var: self.browse(v)
                           ).grid(row=line, column=3, padx=(0, 6), pady=(10, 0))
             ctk.CTkButton(win, text='Default', width=80, font=font,
-                          command=lambda v=var, r=row: v.set(r.default)
+                          command=lambda v=var, r=row: v.set(tidy(r.default))
                           ).grid(row=line, column=4, padx=(0, 24), pady=(10, 0))
         if row.hint:
             ctk.CTkLabel(win, text=row.hint, font=self.small, anchor='w',
@@ -85,7 +91,7 @@ class PathsDialog:
     def openFolder(self, folder, row):
         """Shows the folder in Explorer; the default folder of a row is made if it is
         not there yet (nothing is made for a folder somebody typed)"""
-        if not os.path.isdir(folder) and row.editable and folder and folder == row.default:
+        if not os.path.isdir(folder) and row.editable and folder and tidy(folder) == tidy(row.default):
             try:
                 os.makedirs(folder, exist_ok=True)
             except OSError as e:
@@ -101,8 +107,8 @@ class PathsDialog:
         result = {}
         for row in self.rows:
             if row.editable:
-                text = self.vars[row.key].get().strip()
-                result[row.key] = '' if text == row.default else text
+                text = tidy(self.vars[row.key].get().strip())
+                result[row.key] = '' if text == tidy(row.default) else text
         return result
 
     def ok(self):

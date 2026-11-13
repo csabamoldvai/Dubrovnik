@@ -257,6 +257,69 @@ class App:
         self.term.txt.bind('<Control-p>', self.fileShortcut(lambda: self.programLoadedFile()))
         self.term.onZoom = self.zoomTerminal
         self.root.bind('<F1>', showHelp)
+        # Keyboard focus to a part of the window. Ctrl+T is "transpose characters" in the Entry
+        # and Text widgets of Tk: replace that class binding so the key only moves the focus.
+        for sequence, target in (('<Control-Key-1>', 'serial'), ('<Control-Key-2>', 'erase'),
+                                 ('<Control-Key-3>', 'program'), ('<Control-Key-4>', 'read'),
+                                 ('<Control-t>', 'terminal'), ('<Control-T>', 'terminal')):
+            self.root.bind(sequence, self.fileShortcut(lambda t=target: self.goTo(t)))
+        for widgetClass in ('Entry', 'Text', 'TCombobox'):
+            for sequence in ('<Control-t>', '<Control-T>'):
+                self.root.bind_class(widgetClass, sequence,
+                                     self.fileShortcut(lambda: self.goTo('terminal')))
+        self.root.bind('<F6>', self.fileShortcut(lambda: self.goNext(1)))
+        self.root.bind('<Shift-F6>', self.fileShortcut(lambda: self.goNext(-1)))
+
+    # ---- keyboard focus to a part of the window ----
+    FOCUS_ORDER = ('serial', 'erase', 'program', 'read', 'terminal')
+
+    def focusTarget(self, name):
+        """The widget that takes the keyboard focus for a part of the window"""
+        return {'serial': lambda: self.serCom.combo,
+                'erase': lambda: self.erase.focusWidget,
+                'program': lambda: self.program.focusWidget,
+                'read': lambda: self.read.focusWidget,
+                'terminal': lambda: self.term.txt}[name]()
+
+    def goTo(self, name):
+        """Gives the keyboard focus to a part of the window (Ctrl+1..4, Ctrl+T, F6). Erase,
+        Program and Read are shown first if the panels are hidden. The Terminal's cursor goes to
+        the prompt line (its focus handler)."""
+        if name in ('erase', 'program', 'read') and not self.settings.showPanels:
+            self.onPanelToggle()
+        widget = self.focusTarget(name)
+        widget.focus_set()
+        if name != 'terminal':
+            try:        # an entry: the text is selected, ready to be replaced
+                getattr(widget, '_entry', widget).select_range(0, 'end')
+            except Exception:
+                pass
+
+    def currentPart(self):
+        """Which part of the window has the keyboard focus ('' if none of them)"""
+        widget = self.root.focus_get()
+        parents = {'serial': self.serCom, 'erase': self.erase, 'program': self.program,
+                   'read': self.read, 'terminal': self.term}
+        while widget is not None:
+            for name, frame in parents.items():
+                if widget is frame:
+                    return name
+            widget = getattr(widget, 'master', None)
+        return ''
+
+    def goNext(self, step=1):
+        """F6 / Shift+F6: the next / previous part of the window that is shown"""
+        order = [n for n in self.FOCUS_ORDER
+                 if self.settings.showPanels or n not in ('erase', 'program', 'read')]
+        here = self.currentPart()
+        index = order.index(here) + step if here in order else (0 if step > 0 else len(order) - 1)
+        self.goTo(order[index % len(order)])
+
+    def goSerial(self): self.goTo('serial')
+    def goErase(self): self.goTo('erase')
+    def goProgram(self): self.goTo('program')
+    def goRead(self): self.goTo('read')
+    def goTerminal(self): self.goTo('terminal')
 
 
     def initState(self):
@@ -599,9 +662,9 @@ class App:
                 'pythonScripts' if python else 'commandScripts')), filetypes=filetypes)
         if name:
             if python:
-                self.settings.pythonDir = os.path.dirname(name)  # start here next time
+                self.settings.pythonDir = os.path.normpath(os.path.dirname(name))  # start here next time
             else:
-                self.settings.commandDir = os.path.dirname(name)
+                self.settings.commandDir = os.path.normpath(os.path.dirname(name))
             self.settings.save()
         return name
 
@@ -982,7 +1045,7 @@ class App:
             PathRow('pythonDir', 'Python scripts', s.pythonDir,
                     settings_lib.default_folder('pythonScripts'),
                     hint='Where File > Scripts > Run Python Script starts.'),
-            PathRow('programDir', 'Image files', s.programDir, settings_lib.documents_folder(),
+            PathRow('programDir', 'Image files', s.programDir, settings_lib.default_folder('imageFiles'),
                     hint='Where File > Image Files > Open File starts.'),
             PathRow('userToolsDir', 'My tools', s.userToolsDir, settings_lib.default_folder('myTools'),
                     hint='Scripts with a "# TOOL: name" first line in this folder are added to the Tools menu.'),

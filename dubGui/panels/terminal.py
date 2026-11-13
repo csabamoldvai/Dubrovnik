@@ -57,6 +57,11 @@ class Terminal(LabeledFrame):
         self.txt.bind('<Key>', self.onKeyPress)
         self.txt.bind('<<Paste>>', self.onPaste)
         self.txt.bind('<<Cut>>', lambda _e: 'break')
+        # Focus from Tab, Alt-Tab or another panel puts the cursor on the prompt line; a click in
+        # the text keeps the cursor where it was clicked (so old output can be selected and copied)
+        self.clickedIn = False
+        self.txt.bind('<Button-1>', self.onTextClick)
+        self.txt.bind('<FocusIn>', self.onFocusIn)
         # Ctrl + mouse wheel changes the text size instead of scrolling
         self.txt.bind('<Control-MouseWheel>', self.onCtrlWheel)
 
@@ -261,6 +266,22 @@ class Terminal(LabeledFrame):
         self.txt.mark_set(INSERT, '1.0')
         self.txt.see(INSERT)
         return 'break'
+
+    def onTextClick(self, _event):
+        """A click in the text: if it also gives the focus (FocusIn follows), leave the cursor
+        where the click put it. Forgotten after a moment if the text already had the focus."""
+        self.clickedIn = True
+        self.after(300, lambda: setattr(self, 'clickedIn', False))
+
+    def onFocusIn(self, _event):
+        """The Terminal got the focus without a click in its text (Tab, Alt-Tab, a click on
+        another part of the window): the cursor goes to the end of the prompt line and the
+        view scrolls there, even if the user had scrolled away. A selection is kept."""
+        if self.clickedIn:
+            self.clickedIn = False
+            return
+        self.txt.mark_set(INSERT, 'end-1c')
+        self.txt.see(INSERT)
 
     def onBottomKey(self, _event):
         """Ctrl+End: the end of the text, the prompt line"""

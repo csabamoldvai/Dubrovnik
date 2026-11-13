@@ -8,6 +8,30 @@ To release a new version: change VERSION in dubLibs\version.py, add an entry at
 the top of this file, commit, then tag the commit:  git tag v<VERSION>
 
 
+VERSION 1.4.4                                                      2026-11-13
+-----------------------------------------------------------------------------
+New:
+  * Program panel: "Count across pages". Off (as before), every 256-byte page gets the same
+    words, so a counting pattern restarts on each page. On, the counter keeps going from page to
+    page (one more board command per page). Scripts: dub.program(..., continuous=True).
+  * Keyboard shortcuts to move around the window: Ctrl+1 Serial connection, Ctrl+2 Erase,
+    Ctrl+3 Program, Ctrl+4 Read, Ctrl+T Terminal, F6 / Shift+F6 next / previous part. Ctrl+2 to 4
+    show the panels first if they are hidden. Also in the View menu.
+  * The Terminal puts the cursor on the prompt line when it gets the focus by Tab, Alt-Tab or a
+    click outside its text (a click in the text keeps the cursor where you clicked, so you can
+    select and copy).
+  * The installer puts demo files in Documents\Dubrovnik: demo_srec_1.srec and
+    demo_bin_file_1.bin (imageFiles), demo_1_device_check.txt and demo_2_pwr_meas.txt
+    (commandScripts). A file that is already there is never replaced, and the uninstaller
+    leaves your files alone.
+Changed:
+  * File > Image Files > Open File starts in Documents\Dubrovnik\imageFiles (made when needed)
+    until you open a file from another folder or set a folder in Configure Paths.
+  * Configure Paths shows every folder with backslashes (some had "/").
+  * Help > Assistant and Preferences > Assistant Settings are hidden until the Assistant's
+    credentials are set up. The code is still there.
+
+
 VERSION 1.4.3                                                      2026-11-12
 -----------------------------------------------------------------------------
 Fixed:

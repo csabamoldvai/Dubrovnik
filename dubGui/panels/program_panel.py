@@ -1,6 +1,6 @@
 """The Program panel: program the flash from a pattern or from a firmware file."""
 import os
-from tkinter import DISABLED, E, NORMAL, S, SW, StringVar, W
+from tkinter import DISABLED, E, NORMAL, S, SW, BooleanVar, StringVar, W
 from tkinter.filedialog import askopenfilename
 from tkinter.messagebox import showerror
 import customtkinter as ctk
@@ -11,7 +11,7 @@ from dubGui.panels.base import LabeledFrame
 from dubGui.tooltip import Tooltip
 from dubLibs import firmware_image, hexdump
 from dubLibs.fields import parseField
-from dubLibs.settings import documents_folder
+from dubLibs.settings import default_folder, documents_folder
 
 PREVIEW_BYTES = 64         # Terminal preview of a loaded file: bytes per segment
 PREVIEW_FULL = 1024        # segments up to this size are shown in full
@@ -42,6 +42,7 @@ class ProgramFrame(LabeledFrame):
         self.pattern = StringVar()
         self.increment = StringVar()
         self.progModeVar = StringVar()
+        self.continuous = BooleanVar(value=False)   # keep the counter going across pages
         self.progModeList = ['pattern', 'file']
         self.comm = None
         self.buildFrame()
@@ -77,6 +78,7 @@ class ProgramFrame(LabeledFrame):
         lbl3_prog.grid(row=3, column=1, padx=5, pady=5, sticky=E)
         self.ent3_prog = ctk.CTkEntry(self, textvariable=self.start_addr, width=80, height=ENTRY_HEIGHT)
         self.ent3_prog.grid(row=3, column=2, padx=(0, 10))
+        self.focusWidget = self.ent3_prog   # Start Address (always enabled); Ctrl+3 / F6 focus it
         self.start_addr.set('60')
         Tooltip(self.ent3_prog, lambda: (
             'Offset: hex digits only, no 0x. Where a .bin file starts; added to the '
@@ -90,6 +92,14 @@ class ProgramFrame(LabeledFrame):
         self.ent4_prog.grid(row=4, column=2, padx=(0, 10))
         self.length.set('250')
         Tooltip(self.ent4_prog, 'Hex digits only, no 0x, in bytes. Example: 100')
+
+        self.chk_continuous = ctk.CTkCheckBox(
+            self, text='Count across pages', variable=self.continuous,
+            checkbox_width=18, checkbox_height=18)
+        self.chk_continuous.grid(row=5, column=0, columnspan=3, padx=10, pady=2, sticky=W)
+        Tooltip(self.chk_continuous, 'Off: every 256-byte page gets the same words, so the '
+                'counter restarts on each page. On: the counter keeps going from page to '
+                'page (one more board command per page, a little slower).')
 
         self.btn_openFile = ctk.CTkButton(
             self, text='Open', width=80, command=self.openFile, state=DISABLED)
@@ -174,6 +184,7 @@ class ProgramFrame(LabeledFrame):
         messages = queue.Queue()        # Terminal text, shown from the GUI thread
         result = dict(error=None)
         comm = self.comm
+        continuous = self.continuous.get()
 
         def work():
             """Background thread: talks to the board, never touches widgets"""
@@ -185,7 +196,8 @@ class ProgramFrame(LabeledFrame):
                 state['done'] = done
             try:
                 self.du.page_program(comm, start, length, pattern, increment,
-                                     progress=progress, log_pages=pages <= PATTERN_LOG_PAGES)
+                                     progress=progress, log_pages=pages <= PATTERN_LOG_PAGES,
+                                     continuous=continuous)
                 messages.put(('tprint', self.du.textToDisplay[:-1]))
             except ProgramCancelled:
                 result['cancelled'] = True
@@ -308,15 +320,26 @@ class ProgramFrame(LabeledFrame):
     def progVerify(self):
         pass
 
+    @staticmethod
+    def defaultImageFolder():
+        """Documents\\Dubrovnik\\imageFiles, made if it is not there (Open File starts here
+        until a file from another folder has been opened or Configure Paths sets one)"""
+        folder = default_folder('imageFiles')
+        try:
+            os.makedirs(folder, exist_ok=True)
+        except OSError:
+            return documents_folder()       # cannot be made: start in Documents
+        return folder
+
     def openFile(self):
         folder = self.settings.programDir
         filename = askopenfilename(
             title='Select File to Program',
-            initialdir=folder if os.path.isdir(folder) else documents_folder(),
+            initialdir=folder if os.path.isdir(folder) else self.defaultImageFolder(),
             filetypes=firmware_image.FILE_TYPES)
         if not filename:             # dialog cancelled
             return False
-        self.settings.programDir = os.path.dirname(filename)   # start here next time
+        self.settings.programDir = os.path.normpath(os.path.dirname(filename))   # start here next time
         self.settings.save()
         try:
             self.image = firmware_image.load_image(filename)

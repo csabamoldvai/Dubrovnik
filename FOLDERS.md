@@ -12,6 +12,7 @@ Dubrovnik/
 ├── tools/         ready-made procedures shown in the Tools menu        (shared)
 ├── help/          the built-in user guide (F1)                         (shared)
 ├── docs/          documents of the Help > Documents menu               (shared)
+├── demo/          demo files the installer puts in Documents\Dubrovnik (shared)
 ├── tests/         unit tests                                           (shared)
 │   └── data/        sample firmware images and dumps used by the tests (shared)
 ├── dubScripts/    YOUR command and Python scripts                      (personal)

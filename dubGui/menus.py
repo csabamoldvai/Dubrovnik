@@ -192,6 +192,14 @@ FILE = [
 # View menu: the panels.
 VIEW = [
     Item('panels', 'Hide Panels (Erase/Program/Read)', 'onPanelToggle'),   # the label follows the state
+    Separator(),
+    # Keyboard focus to a part of the window (shortcuts are bound in App.bindKeys)
+    Item('go_serial', 'Go to Serial Connection', 'goSerial', accelerator='Ctrl+1'),
+    Item('go_erase', 'Go to Erase', 'goErase', accelerator='Ctrl+2'),
+    Item('go_program', 'Go to Program', 'goProgram', accelerator='Ctrl+3'),
+    Item('go_read', 'Go to Read', 'goRead', accelerator='Ctrl+4'),
+    Item('go_terminal', 'Go to Terminal', 'goTerminal', accelerator='Ctrl+T'),
+    Item('go_next', 'Next Part of the Window', 'goNext', accelerator='F6'),
 ]
 
 # Preferences menu: how the program looks and where things are kept.
@@ -207,7 +215,8 @@ PREFERENCES = [
     Separator(),
     Item('paths', 'Configure Paths...', 'showPathsDialog'),
     Item('datasheet_source', 'Datasheet Source...', 'editDatasheetUrl'),
-    Item('assistant_settings', 'Assistant Settings...', 'showAssistantSettings'),
+    # Hidden until the Assistant's credentials are sorted out (enable together with Help > Assistant):
+    # Item('assistant_settings', 'Assistant Settings...', 'showAssistantSettings'),
 ]
 
 HELP = [
@@ -217,7 +226,8 @@ HELP = [
     Item('datasheet', 'Datasheet', 'openDatasheet'),
     # Help > Assistant: chat window backed by dubLibs/assistant.py. It answers from the help
     # and proposes scripts; nothing runs without the user's OK.
-    Item('assistant', 'Assistant...', 'showAssistant'),
+    # Hidden until the credentials are sorted out (enable together with Preferences > Assistant Settings):
+    # Item('assistant', 'Assistant...', 'showAssistant'),
     Separator(),
     Item('about', 'About', 'showAbout'),
 ]
