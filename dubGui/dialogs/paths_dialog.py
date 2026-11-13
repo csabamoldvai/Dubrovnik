@@ -5,6 +5,7 @@ from tkinter import StringVar
 from tkinter.filedialog import askdirectory
 from tkinter.messagebox import showerror
 import customtkinter as ctk
+from dubGui.look import newToplevel, showCentered
 
 
 class PathRow:
@@ -25,7 +26,7 @@ class PathsDialog:
 
     def __init__(self, root, rows, onOk):
         self.root, self.rows, self.onOk = root, rows, onOk
-        self.win = ctk.CTkToplevel(root)
+        self.win = newToplevel(root)
         self.win.title('Configure Paths')
         self.win.resizable(False, False)
         self.win.transient(root)
@@ -72,10 +73,7 @@ class PathsDialog:
 
     def centerOnRoot(self):
         win, root = self.win, self.root
-        win.update_idletasks()
-        x = root.winfo_x() + (root.winfo_width() - win.winfo_width()) // 2
-        y = root.winfo_y() + (root.winfo_height() - win.winfo_height()) // 2
-        win.geometry(f'+{max(x, 0)}+{max(y, 0)}')
+        showCentered(win, root)
         win.after(150, lambda: (win.grab_set(), win.focus_set()))
 
     def browse(self, var):

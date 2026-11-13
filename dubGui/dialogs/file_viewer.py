@@ -1,6 +1,7 @@
 """File > Image Files > View File: the whole loaded file as a hex dump, at the
 addresses it will be written to, with a "Go to address" box."""
 import customtkinter as ctk
+from dubGui.look import newToplevel, showCentered
 from tkinter import NSEW
 from tkinter.messagebox import showerror
 from dubLibs import hexdump
@@ -16,7 +17,7 @@ class FileViewer:
 
     def __init__(self, root, image, imageName, offset, colours,
                  termFont, termFontSize, hexOptions):
-        win = ctk.CTkToplevel(root)
+        win = newToplevel(root)
         self.win = win
         win.title(f'{imageName}   {image.describe()}   '
                   f'Offset 0x{offset:X}')
@@ -57,4 +58,5 @@ class FileViewer:
         ctk.CTkButton(win, text='Close', width=90, font=font, command=win.destroy
                       ).grid(row=1, column=3, padx=12, pady=(4, 10), sticky='e')
         win.bind('<Escape>', lambda _e: win.destroy())
+        showCentered(win, root, size=(900, 600))
         win.after(150, lambda: (win.lift(), entry.focus_set()))

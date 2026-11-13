@@ -2,9 +2,10 @@
 apply them to CustomTkinter and ttk. Importing this module sets the appearance
 mode and installs the palette in the CustomTkinter theme, so import it before
 the first window is created."""
+import tkinter
 from tkinter import ttk
 import customtkinter as ctk
-from customtkinter.windows.widgets.scaling import ScalingTracker
+from customtkinter.windows.widgets.scaling import CTkScalingBaseClass, ScalingTracker
 
 # Compact radio buttons (CTk defaults are 22 px with a thick ring)
 RADIO_STYLE = dict(radiobutton_width=16, radiobutton_height=16,
@@ -45,6 +46,68 @@ TERM_THEMES = {
     'dark': dict(bg='#1B1F24', fg='#D6DBE1', select='#34506E'),
     'light': dict(bg='#FFFFFF', fg='#22262B', select='#B5D5FF'),
 }
+
+
+# CustomTkinter colours the title bar of every dialog by hiding the window and showing it again
+# (at creation, and once more 10 ms after each resizable() call): a visible flash and a delay
+# on every dialog. Switched off here; newToplevel() sets the title bar colour before the dialog
+# is shown instead.
+ctk.CTkToplevel._deactivate_windows_window_header_manipulation = True
+
+
+def titleBarColour(win):
+    """Dark or light title bar (Windows 10/11) to match the appearance mode. Works on a window
+    that is not shown yet; if the Windows call fails the title bar keeps its default colour."""
+    try:
+        value = ctypes.c_int(1 if ctk.get_appearance_mode() == 'Dark' else 0)
+        hwnd = ctypes.windll.user32.GetParent(win.winfo_id())
+        for attribute in (20, 19):          # DWMWA_USE_IMMERSIVE_DARK_MODE, before Windows 10 20H1
+            if ctypes.windll.dwmapi.DwmSetWindowAttribute(
+                    hwnd, attribute, ctypes.byref(value), ctypes.sizeof(value)) == 0:
+                break
+    except Exception:
+        pass
+
+
+def newToplevel(root):
+    """A CTkToplevel for a dialog: hidden until showDialog() or showCentered() is called, so
+    the window appears finished and in place, never half built. It also has the display scale
+    of the main window from the start.
+    Tk puts a new window at the top left of the primary display, and CustomTkinter reads the
+    display scale from there. On a main window that sits on a display with another scale,
+    it built the dialog at the wrong scale, saw the scale change a moment after the dialog
+    moved to the main window, and rebuilt every widget in it (visible flicker). Here the
+    dialog starts at the main window's position and takes its scale, so nothing has to
+    be recalculated while it is open. A real change later (the dialog or the main window
+    moved to another display, or the Windows scale changed) is still found by CustomTkinter."""
+    win = ctk.CTkToplevel(root)
+    win.withdraw()
+    ScalingTracker.window_dpi_scaling_dict[win] = ScalingTracker.window_dpi_scaling_dict[
+        ScalingTracker.get_window_root_of_widget(root)]
+    # CTkToplevel.geometry() would scale the numbers: ask Tk itself (physical pixels)
+    tkinter.Toplevel.geometry(win, f'+{root.winfo_x()}+{root.winfo_y()}')
+    dpi = ScalingTracker.window_dpi_scaling_dict[win]
+    # the base class method only stores the scale (CTkToplevel's own one also forces a size)
+    CTkScalingBaseClass._set_scaling(win, dpi * ScalingTracker.widget_scaling,
+                                     dpi * ScalingTracker.window_scaling)
+    titleBarColour(win)
+    return win
+
+
+def showCentered(win, root, size=None):
+    """Centres a dialog made by newToplevel over root and shows it. size: (width, height) in
+    unscaled px of a dialog that has a fixed size set with geometry(); without it the size the
+    widgets ask for is used."""
+    win.update_idletasks()
+    if size:
+        scale = ScalingTracker.get_window_scaling(win)
+        width, height = round(size[0] * scale), round(size[1] * scale)
+    else:
+        width, height = win.winfo_reqwidth(), win.winfo_reqheight()
+    x = root.winfo_x() + (root.winfo_width() - width) // 2
+    y = root.winfo_y() + (root.winfo_height() - height) // 2
+    win.geometry(f'+{max(x, 0)}+{max(y, 0)}')
+    win.deiconify()
 
 
 def styleCombobox(root):

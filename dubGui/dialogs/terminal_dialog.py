@@ -4,7 +4,7 @@ import re
 from tkinter import END
 from tkinter.colorchooser import askcolor
 import customtkinter as ctk
-from dubGui.look import PAL
+from dubGui.look import PAL, newToplevel, showCentered
 from dubLibs import termstyle
 
 TERM_SIZE_MIN, TERM_SIZE_MAX = termstyle.SIZE_MIN, termstyle.SIZE_MAX
@@ -36,7 +36,7 @@ class TerminalDialog:
         self.swatches = {}
         self.hexEntries = {}
 
-        self.win = ctk.CTkToplevel(root)
+        self.win = newToplevel(root)
         self.win.title('Terminal')
         self.win.resizable(False, False)
         self.win.transient(root)
@@ -125,10 +125,7 @@ class TerminalDialog:
 
     def centerOnRoot(self):
         win, root = self.win, self.root
-        win.update_idletasks()
-        x = root.winfo_x() + (root.winfo_width() - win.winfo_width()) // 2
-        y = root.winfo_y() + (root.winfo_height() - win.winfo_height()) // 2
-        win.geometry(f'+{max(x, 0)}+{max(y, 0)}')
+        showCentered(win, root)
         win.after(150, lambda: (win.grab_set(), win.focus_set()))
 
     # ---- showing the settings

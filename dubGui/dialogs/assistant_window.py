@@ -7,6 +7,7 @@ import threading
 from tkinter import END, EW, NSEW
 from tkinter.messagebox import showwarning
 import customtkinter as ctk
+from dubGui.look import newToplevel, showCentered
 
 
 class ScriptReview:
@@ -27,7 +28,7 @@ class ScriptReview:
         self.scriptReady = scriptReady
         self.executePython = executePython
         self.showStatus = showStatus
-        self.win = ctk.CTkToplevel(root)
+        self.win = newToplevel(root)
         self.win.title(f'Proposed script: {self.title}')
         self.win.transient(root)
         self.win.geometry('760x560')
@@ -37,6 +38,7 @@ class ScriptReview:
         self.buildText()
         self.buildButtons()
         self.win.protocol('WM_DELETE_WINDOW', self.cancel)
+        showCentered(self.win, root, size=(760, 560))
         self.win.after(150, self.win.focus_set)
 
     def buildText(self):
@@ -97,7 +99,7 @@ class AssistantWindow:
         self.ai = ai
         self.review = review
         self.inbox = queue.Queue()      # what the worker thread has to show
-        self.win = ctk.CTkToplevel(root)
+        self.win = newToplevel(root)
         self.win.title('Dubrovnik Assistant')
         self.win.geometry('640x560')
         self.win.grid_columnconfigure(0, weight=1)
@@ -108,6 +110,7 @@ class AssistantWindow:
                  'describe a test and I will write a script. Nothing runs until '
                  'you approve it.')
         self.poll()
+        showCentered(self.win, root, size=(640, 560))
         self.win.after(200, self.entry.focus_set)
 
     def buildWidgets(self):

@@ -8,6 +8,22 @@ To release a new version: change VERSION in dubLibs\version.py, add an entry at
 the top of this file, commit, then tag the commit:  git tag v<VERSION>
 
 
+NEXT VERSION (not released yet, version number not set)
+-----------------------------------------------------------------------------
+Fixed:
+  * Read failed with "invalid literal for int() with base 16" on devices where command 35 is
+    not "Read Status Register 2" (there it is Read Sector Lockdown Registers). The program
+    now asks the board (help 35, 5, 31, 1) how the device reads and writes status register 2
+    and uses 05 2 or 01 <sts1> <sts2> where needed. Asked once per connection and again when
+    a device is detected. A reply it cannot read is now shown with the command and the reply.
+  * Windows opened by the program (About, Preferences, Hex View, ...) appear finished and in
+    place at once. Before, they were drawn half built, hidden and shown again to colour the
+    title bar, and (with the main window on a display whose Windows scale differs from the
+    primary display) rebuilt a moment later. Now the window is built hidden, at the scale of
+    the main window, the title bar is coloured first, and the window is shown once.
+    Nothing is recalculated while a window is open unless it or the main window really moves
+    to a display with another scale, or the Windows scale changes.
+
 VERSION 1.4.2                                                      2026-10-20
 -----------------------------------------------------------------------------
 Removed:

@@ -1,6 +1,7 @@
 """File > Scripts > Run Command Script: shows the whole script, with line numbers,
 before it runs. Run starts it, Cancel (or Esc) does not."""
 import customtkinter as ctk
+from dubGui.look import newToplevel, showCentered
 from tkinter import NSEW
 
 
@@ -21,7 +22,7 @@ class ScriptPreview:
 
     def __init__(self, root, name, text, colours, termFont, termFontSize, onRun):
         self.onRun = onRun
-        self.win = ctk.CTkToplevel(root)
+        self.win = newToplevel(root)
         self.win.title(f'Run Command Script: {name}')
         self.win.transient(root)
         self.win.geometry('760x460')
@@ -36,6 +37,7 @@ class ScriptPreview:
         self.buildButtons()
         self.win.bind('<Escape>', lambda _e: self.win.destroy())
         self.win.bind('<Return>', lambda _e: self.run())
+        showCentered(self.win, root, size=(760, 460))
         self.win.after(150, lambda: (self.win.grab_set(), self.win.focus_set()))
 
     def buildButtons(self):

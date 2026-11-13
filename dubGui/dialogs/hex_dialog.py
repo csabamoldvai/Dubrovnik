@@ -2,7 +2,7 @@
 with a sample. Nothing changes until OK."""
 from tkinter import END, IntVar, StringVar
 import customtkinter as ctk
-from dubGui.look import CHECKBOX_STYLE
+from dubGui.look import CHECKBOX_STYLE, newToplevel, showCentered
 from dubLibs import hexdump
 
 SAMPLE = b'Dubrovnik hex dump: \x00\x01\x7f\xff 0123456789'
@@ -19,7 +19,7 @@ class HexDialog:
         self.settings = settings
         self.colors = colors
         self.defaults = defaults
-        self.win = ctk.CTkToplevel(root)
+        self.win = newToplevel(root)
         self.win.title('Hex View')
         self.win.resizable(False, False)
         self.win.transient(root)
@@ -72,10 +72,7 @@ class HexDialog:
 
     def centerOnRoot(self):
         win, root = self.win, self.root
-        win.update_idletasks()
-        x = root.winfo_x() + (root.winfo_width() - win.winfo_width()) // 2
-        y = root.winfo_y() + (root.winfo_height() - win.winfo_height()) // 2
-        win.geometry(f'+{max(x, 0)}+{max(y, 0)}')
+        showCentered(win, root)
         win.after(150, lambda: (win.grab_set(), win.focus_set()))
 
     def current(self):

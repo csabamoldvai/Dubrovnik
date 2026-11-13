@@ -204,6 +204,7 @@ class SerComFrame(LabeledFrame):
         """The board (re)detected its device, e.g. after being switched off and
         on again: show it in the status bar ('' = no device yet; failed=True: the
         board looked and found none)"""
+        self.du.forget_status_forms()       # a new device may have other status register commands
         if self.portStatus != 'connected':
             return
         base = self.serParams.split('    Device:')[0]

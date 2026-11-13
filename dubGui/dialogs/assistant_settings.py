@@ -1,6 +1,7 @@
 """Help > Assistant Settings...: the credentials of the AI model behind the Assistant."""
 from tkinter import DISABLED, END, NORMAL
 import customtkinter as ctk
+from dubGui.look import newToplevel, showCentered
 from dubLibs import assistant_config
 
 # provider key -> (text in the list, the entries it uses)
@@ -27,7 +28,7 @@ class AssistantSettingsDialog:
         self.root = root
         self.onSave = onSave
         self.entries = {}
-        self.win = ctk.CTkToplevel(root)
+        self.win = newToplevel(root)
         self.win.title('Assistant Settings')
         self.win.resizable(False, False)
         self.win.transient(root)
@@ -74,10 +75,7 @@ class AssistantSettingsDialog:
 
     def centerOnRoot(self):
         win, root = self.win, self.root
-        win.update_idletasks()
-        x = root.winfo_x() + (root.winfo_width() - win.winfo_width()) // 2
-        y = root.winfo_y() + (root.winfo_height() - win.winfo_height()) // 2
-        win.geometry(f'+{max(x, 0)}+{max(y, 0)}')
+        showCentered(win, root)
         win.after(150, lambda: (win.grab_set(), win.focus_set()))
 
     def providerKey(self):
