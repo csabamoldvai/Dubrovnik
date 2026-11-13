@@ -16,6 +16,9 @@ Fixed:
     now asks the board (help 35, 5, 31, 1) how the device reads and writes status register 2
     and uses 05 2 or 01 <sts1> <sts2> where needed. Asked once per connection and again when
     a device is detected. A reply it cannot read is now shown with the command and the reply.
+  * The default script folders (Documents\Dubrovnik\commandScripts, pythonScripts, myTools) and
+    Results and Assistant now always use the same Documents folder. Before, with Documents moved
+    to OneDrive, the first three could end up in a different place than Results and Assistant.
   * Windows opened by the program (About, Preferences, Hex View, ...) appear finished and in
     place at once. Before, they were drawn half built, hidden and shown again to colour the
     title bar, and (with the main window on a display whose Windows scale differs from the

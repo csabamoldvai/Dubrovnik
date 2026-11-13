@@ -25,20 +25,13 @@ import os
 import sys
 import traceback
 
-from dubLibs import firmware_image, hexdump
+from dubLibs import firmware_image, hexdump, settings
 
 
 def documents_dir():
-    """The user's Documents folder (also when OneDrive has moved it)"""
-    try:
-        import ctypes
-        buf = ctypes.create_unicode_buffer(260)
-        # CSIDL_PERSONAL = 5, SHGFP_TYPE_CURRENT = 0
-        if ctypes.windll.shell32.SHGetFolderPathW(None, 5, None, 0, buf) == 0:
-            return buf.value
-    except Exception:
-        pass
-    return os.path.join(os.path.expanduser('~'), 'Documents')
+    """The user's Documents folder (also when OneDrive has moved it): the same one the script
+    folders of the Preferences start in (settings.documents_folder decides)"""
+    return settings.documents_folder()
 
 
 class ScriptStopped(BaseException):
@@ -247,9 +240,9 @@ class DubApi:
         """Text dump of ``data`` like a hex editor: address, hex bytes, ASCII.
         Uses the layout chosen in Preferences > Hex View; options override it for this
         call: per_row (8, 16 or 32), show_ascii, upper, gap (True/False)."""
-        settings = dict(self._hex_options()) if self._hex_options else {}
-        settings.update(options)
-        return hexdump.format_hexdump(bytes(data), address, **settings)
+        layout = dict(self._hex_options()) if self._hex_options else {}
+        layout.update(options)
+        return hexdump.format_hexdump(bytes(data), address, **layout)
 
     def load_image(self, path):
         """Reads a .bin, S-record or Intel HEX file (format recognised from its

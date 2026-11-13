@@ -55,7 +55,17 @@ def default_folder(name):
 
 
 def documents_folder():
-    """The user's Documents folder if there is one, else the current folder"""
+    """The user's Documents folder if there is one, else the current folder. Asks Windows, so
+    it is the right one also when OneDrive or the company has moved Documents elsewhere. The
+    only place that decides this: the script folders, Results and Assistant all start here."""
+    try:
+        import ctypes
+        buf = ctypes.create_unicode_buffer(260)
+        # CSIDL_PERSONAL = 5, SHGFP_TYPE_CURRENT = 0
+        if ctypes.windll.shell32.SHGetFolderPathW(None, 5, None, 0, buf) == 0 and os.path.isdir(buf.value):
+            return buf.value
+    except Exception:
+        pass                    # not Windows: the usual place
     folder = os.path.join(os.path.expanduser('~'), 'Documents')
     return folder if os.path.isdir(folder) else os.getcwd()
 
