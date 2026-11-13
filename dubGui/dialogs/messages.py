@@ -2,12 +2,12 @@
 your own buttons (the standard Windows and Tk dialogs use a small fixed font)."""
 from tkinter import END
 import customtkinter as ctk
-from dubGui.look import PAL
+from dubGui.look import PAL, newToplevel, showCentered
 from dubLibs.version import VERSION as APP_VERSION
 
 
 def showAbout(root):
-    dlg = ctk.CTkToplevel(root)
+    dlg = newToplevel(root)
     dlg.title('About')
     dlg.resizable(False, False)
     dlg.transient(root)
@@ -26,10 +26,7 @@ def showAbout(root):
                   ).grid(row=4, column=0, pady=(0, 20))
 
     # centre over the main window, then make it modal
-    dlg.update_idletasks()
-    x = root.winfo_x() + (root.winfo_width() - dlg.winfo_width()) // 2
-    y = root.winfo_y() + (root.winfo_height() - dlg.winfo_height()) // 2
-    dlg.geometry(f'+{max(x, 0)}+{max(y, 0)}')
+    showCentered(dlg, root)
     dlg.bind('<Escape>', lambda _e: dlg.destroy())
     dlg.after(100, lambda: (dlg.grab_set(), dlg.focus_set()))
 
@@ -40,7 +37,7 @@ def dialogBox(root, title, text, buttons, entryDefault=None):
     first one is the default (Enter), the last one is what Esc and closing
     the window return. With entryDefault the dialog has a text box and the
     first button returns its text."""
-    dlg = ctk.CTkToplevel(root)
+    dlg = newToplevel(root)
     dlg.title(title)
     dlg.resizable(False, False)
     dlg.transient(root)
@@ -75,10 +72,7 @@ def dialogBox(root, title, text, buttons, entryDefault=None):
     dlg.protocol('WM_DELETE_WINDOW',
                  lambda: finish(buttons[-1][1], len(buttons) - 1))
 
-    dlg.update_idletasks()
-    x = root.winfo_x() + (root.winfo_width() - dlg.winfo_width()) // 2
-    y = root.winfo_y() + (root.winfo_height() - dlg.winfo_height()) // 2
-    dlg.geometry(f'+{max(x, 0)}+{max(y, 0)}')
+    showCentered(dlg, root)
 
     def focus():
         dlg.grab_set()

@@ -11,7 +11,7 @@ import sys
 
 import customtkinter as ctk
 
-UI_SCALE = 1 # 0.92
+UI_SCALE = .85 # 1, 0.92
 
 # make the project root importable (for "from dubLibs import ...")
 here = os.path.dirname(os.path.abspath(__file__))

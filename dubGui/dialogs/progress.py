@@ -2,6 +2,7 @@
 lets the user cancel."""
 import time
 import customtkinter as ctk
+from dubGui.look import newToplevel, showCentered
 
 
 def format_seconds(seconds):
@@ -26,7 +27,7 @@ class ProgressDialog:
         self.root = root
         self.total, self.cancelled = max(total, 1), False
         self.start = time.time()
-        self.win = ctk.CTkToplevel(self.root)
+        self.win = newToplevel(self.root)
         self.win.title(title)
         self.win.resizable(False, False)
         self.win.transient(self.root)
@@ -45,10 +46,7 @@ class ProgressDialog:
                                                 pady=(6, 20), sticky='e')
         self.win.protocol('WM_DELETE_WINDOW', self.cancel)
         self.win.bind('<Escape>', lambda _e: self.cancel())
-        self.win.update_idletasks()
-        x = self.root.winfo_x() + (self.root.winfo_width() - self.win.winfo_width()) // 2
-        y = self.root.winfo_y() + (self.root.winfo_height() - self.win.winfo_height()) // 2
-        self.win.geometry(f'+{max(x, 0)}+{max(y, 0)}')
+        showCentered(self.win, self.root)
         self.win.update()
         self.win.grab_set()
 
