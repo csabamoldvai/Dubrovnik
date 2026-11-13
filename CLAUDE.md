@@ -1,7 +1,7 @@
 # Project notes for Claude Code sessions
 
 Dubrovnik Workbench: a PC program (Tkinter / CustomTkinter) for the Dubrovnik SPI flash test board.
-Current released version: 1.2. Read `README.md` (overview), `FOLDERS.md` (what each folder is for) and
+Current released version: 1.4.3. Read `README.md` (overview), `FOLDERS.md` (what each folder is for) and
 `TODO_refactoring.md` (the code review and the planned refactoring) before changing code.
 
 ## Decisions already made (do not re-ask)
@@ -13,8 +13,16 @@ Current released version: 1.2. Read `README.md` (overview), `FOLDERS.md` (what e
   `git add -u`, never `git add -A` (personal files lie around, e.g. in `tools/`). Never push to `main` or push tags
   without being asked. Never amend or force-push pushed commits (fix forward or `git revert`). Never move or delete
   a pushed tag. The branch `refactor-app-class` was pushed after every step (standing permission for that branch);
-  for new work ask which branch to use. Commit messages end with the Co-Authored-By line given by the harness.
-- **Version:** `dubLibs/version.py` is 1.4.3 (on `main`, pushed, tag `v1.4.3` pushed; installer built). Released on GitHub: 1.4.0 and 1.4.2 (1.4.3 when the user says it is). Tags `v1.4.0`, `v1.4.2` and `v1.4.3` are on origin (the commit b138e70 of `v1.4.2` is titled "V2.4.2" by mistake; never move the tag). 1.4.0 is released (tag `v1.4.0`). 1.2.3 was released 2026-10-15 (tag `v1.2.3`, installer only, no zip or GitHub release). The next release after 1.4.0 will be 1.5 or larger; change the version, tag and build the installer only when the user says so. The tags `tested-on-board-1..7` mark commits the user tried on the real board.
+  for new work ask which branch to use (1.4.3 work went on branch `read-window-font-scaling`; small, clear changes
+  were made straight on `main` when the user said so; still ask each time). Commit messages end with the
+  Co-Authored-By line given by the harness.
+- **Version:** `dubLibs/version.py` is 1.4.3, released on GitHub 2026-11-12 (commit a7bcf87, tag `v1.4.3`, installer
+  `Dubrovnik-Setup-1.4.3.exe` attached). Also released on GitHub: 1.4.2 and 1.4.0. Tags `v1.4.0`, `v1.4.2`, `v1.4.3` are on
+  origin (the commit b138e70 of `v1.4.2` is titled "V2.4.2" by mistake; never move the tag). 1.2.3 was released 2026-10-15
+  (tag `v1.2.3`, installer only). Patch numbers (1.4.1, 1.4.2, 1.4.3) were used for bug-fix installers for the coworker;
+  the next number is the user's choice (the Assistant, working, is planned as 1.5). Change the version, tag, build the
+  installer and create a release only when the user says so. The tags `tested-on-board-1..8` mark commits the user tried
+  on the real board.
 - **Classic edition** was removed (first step of the refactoring). It lives on in tag `v1.2`; do not bring it back or
   add features for it. There is one program now: `dubGui/dubrovnik_workbench.py`.
 - **Refactoring** (Classic removed, `App` class, dialogs and panels in their own modules, `Settings` object, menu
@@ -34,7 +42,7 @@ Current released version: 1.2. Read `README.md` (overview), `FOLDERS.md` (what e
 ## Commands (run from the project folder, C:\MyLibs\Dubrovnik)
 
 ```
-python -m unittest discover -s tests            unit tests, no windows, about 1 second (63 tests, 1 skipped on a clone)
+python -m unittest discover -s tests            unit tests, no windows, about 1 second (about 114 tests)
 python dubScripts\gui_tests\run_all.py          window checks, about 30 seconds (personal folder)
 python dubScripts\gui_tests\check_menus.py wb   one check
 python dubGui\dubrovnik_workbench.py            run the Workbench from source
@@ -60,6 +68,30 @@ the project's. The window checks never touch the user's real settings (`%APPDATA
   Edit tool or a script file, and compile (`python -I -m py_compile`) after each change.
 - The help guide `help/dubrovnik_help.html` and `changelist.txt` must be updated with user-visible changes.
 - Windows paths and PowerShell/Git Bash differ; the user's shell in VS Code is PowerShell, tools here may run Bash.
+- Files in the working copy use CRLF (autocrlf; git stores LF). The Edit tool keeps CRLF; a script that inserts text
+  with plain newlines leaves mixed endings. Heredoc scripts lose backslashes: write script files with the Write tool.
+- **Dialogs:** create with `look.newToplevel(root)` (hidden, takes the display scale of the main window, title bar
+  coloured) and show once with `look.showCentered(win, root[, size=(w, h)])` (the size of a dialog that has a fixed
+  `geometry()`). CustomTkinter's own title-bar hide-and-show is switched off on purpose (it flashed every dialog), so a
+  light/dark change does not recolour an open dialog's title bar. A fixed-size dialog resizes itself after a change of
+  display scale (`look.fitToContent`: Windows ignores the size CustomTkinter sets while the mouse is down).
+  `dubScripts\gui_tests\manual_drag_dialog.py` drags a dialog between two displays with an injected mouse (manual).
+- **Status register 2:** devices differ (on some, command 35 is "Read Sector Lockdown Registers"; 05 may or may not take a
+  count). `Dubrovnik.status_forms()` asks the board's `help 35`, `5`, `31`, `1` once per connection (forgotten in
+  `get_part_number` and `SerComFrame.deviceDetected`). The Read panel's `read_mode` sets or clears the Quad Enable bit
+  before reading: kept as is on purpose (a warning or a Preference may come later). Commands typed in the Terminal go to
+  the board unchanged (only trimmed, the `#` comment cut, `clear` is local).
+- **One Documents folder:** `settings.documents_folder()` (asks Windows, OneDrive-aware) is used by the default script
+  folders, Results and Assistant. Tests patch it; never let a check read the real `Documents\Dubrovnik`
+  (`menu_dump.py` uses a temporary one).
+- Flaky window checks (also on old code, on a busy PC): `check_threaded_programming` (slow-board pause limit 400 ms),
+  `check_terminal_dialog`. Run twice before calling it a regression.
+- **GitHub:** `gh` is `C:\Program Files\GitHub CLI\gh.exe` (not on the Bash PATH); logged in as csabamoldvai. Release
+  recipe: version in `dubLibs/version.py`, heading in `changelist.txt`, version line in `README.md`, run the unit tests
+  and `run_all.py`, commit, push `main`, tag, push the tag, build with
+  `cmd //c "C:\MyLibs\Dubrovnik\packaging\build.bat"` (full path; takes a few minutes, use a background run), notes in
+  `packaging\release_notes_<version>.md`, then `gh release create v<version> <installer> --verify-tag --notes-file ...`.
+  Each of these only when the user says so.
 
 ## Where things are
 
@@ -73,4 +105,14 @@ the project's. The window checks never touch the user's real settings (`%APPDATA
 - Settings: one `dubLibs/settings.py` `Settings` object, made by `App` (`app.settings`) and given to whoever needs
   it (a constructor argument in the panels and the dialogs). It loads, validates and saves the
   file; `App.loadSettings` puts the entry-box values into the panels. `SerComFrame` only does the connection.
+- Where files live (the author's PC now uses the same layout as the users): program folder (`dubGui`, `dubLibs`, `tools\`
+  shared Tools menu entries, `docs\`, `help\`; installed: the PyInstaller bundle); `%APPDATA%\Dubrovnik` (settings
+  `dubrovnik_workbench.cfg`, `assistant.cfg`, `Datasheets\`, the old Classic `dubrovnik.cfg` read once);
+  `Documents\Dubrovnik\` `commandScripts`, `pythonScripts`, `myTools` (the user's Tools menu entries: a script whose
+  first line is `# TOOL: name`; `.txt`/`.scr` first line only, `.py` within 20 lines), `Results`, `Assistant`.
+  `dubScripts\` now only has `gui_tests`, `legacy`, `scratch`.
+- Ideas not done: a warning or Preference for the Quad Enable step of Read; rename the Configure Paths row "Documents"
+  (it is the program's `docs\`) to "Help documents"; put datasheets in `Documents\Dubrovnik\Datasheets` (decided not to
+  for now: OneDrive sync of confidential PDFs, network Documents); keep an eye on the CustomTkinter icon that pops into
+  a dialog's title bar about 200 ms after it opens.
 - `tools/` Tools-menu scripts; `tests/` unit tests and `tests/data/`; `help/` the F1 guide and `assistant_reference.md` (for the AI Assistant, not wired in yet); `docs/` Help > Documents.
