@@ -6,7 +6,7 @@ To release a new version:
   3. commit and tag it:  git tag v<VERSION>
 The About dialogs, the help file and the installer all read it from here.
 """
-VERSION = '1.4.2'
+VERSION = '1.4.3'
 
 if __name__ == '__main__':      # used by packaging\build.bat
     print(VERSION)

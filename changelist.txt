@@ -8,7 +8,7 @@ To release a new version: change VERSION in dubLibs\version.py, add an entry at
 the top of this file, commit, then tag the commit:  git tag v<VERSION>
 
 
-NEXT VERSION (not released yet, version number not set)
+VERSION 1.4.3                                                      2026-11-12
 -----------------------------------------------------------------------------
 Fixed:
   * Read failed with "invalid literal for int() with base 16" on devices where command 35 is
