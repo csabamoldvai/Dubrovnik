@@ -4,7 +4,7 @@ from tkinter import END, INSERT, Menu
 import customtkinter as ctk
 from dubGui.look import TERM_THEMES
 from dubGui.panels.base import LabeledFrame
-from dubLibs import run_cmd_script
+from dubLibs import datasheet, run_cmd_script
 from dubLibs.boardcom import BoardTimeout
 
 PROMPT = '>>> '
@@ -191,6 +191,11 @@ class Terminal(LabeledFrame):
             self.comm.send(cmdstr)
             resp = self.comm.response(removeCmd=True, removePrompt=True).strip()
             self.serCom.markAnswering()
+            # setpart changes the part the board works with ("Changing target part to ..."): show it
+            # in the status bar, so that Help > Datasheet looks for this part
+            part = datasheet.part_from_setpart(resp)
+            if part:
+                self.serCom.deviceDetected(part)
         except Exception as e:
             resp = f'error from boardcom: {e}'
             if isinstance(e, BoardTimeout):

@@ -129,6 +129,11 @@ the project's. The window checks never touch the user's real settings (`%APPDATA
   `StatusRegisterUnavailable` (a ValueError) and `read_mode` reads anyway with a note (the user said meaningless data
   is fine); any other odd reply, or a write that does not stick, is still an error. Commands typed in the Terminal go to
   the board unchanged (only trimmed, the `#` comment cut, `clear` is local).
+- **setpart and the status bar:** Help > Datasheet uses the `Device:` in the status bar (`serCom.serParams`), which
+  the board's start-up banner sets (`Terminal.watchBootMessage`). The Terminal's `setpart` command changes the board's
+  part without a banner, so `Terminal.execute` reads "Changing target part to <part>" (`datasheet.part_from_setpart`)
+  and calls `serCom.deviceDetected(PART)`. The board only accepts the exact part names it knows (`setpart at25sl128`
+  is refused, `at25sl128a` works).
 - **One Documents folder:** `settings.documents_folder()` (asks Windows, OneDrive-aware) is used by the default script
   folders, Results and Assistant. Tests patch it; never let a check read the real `Documents\Dubrovnik`
   (`menu_dump.py` uses a temporary one).

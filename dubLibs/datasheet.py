@@ -33,6 +33,14 @@ def part_from_status(text):
     return match.group(1) if match else ''
 
 
+def part_from_setpart(reply):
+    """The part in the board's answer to the setpart command ("Changing target part to
+    at25sl128a"), in upper case like the parts the board detects itself. '' if the reply is
+    something else, for example "Error: invalid arguments"."""
+    match = re.search(r'Changing target part to\s+(\S+)', reply or '', re.IGNORECASE)
+    return match.group(1).upper() if match else ''
+
+
 def build_url(template, part):
     """The address to open for part"""
     template = clean_url(template)
