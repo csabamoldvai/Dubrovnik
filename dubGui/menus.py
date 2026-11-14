@@ -165,8 +165,6 @@ FILE = [
         Item('loaded', 'No file loaded', state=DISABLED),     # names the loaded file
         Item('close_file', 'Close File', 'closeLoadedFile'),
     ], postcommand='refreshFileMenu'),
-    # a guide through programming the board's SD card with MfgTool2 (dubGui/dialogs/sd_wizard.py)
-    Item('sd_card', 'Program SD Card...', 'showSdWizard'),
     Submenu('scripts', 'Scripts', [
         Item('run_command', 'Run Command Script...', 'runScript'),
         Item('run_python', 'Run Python Script...', 'runPythonScript'),

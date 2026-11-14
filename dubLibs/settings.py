@@ -29,7 +29,7 @@ DEFAULTS = dict(
     appearance='system', terminalTheme='dark', showPanels=True,
     displayMode='Byte', commandScriptFolder='', pythonScriptFolder='', programFolder='',
     userToolsFolder='',
-    # File > Program SD Card: the folder with MfgTool2.exe, and where the last boot_image.sb came from
+    # Tools > Program SD Card: the folder with MfgTool2.exe, and where the last boot_image.sb came from
     mfgToolFolder='', sdImageFolder='',
     # Terminal look (Preferences > Terminal...). terminalTheme is one of TERM_CHOICES;
     # the three colours are used by the 'custom' theme.
@@ -86,7 +86,7 @@ class Settings:
                                          and the folder of the last file chosen
     userToolsDir                         a second folder for the Tools menu ('' = the default,
                                          Documents\\Dubrovnik\\myTools)
-    mfgToolDir                           the folder with MfgTool2.exe (File > Program SD Card; '' = not set)
+    mfgToolDir                           the folder with MfgTool2.exe (Tools > Program SD Card; '' = not set)
     sdImageDir                           the folder of the last boot_image.sb chosen there
     datasheetUrl
     folder, cfgFile                     where the settings are kept"""

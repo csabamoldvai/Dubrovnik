@@ -821,6 +821,9 @@ class App:
         separator) those of the user's own folder (Preferences > Configure Paths)"""
         menu = self.tools_menu
         menu.delete(0, 'end')
+        # the guide through programming the board's SD card (dubGui/dialogs/sd_wizard.py)
+        menu.add_command(label='Program SD Card...', command=self.showSdWizard)
+        menu.add_separator()
         builtin = tools.find_tools(toolsFolder())
         mine = tools.find_tools_within(self.myToolsFolder())
         names = {t['name'] for t in builtin}
@@ -1034,7 +1037,7 @@ class App:
                                    CFG_DEFAULTS)
 
     def showSdWizard(self):
-        """File > Program SD Card...: the guide through programming the board's SD card"""
+        """Tools > Program SD Card...: the guide through programming the board's SD card"""
         if self.sdWizard is not None and self.sdWizard.win.winfo_exists():
             self.sdWizard.win.focus_set()
             return
@@ -1059,8 +1062,10 @@ class App:
                     hint='Where File > Image Files > Open File starts.'),
             PathRow('userToolsDir', 'My tools', s.userToolsDir, settings_lib.default_folder('myTools'),
                     hint='Scripts with a "# TOOL: name" first line in this folder are added to the Tools menu.'),
+            PathRow('sdImageDir', 'SD card software', s.sdImageDir, settings_lib.default_folder('SD-card'),
+                    hint='Where Tools > Program SD Card looks for the releases (the zip from Teams).'),
             PathRow('mfgToolDir', 'SD card tool', s.mfgToolDir, '',
-                    hint='The folder with MfgTool2.exe (File > Program SD Card). Empty until you set it.'),
+                    hint='The folder with MfgTool2.exe (Tools > Program SD Card). Empty until you set it.'),
             PathRow('', 'Documents', docsFolder(), '', editable=False,
                     hint='The files of the Help > Documents menu.'),
             PathRow('', 'Program tools', toolsFolder(), '', editable=False,
@@ -1075,7 +1080,7 @@ class App:
         s = self.settings
         s.commandDir, s.pythonDir = values['commandDir'], values['pythonDir']
         s.programDir, s.userToolsDir = values['programDir'], values['userToolsDir']
-        s.mfgToolDir = values['mfgToolDir']
+        s.mfgToolDir, s.sdImageDir = values['mfgToolDir'], values['sdImageDir']
         s.save()
         self.showStatus('Paths saved')
 

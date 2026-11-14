@@ -1,4 +1,4 @@
-"""File > Program SD Card...: a guide through programming the board's SD card with MfgTool2.
+"""Tools > Program SD Card...: a guide through programming the board's SD card with MfgTool2.
 
 The programming itself is done by NXP's MfgTool2.exe (it has no command line and its result
 cannot be read), so this window walks the user through the steps, one page at a time, and does
@@ -19,6 +19,7 @@ import customtkinter as ctk
 
 from dubGui.look import newToplevel, showCentered
 from dubLibs import sd_card
+from dubLibs.settings import default_folder
 
 GREEN, RED, AMBER, GREY = '#2E7D32', '#C62828', '#B26A00', ('gray35', 'gray65')
 WRAP = 640
@@ -33,14 +34,16 @@ def launch(exe, folder):
 
 class SdWizard:
     """The window is built when the object is created; win is the window.
-    root: the parent window. settings: the Settings object (mfgToolDir, sdImageDir, save()).
+    root: the parent window. settings: the Settings object (mfgToolDir, sdImageDir).
     onPaths(): opens Preferences > Configure Paths. log(text): writes a line to the Terminal.
     mark(), textSince(mark): a position in the Terminal text and the text added after it."""
 
     def __init__(self, root, settings, onPaths, log, mark, textSince):
         self.root, self.settings = root, settings
         self.onPaths, self.log, self.mark, self.textSince = onPaths, log, mark, textSince
-        self.sbPath, self.release, self.installNote = '', None, ''
+        self.chosen = None              # the sd_card.Release that was chosen
+        self.release = None             # its date (datetime.date) or None
+        self.listed = []                # the releases found in the folder
         self.since = None               # Terminal position when the restart page was shown
         self.verdict = 'unknown'
         self.built = None
@@ -65,6 +68,7 @@ class SdWizard:
         self.buildButtons()
         self.win.protocol('WM_DELETE_WINDOW', self.close)
         self.win.bind('<Escape>', lambda _e: self.close())
+        self.fillReleases()
         self.show(0)
         showCentered(self.win, root)
         self.win.after(150, self.win.focus_set)
@@ -118,16 +122,23 @@ class SdWizard:
 
     def pageChoose(self, frame, number):
         self.heading(frame, number, 'Choose the software')
-        self.note(frame, 1, 'Choose the boot_image.sb of the release to program. It is in a folder '
-                  'named with the release date, for example 20260916.')
-        self.pathLabel = self.note(frame, 2, 'No file chosen.', GREY)
-        self.releaseLabel = self.note(frame, 3, '')
+        self.note(frame, 1, 'Choose the release to program: the zip you downloaded from Teams (put it '
+                  'in the folder below), a release folder, or a boot_image.sb file.')
+        self.folderLabel = self.note(frame, 2, '', GREY)
+        bar = ctk.CTkFrame(frame, fg_color='transparent')
+        bar.grid(row=3, column=0, sticky='w', pady=(0, 6))
+        self.releaseBox = ctk.CTkComboBox(bar, values=[''], width=380, font=self.font,
+                                          state='readonly', command=self.pickListed)
+        self.releaseBox.grid(row=0, column=0, padx=(0, 8))
+        ctk.CTkButton(bar, text='Browse...', font=self.font, command=self.browse
+                      ).grid(row=0, column=1)
+        self.pathLabel = self.note(frame, 4, 'No release chosen.', GREY)
+        self.releaseLabel = self.note(frame, 5, '')
         self.notes = ctk.CTkTextbox(frame, height=90, width=WRAP, font=self.font, wrap='word')
-        self.notes.grid(row=4, column=0, sticky='w', pady=(0, 6))
+        self.notes.grid(row=6, column=0, sticky='w', pady=(0, 6))
         self.notes.configure(state='disabled')
-        self.toolLabel = self.note(frame, 5, '', RED)
-        self.buttonRow(frame, 6, [('Browse...', self.browse),
-                                  ('Open Configure Paths...', self.onPaths),
+        self.toolLabel = self.note(frame, 7, '', RED)
+        self.buttonRow(frame, 8, [('Open Configure Paths...', self.onPaths),
                                   ('Check the tool again', self.update)])
 
     def pageBoard(self, frame, number):
@@ -135,6 +146,7 @@ class SdWizard:
         self.installLabel = self.note(frame, 1, '', GREEN)
         self.steps(frame, number, 2, [
             'Turn off the board (move the power switch to OFF).',
+            'Unplug all USB cables to completely remove power from the board.',
             'Insert an SD card into Dubrovnik (if not already in).',
             'Set DIP switch SW5 to OFF-OFF-OFF-OFF (from ON-OFF-ON-OFF).',
             'Plug a micro USB cable into the connector labeled "USB OTG"  (this one first: order matters).',
@@ -155,8 +167,9 @@ class SdWizard:
         self.heading(frame, number, 'Program the SD card')
         self.steps(frame, number, 1, [
             'Follow the prompts of MfgTool2 and wait until it has finished.',
+            'Click Stop in MfgTool2.',
             'Click Exit in MfgTool2.'])
-        self.note(frame, 3, 'Did a GREEN bar appear in MfgTool2?  If yes, click "The bar was green". '
+        self.note(frame, 4, 'Did a GREEN bar appear in MfgTool2?  If yes, click "The bar was green". '
                   'If it was red or nothing happened, click "It failed".')
 
     def pageRestart(self, frame, number):
@@ -200,7 +213,7 @@ class SdWizard:
         if self.index == 0:
             problem = sd_card.tool_problem(self.settings.mfgToolDir)
             self.toolLabel.configure(text=problem or '')
-            ready = bool(self.sbPath) and problem is None
+            ready = self.chosen is not None and problem is None
         else:
             ready = all(var.get() for var in self.checks[self.index])
         self.btnNext.configure(state='normal' if ready else 'disabled')
@@ -221,41 +234,79 @@ class SdWizard:
 
     # ---- what the pages do -----------------------------------------------------------------
 
-    def browse(self):
+    def releaseFolder(self):
+        """Where the releases are: Preferences > Configure Paths > SD card software, or by default
+        Documents\\Dubrovnik\\SD-card (made if it is not there)"""
         folder = self.settings.sdImageDir
+        if folder and os.path.isdir(folder):
+            return folder
+        folder = default_folder('SD-card')
+        try:
+            os.makedirs(folder, exist_ok=True)
+        except OSError:
+            pass                        # the list is then empty and Browse still works
+        return folder
+
+    def fillReleases(self):
+        """Lists the releases in the folder, newest first, and chooses the newest"""
+        folder = self.releaseFolder()
+        self.folderLabel.configure(text=f'Folder: {folder}')
+        self.listed = sd_card.find_releases(folder)
+        if self.listed:
+            self.releaseBox.configure(values=[r.label for r in self.listed])
+            self.releaseBox.set(self.listed[0].label)
+            self.setRelease(self.listed[0])
+        else:
+            text = 'No release found in this folder: put the zip from Teams here, or use Browse'
+            self.releaseBox.configure(values=[text])
+            self.releaseBox.set(text)
+
+    def pickListed(self, label):
+        for release in self.listed:
+            if release.label == label:
+                self.setRelease(release)
+
+    def browse(self):
+        """Choose a zip or a boot_image.sb from anywhere (the dialog starts in the releases
+        folder; the folder setting is not changed)"""
         path = askopenfilename(
-            title='Select boot_image.sb', initialdir=folder if os.path.isdir(folder) else None,
-            filetypes=[('Boot image', '*.sb'), ('All files', '*.*')])
+            title='Select the release (zip from Teams, or boot_image.sb)',
+            initialdir=self.releaseFolder(),
+            filetypes=[('Release', '*.zip *.sb'), ('All files', '*.*')])
         if not path:
             return
-        path = os.path.normpath(path)
-        self.settings.sdImageDir = os.path.dirname(path)        # start here next time
-        self.settings.save()
-        self.setImage(path)
+        try:
+            release = sd_card.open_release(path)
+        except sd_card.ReleaseError as e:
+            showerror('Program SD Card', f'This cannot be used:\n{path}\n\n{e}', parent=self.win)
+            return
+        self.releaseBox.set(release.label)
+        self.setRelease(release)
 
-    def setImage(self, path):
-        self.sbPath = path
-        self.release = sd_card.release_date(path)
-        self.pathLabel.configure(text=path, text_color=self.textColor)
+    def setRelease(self, release):
+        self.chosen = release
+        self.release = release.date
+        self.pathLabel.configure(text=release.path, text_color=self.textColor)
         if self.release:
             self.releaseLabel.configure(
                 text=f'Release date: {self.release:%Y-%m-%d}', text_color=self.textColor)
         else:
             self.releaseLabel.configure(
-                text='The name of the folder is not a date (yyyymmdd), so the version cannot be '
-                     'checked automatically at the end.', text_color=AMBER)
-        text = sd_card.read_relnotes(os.path.dirname(path))
+                text='The name is not a date (yyyymmdd), so the version cannot be checked '
+                     'automatically at the end.', text_color=AMBER)
+        text = release.notes()
         self.notes.configure(state='normal')
         self.notes.delete('1.0', 'end')
-        self.notes.insert('1.0', text if text else 'No release notes (relnotes.docx) in this folder.')
+        self.notes.insert('1.0', text if text else 'No release notes (relnotes.docx) with this release.')
         self.notes.configure(state='disabled')
         self.update()
 
     def install(self):
-        """Copies the chosen file into the tool's profile as boot_image.sb; False if that failed"""
+        """Copies the image of the chosen release into the tool's profile as boot_image.sb; False
+        if that failed"""
         try:
-            target, backup = sd_card.install_image(self.sbPath, self.settings.mfgToolDir)
-        except OSError as e:
+            target, backup = self.chosen.install(self.settings.mfgToolDir)
+        except (OSError, sd_card.ReleaseError) as e:
             showerror('Program SD Card', f'The file could not be copied:\n{e}', parent=self.win)
             return False
         note = f'{sd_card.IMAGE_NAME} of this release is in place:\n{target}'
@@ -279,7 +330,7 @@ class SdWizard:
                     '  - DIP switch SW5 is OFF-OFF-OFF-OFF\n'
                     '  - USB OTG was plugged in first, before the board was switched on\n'
                     '  - MfgTool2 said "HID-compliant vendor-defined device"\n\n'
-                    'Then start again from File > Program SD Card.', parent=self.win)
+                    'Then start again from Tools > Program SD Card.', parent=self.win)
         self.log('SD card programming failed (MfgTool2 did not show the green bar).')
         self.close()
 

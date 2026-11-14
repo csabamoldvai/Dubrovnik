@@ -129,9 +129,10 @@ the project's. The window checks never touch the user's real settings (`%APPDATA
 - Flaky window checks (also on old code, on a busy PC): `check_threaded_programming` (slow-board pause limit 400 ms),
   `check_terminal_dialog`, `check_focus_keys` (needs real keyboard focus: Windows may refuse it while another window
   is in front or the user is typing). Run twice before calling it a regression.
-- **SD card programming** (File > Program SD Card..., branch `program-sd-card`): `dubGui/dialogs/sd_wizard.py` (six
-  pages with tick boxes) and `dubLibs/sd_card.py` (no GUI: tool folder check, release date from the `yyyymmdd`
-  folder name, text of `relnotes.docx` with DOCTYPE/entities refused, copy as `boot_image.sb` with a `.bak`, build
+- **SD card programming** (Tools > Program SD Card..., branch `program-sd-card`): `dubGui/dialogs/sd_wizard.py` (six
+  pages with tick boxes) and `dubLibs/sd_card.py` (no GUI: a `Release` is a Teams zip (`20260918.zip` holding `20260918/boot_image.sb` and
+  `relnotes.docx`, read from the zip), a folder or a bare .sb; releases live in `Documents\Dubrovnik\SD-card`; date from the
+  `yyyymmdd` name, text of `relnotes.docx` with DOCTYPE/entities refused, copy as `boot_image.sb` via a temp file with a `.bak`, build
   date from the board's banner `Flash Memory Test Bench - Dec  5 2024 17:51:33`). NXP's MfgTool2.exe has no command
   line and its result cannot be read, so the user is asked whether the bar was green. The tool is not bundled
   (licence unknown, versioned folder names); its folder is a Configure Paths row (`mfgToolDir`). The board prints
