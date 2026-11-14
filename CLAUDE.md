@@ -164,7 +164,10 @@ the project's. The window checks never touch the user's real settings (`%APPDATA
   file; `App.loadSettings` puts the entry-box values into the panels. `SerComFrame` only does the connection.
 - Where files live (the author's PC now uses the same layout as the users): program folder (`dubGui`, `dubLibs`, `tools\`
   shared Tools menu entries, `docs\`, `help\`; installed: the PyInstaller bundle); `%APPDATA%\Dubrovnik` (settings
-  `dubrovnik_workbench.cfg`, `assistant.cfg`, `Datasheets\`, the old Classic `dubrovnik.cfg` read once);
+  `dubrovnik_workbench.cfg`, `assistant.cfg`, the old Classic `dubrovnik.cfg` read once; the old `Datasheets\` is
+  still searched); `%LOCALAPPDATA%\Dubrovnik\Datasheets` (`settings.datasheet_folder()`: the user's datasheet PDFs, large
+  and per PC, so Local not Roaming; moved there from Roaming on the author's PC 2026-11-13; the installed program is in
+  `%LOCALAPPDATA%\Programs\Dubrovnik`; tests and the window checks redirect LOCALAPPDATA to a temp folder);
   `Documents\Dubrovnik\` `commandScripts`, `pythonScripts`, `myTools` (the user's Tools menu entries: a script whose
   first line is `# TOOL: name`; `.txt`/`.scr` first line only, `.py` within 20 lines), `Results`, `Assistant`.
   `dubScripts\` now only has `gui_tests`, `legacy`, `scratch`.

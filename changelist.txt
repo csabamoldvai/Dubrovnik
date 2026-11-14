@@ -8,6 +8,17 @@ To release a new version: change VERSION in dubLibs\version.py, add an entry at
 the top of this file, commit, then tag the commit:  git tag v<VERSION>
 
 
+VERSION 1.5.1                                              (in preparation)
+-----------------------------------------------------------------------------
+Changed:
+  * Datasheets: the folder for your own datasheet PDFs is now %LOCALAPPDATA%\Dubrovnik\Datasheets
+    (this PC only), not the Roaming folder. The PDFs are large and no use on another PC, and a
+    roaming profile would copy them at every logon and logoff. Help > Datasheet looks in the docs
+    folder, then there, then in the old place (%APPDATA%\Dubrovnik\Datasheets), so nothing you
+    have there is lost; move the files when you like. Preferences > Configure Paths has a new
+    row "Datasheets" with an Open button (the folder is made when you press it).
+
+
 VERSION 1.5.0                                                      2026-11-13
 -----------------------------------------------------------------------------
 New:

@@ -56,6 +56,15 @@ def default_folder(name):
     return os.path.join(documents_folder(), 'Dubrovnik', name)
 
 
+def datasheet_folder():
+    """The folder for datasheets that belong to this PC: %LOCALAPPDATA%\\Dubrovnik\\Datasheets (not
+    created here). Local, not Roaming: the PDFs are large and are no use on another PC, and a
+    roaming profile would copy them at every logon and logoff. Help > Datasheet also still looks in
+    the old place, Datasheets under the settings folder (%APPDATA%\\Dubrovnik)."""
+    base = os.getenv('LOCALAPPDATA') or os.path.join(os.path.expanduser('~'), 'AppData', 'Local')
+    return os.path.join(base, 'Dubrovnik', 'Datasheets')
+
+
 def documents_folder():
     """The user's Documents folder if there is one, else the current folder. Asks Windows, so
     it is the right one also when OneDrive or the company has moved Documents elsewhere. The

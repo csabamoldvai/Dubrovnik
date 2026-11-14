@@ -17,11 +17,13 @@ def tidy(folder):
 class PathRow:
     """One line of the window. key: name used in the result. value: the folder now set
     ('' = the default). default: what '' stands for (shown; may be ''). editable: False for
-    folders of the program that only get an Open button. hint: one line of help."""
+    folders of the program that only get an Open button. hint: one line of help. create: for a
+    folder that is not editable, Open makes it if it is not there yet (like the default of an
+    editable row)."""
 
-    def __init__(self, key, label, value, default, editable=True, hint=''):
+    def __init__(self, key, label, value, default, editable=True, hint='', create=False):
         self.key, self.label, self.value = key, label, value
-        self.default, self.editable, self.hint = default, editable, hint
+        self.default, self.editable, self.hint, self.create = default, editable, hint, create
 
 
 class PathsDialog:
@@ -91,7 +93,8 @@ class PathsDialog:
     def openFolder(self, folder, row):
         """Shows the folder in Explorer; the default folder of a row is made if it is
         not there yet (nothing is made for a folder somebody typed)"""
-        if not os.path.isdir(folder) and row.editable and folder and tidy(folder) == tidy(row.default):
+        if (not os.path.isdir(folder) and folder
+                and ((row.editable and tidy(folder) == tidy(row.default)) or row.create)):
             try:
                 os.makedirs(folder, exist_ok=True)
             except OSError as e:

@@ -1070,8 +1070,10 @@ class App:
                     hint='The files of the Help > Documents menu.'),
             PathRow('', 'Program tools', toolsFolder(), '', editable=False,
                     hint='The tools that come with the program.'),
+            PathRow('', 'Datasheets', settings_lib.datasheet_folder(), '', editable=False, create=True,
+                    hint='Put datasheet PDFs here (file name with the part number): Help > Datasheet opens them. This PC only.'),
             PathRow('', 'Settings', s.folder, '', editable=False,
-                    hint='Settings, saved parameters and the Assistant credentials (datasheet PDFs can go here too).'),
+                    hint='Settings, saved parameters and the Assistant credentials.'),
         ]
         self.pathsDialog = PathsDialog(self.root, rows, self.setPaths)
 
@@ -1167,10 +1169,11 @@ class App:
             showinfo('Datasheet', 'No device is shown in the status bar.\n\n'
                      'Connect the board with a device in the socket first.')
             return
-        # the docs folder, then %APPDATA%\Dubrovnik\Datasheets (also searched
-        # in a "datasheets" subfolder of docs); no admin rights needed there
+        # the docs folder (also searched in a "datasheets" subfolder), then the datasheet folder
+        # of this PC (%LOCALAPPDATA%\Dubrovnik\Datasheets), then the old place, Datasheets under
+        # the settings folder (%APPDATA%\Dubrovnik); no admin rights needed there
         local = datasheet.find_local(
-            (docsFolder(), self.settings.folder), part)
+            (docsFolder(), settings_lib.datasheet_folder(), self.settings.folder), part)
         if local:
             self.openDocument(local)
             self.showStatus(f'Datasheet for {part}: {os.path.basename(local)}', 6000)
