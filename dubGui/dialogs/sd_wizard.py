@@ -57,13 +57,14 @@ class SdWizard:
         self.win.transient(root)
         self.body = ctk.CTkFrame(self.win, fg_color='transparent')
         self.body.grid(row=0, column=0, padx=24, pady=(18, 4), sticky='nsew')
-        self.pages, self.checks = [], []
+        self.pages, self.checks, self.optional = [], [], []     # per page: required / optional ticks
         for number, build in enumerate((self.pageChoose, self.pageBoard, self.pageTool,
                                         self.pageProgram, self.pageRestart, self.pageCheck)):
             frame = ctk.CTkFrame(self.body, fg_color='transparent')
             frame.grid(row=0, column=0, sticky='nsew')      # all pages in one cell: the window
             self.pages.append(frame)                        # is as big as the biggest page
             self.checks.append([])
+            self.optional.append([])
             build(frame, number)
         self.buildButtons()
         self.win.protocol('WM_DELETE_WINDOW', self.close)
@@ -87,13 +88,14 @@ class SdWizard:
         return label
 
     def steps(self, frame, number, first_row, texts):
-        """A tick box for each step; Next waits until they are all ticked"""
+        """A tick box for each step; Next waits until they are all ticked, except the steps that
+        start with "[Optional]" (those can be left unticked)"""
         for offset, text in enumerate(texts):
             var = ctk.BooleanVar(value=False)
             box = ctk.CTkCheckBox(frame, text=text, variable=var, font=self.font,
                                   command=self.update)
             box.grid(row=first_row + offset, column=0, sticky='w', pady=3)
-            self.checks[number].append(var)
+            (self.optional if text.startswith('[Optional]') else self.checks)[number].append(var)
         return first_row + len(texts)
 
     def buttonRow(self, frame, row, buttons):
@@ -166,21 +168,23 @@ class SdWizard:
     def pageProgram(self, frame, number):
         self.heading(frame, number, 'Program the SD card')
         self.steps(frame, number, 1, [
-            'Follow the prompts of MfgTool2 and wait until it has finished.',
+            'Click Start in MfgTool2 and wait until it has finished.',
+            'Note the color of the bars:  GREEN = PASS,  RED = FAIL.',
             'Click Stop in MfgTool2.',
             'Click Exit in MfgTool2.'])
-        self.note(frame, 4, 'Did a GREEN bar appear in MfgTool2?  If yes, click "The bar was green". '
-                  'If it was red or nothing happened, click "It failed".')
+        self.note(frame, 5, 'Was the result GREEN (PASS)?  If yes, click "The bar was green". '
+                  'If it was RED (FAIL) or nothing happened, click "It failed".')
 
     def pageRestart(self, frame, number):
         self.heading(frame, number, 'Restart the board')
         self.steps(frame, number, 1, [
             'Turn off the board.',
             'Unplug the USB cable from the connector labeled "USB OTG".',
+            '[Optional] Set DIP switch SW5 to ON-OFF-ON-OFF: the board then starts by itself.',
             'Turn on the board.',
             'If the Terminal says the connection was lost, click Connect in the Serial Connection panel.',
-            'Press the RESET button.'])
-        self.note(frame, 6, 'The board prints a start-up message when it restarts. The next page '
+            'Press the RESET button (not needed after the optional SW5 step).'])
+        self.note(frame, 7, 'The board prints a start-up message when it restarts. The next page '
                   'reads it from the Terminal.', GREY)
 
     def pageCheck(self, frame, number):
