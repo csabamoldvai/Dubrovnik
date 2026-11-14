@@ -165,14 +165,12 @@ the project's. The window checks never touch the user's real settings (`%APPDATA
 - Where files live (the author's PC now uses the same layout as the users): program folder (`dubGui`, `dubLibs`, `tools\`
   shared Tools menu entries, `docs\`, `help\`; installed: the PyInstaller bundle); `%APPDATA%\Dubrovnik` (settings
   `dubrovnik_workbench.cfg`, `assistant.cfg`, the old Classic `dubrovnik.cfg` read once; the old `Datasheets\` is
-  still searched); `%LOCALAPPDATA%\Dubrovnik\Datasheets` (`settings.datasheet_folder()`: the user's datasheet PDFs, large
-  and per PC, so Local not Roaming; moved there from Roaming on the author's PC 2026-11-13; the installed program is in
-  `%LOCALAPPDATA%\Programs\Dubrovnik`; tests and the window checks redirect LOCALAPPDATA to a temp folder);
-  `Documents\Dubrovnik\` `commandScripts`, `pythonScripts`, `myTools` (the user's Tools menu entries: a script whose
+  still searched; the installed program is in `%LOCALAPPDATA%\Programs\Dubrovnik`);
+  `Documents\Dubrovnik\` `commandScripts`, `pythonScripts`, `imageFiles`, `SD-card`, `Datasheets` (`settings.datasheet_folder()`: the user's
+  datasheet PDFs; decided 2026-11-13: users look in Documents, not AppData, and the company protects OneDrive), `myTools` (the user's Tools menu entries: a script whose
   first line is `# TOOL: name`; `.txt`/`.scr` first line only, `.py` within 20 lines), `Results`, `Assistant`.
   `dubScripts\` now only has `gui_tests`, `legacy`, `scratch`.
 - Ideas not done: a Preference to turn the automatic Quad Enable change off (the note in the Terminal is done); rename the Configure Paths row "Documents"
-  (it is the program's `docs\`) to "Help documents"; put datasheets in `Documents\Dubrovnik\Datasheets` (decided not to
-  for now: OneDrive sync of confidential PDFs, network Documents); keep an eye on the CustomTkinter icon that pops into
+  (it is the program's `docs\`) to "Help documents"; keep an eye on the CustomTkinter icon that pops into
   a dialog's title bar about 200 ms after it opens.
 - `tools/` Tools-menu scripts; `tests/` unit tests and `tests/data/`; `help/` the F1 guide and `assistant_reference.md` (for the AI Assistant, not wired in yet); `docs/` Help > Documents.

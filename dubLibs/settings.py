@@ -57,12 +57,11 @@ def default_folder(name):
 
 
 def datasheet_folder():
-    """The folder for datasheets that belong to this PC: %LOCALAPPDATA%\\Dubrovnik\\Datasheets (not
-    created here). Local, not Roaming: the PDFs are large and are no use on another PC, and a
-    roaming profile would copy them at every logon and logoff. Help > Datasheet also still looks in
+    """The folder for the user's datasheet PDFs: Documents\\Dubrovnik\\Datasheets (not created
+    here), next to the other folders the user works with, where people look for their files (and
+    where OneDrive backs them up, if the company does that). Help > Datasheet also still looks in
     the old place, Datasheets under the settings folder (%APPDATA%\\Dubrovnik)."""
-    base = os.getenv('LOCALAPPDATA') or os.path.join(os.path.expanduser('~'), 'AppData', 'Local')
-    return os.path.join(base, 'Dubrovnik', 'Datasheets')
+    return default_folder('Datasheets')
 
 
 def documents_folder():

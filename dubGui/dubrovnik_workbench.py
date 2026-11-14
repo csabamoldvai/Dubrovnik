@@ -1071,7 +1071,7 @@ class App:
             PathRow('', 'Program tools', toolsFolder(), '', editable=False,
                     hint='The tools that come with the program.'),
             PathRow('', 'Datasheets', settings_lib.datasheet_folder(), '', editable=False, create=True,
-                    hint='Put datasheet PDFs here (file name with the part number): Help > Datasheet opens them. This PC only.'),
+                    hint='Put datasheet PDFs here (file name with the part number): Help > Datasheet opens them.'),
             PathRow('', 'Settings', s.folder, '', editable=False,
                     hint='Settings, saved parameters and the Assistant credentials.'),
         ]
@@ -1169,9 +1169,9 @@ class App:
             showinfo('Datasheet', 'No device is shown in the status bar.\n\n'
                      'Connect the board with a device in the socket first.')
             return
-        # the docs folder (also searched in a "datasheets" subfolder), then the datasheet folder
-        # of this PC (%LOCALAPPDATA%\Dubrovnik\Datasheets), then the old place, Datasheets under
-        # the settings folder (%APPDATA%\Dubrovnik); no admin rights needed there
+        # the docs folder (also searched in a "datasheets" subfolder), then the user's datasheet
+        # folder (Documents\Dubrovnik\Datasheets), then the old place, Datasheets under the
+        # settings folder (%APPDATA%\Dubrovnik); no admin rights needed there
         local = datasheet.find_local(
             (docsFolder(), settings_lib.datasheet_folder(), self.settings.folder), part)
         if local:
