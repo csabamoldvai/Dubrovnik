@@ -236,6 +236,42 @@ class QuadEnableNoteTests(unittest.TestCase):
             self.du.read_mode(board, 'Quad (114)')
         self.assertEqual(self.du.notes, [])
 
+    def no_device_board(self):
+        """A board with no flash device: it knows no status register command at all"""
+        board = FakeBoard(STANDARD)
+        board.answer = lambda cmd: 'Error: command not recognized'
+        return board
+
+    def test_no_device_the_read_goes_ahead_with_a_note(self):
+        reads = []
+        self.du.read = lambda *args, **kwargs: reads.append(args) or 'data'
+        for mode in ('SPI', 'Dual', 'Quad (114)', 'Quad (144)'):
+            reads.clear()
+            self.du.read_mode(self.no_device_board(), mode)
+            self.assertEqual(len(reads), 1, mode)
+            self.assertEqual(len(self.du.notes), 1, mode)
+            self.assertIn('Quad Enable not checked', self.du.notes[0])
+            self.assertIn('flash device in the socket', self.du.notes[0])
+
+    def test_no_device_the_status_error_names_the_likely_cause(self):
+        with self.assertRaises(dubrovnik.StatusRegisterUnavailable) as caught:
+            self.du.read_status2(self.no_device_board())
+        self.assertIn('flash device in the socket', str(caught.exception))
+        self.assertIsInstance(caught.exception, ValueError)         # scripts that catch it still work
+
+    def test_no_device_the_board_is_asked_again_next_time(self):
+        board = self.no_device_board()
+        self.du.read_mode(board, 'SPI')
+        self.assertIsNone(self.du.stsForms)
+
+    def test_another_odd_reply_is_still_an_error(self):
+        board = FakeBoard(STANDARD)
+        board.answer = lambda cmd: (STANDARD[cmd.split()[1]] if cmd.startswith('help ') else 'garbage??')
+        with self.assertRaises(ValueError) as caught:
+            self.du.read_mode(board, 'SPI')
+        self.assertNotIsInstance(caught.exception, dubrovnik.StatusRegisterUnavailable)
+        self.assertEqual(self.du.notes, [])
+
     def test_an_unsupported_mode_clears_the_old_note(self):
         self.du.notes = ['old']
         with self.assertRaises(ValueError):

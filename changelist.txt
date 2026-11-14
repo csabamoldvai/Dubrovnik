@@ -24,6 +24,11 @@ New:
     the Terminal now says so above the data, for example "(Quad Enable set: status register 2 was
     00, now 02)". Nothing is shown when the bit was already right. Scripts (dub.read) print the
     same line. Before, the bit was changed silently.
+  * Read on a board with no flash device in the socket: the board does not know the status register
+    commands. Before, the Read stopped with 'Unexpected reply to "35" (status register): Error:
+    command not recognized'. Now the read goes ahead (the data may be meaningless) and the Terminal
+    says "(Quad Enable not checked: ... Is a flash device in the socket?)". Any other trouble with
+    the status register (an odd reply, a write that does not stick) is still an error.
   * Help > Documents has a photo of the bare board, "Dubrovnik Rev C1 PCB" (top side). It opens
     in your picture viewer, where you can zoom in to read the part names and the boot-mode table.
 

@@ -780,6 +780,8 @@ for details of one command.</p>
       <td>The measured event is shorter than the minimum time shown by <code>config</code>. Make it longer, or make the monitor faster with <code>pmoncfg</code> (see <a href="#pmoncfg">The measurement time</a>).</td></tr>
   <tr><td>"Quad Enable could not be set"</td>
       <td>The flash did not accept the status-register write, or keeps its Quad Enable bit elsewhere. Use <code>help 31</code> and <code>help 01</code> to see the write commands, and the data sheet to find the bit.</td></tr>
+  <tr><td>"(Quad Enable not checked: the board does not know the status register commands ...)" above the data</td>
+      <td>The board answered the status register command with "command not recognized", usually because no flash device is in the socket (or it has not been detected yet; look for <code>Part info</code> in the Terminal after power-up or RESET). The read still runs, but the data may be meaningless. Insert the device and press RESET.</td></tr>
   <tr><td>A script stops with "error at line N"</td>
       <td>The board rejected that command. Run it by hand in the Terminal, and use <code>help &lt;command&gt;</code> to see the syntax it expects.</td></tr>
   <tr><td>"... is not a valid firmware image"</td>

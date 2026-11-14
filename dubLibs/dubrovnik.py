@@ -16,6 +16,11 @@ ERASE_EXPONENT = 1.183
 CHIP_ERASE_DEFAULT_S = 60       # when the capacity of the device is not known
 
 
+class StatusRegisterUnavailable(ValueError):
+    """The board does not know the status register command ("Error: command not recognized"),
+    typically because no flash device is in the socket (the command table depends on the device)"""
+
+
 class Dubrovnik:
     def __init__(self):
         self.pageSize = 0x100
@@ -612,6 +617,10 @@ class Dubrovnik:
             return int(reply.split()[-1], 16)
         except (ValueError, IndexError):
             self.forget_status_forms()
+            if 'not recognized' in reply.lower():
+                raise StatusRegisterUnavailable(
+                    f'The board does not know the status register command "{command}" '
+                    f'({reply.strip()!r}). Is a flash device in the socket?')
             raise ValueError(f'Unexpected reply to "{command}" (status register): '
                              f'{reply.strip()!r}')
 
@@ -649,6 +658,9 @@ class Dubrovnik:
         """Reads flash using the read opcode of spi_mode (a key of READ_OPCODES).
         Quad Enable is set for the quad modes and cleared for SPI and Dual. When that changes the
         bit, a line saying so is put in self.notes (it is emptied at the start of every call).
+        If the board does not know the status register commands (no device in the socket) the
+        read goes ahead and a note says the Quad Enable check was skipped; any other trouble
+        with the status register (an odd reply, a write that does not stick) is an error.
         Raises ValueError for a mode that is not supported."""
         self.notes = []
         if spi_mode not in self.READ_OPCODES:
@@ -657,6 +669,12 @@ class Dubrovnik:
         opcode = self.READ_OPCODES[spi_mode]
         try:
             changed = self.set_quad_enable(comm, isQuad)
+        except StatusRegisterUnavailable:
+            # No status register to look at (typically no device in the socket): read anyway,
+            # the data may be meaningless, and say that the Quad Enable check was skipped
+            changed = None
+            self.notes.append('(Quad Enable not checked: the board does not know the status '
+                              'register commands. Is a flash device in the socket?)')
         except IndexError:
             raise ValueError('Unexpected reply when reading status register 2')
         if changed:

@@ -124,7 +124,10 @@ the project's. The window checks never touch the user's real settings (`%APPDATA
   `get_part_number` and `SerComFrame.deviceDetected`). The Read panel's `read_mode` sets or clears the Quad Enable bit
   before reading and, when it really changes the bit, leaves a line in `du.notes` that the Read panel (`readText`) and
   `dub.read` print above the data (not in `textToDisplay`: that is parsed as board data). A pop-up warning was
-  rejected (modes are switched often); a Preference to turn the automatic change off may still come. Commands typed in the Terminal go to
+  rejected (modes are switched often); a Preference to turn the automatic change off may still come. With no
+  device in the socket the board answers `35` with "command not recognized": `status_byte` raises
+  `StatusRegisterUnavailable` (a ValueError) and `read_mode` reads anyway with a note (the user said meaningless data
+  is fine); any other odd reply, or a write that does not stick, is still an error. Commands typed in the Terminal go to
   the board unchanged (only trimmed, the `#` comment cut, `clear` is local).
 - **One Documents folder:** `settings.documents_folder()` (asks Windows, OneDrive-aware) is used by the default script
   folders, Results and Assistant. Tests patch it; never let a check read the real `Documents\Dubrovnik`
