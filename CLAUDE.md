@@ -1,8 +1,9 @@
 # Project notes for Claude Code sessions
 
 Dubrovnik Workbench: a PC program (Tkinter / CustomTkinter) for the Dubrovnik SPI flash test board.
-Current released version: 1.4.3 (1.4.4 is prepared on the pushed branch `new-features`, commit edeaa7d: version
-number set, not merged to `main`, not tagged, no installer built). Read `README.md` (overview), `FOLDERS.md` (what each folder is for) and
+Latest tag: `v1.4.4` (on `main`, installer built locally, not published on GitHub; the last GitHub release is 1.4.3).
+The next release will be **v1.5.0** (the user's decision: the SD card programming earns a minor bump); it is being
+built on branch `program-sd-card` and `dubLibs/version.py` still says 1.4.4 until the user says to bump it. Read `README.md` (overview), `FOLDERS.md` (what each folder is for) and
 `TODO_refactoring.md` (the code review and the planned refactoring) before changing code.
 
 ## Decisions already made (do not re-ask)

@@ -44,6 +44,7 @@ class SdWizard:
         self.chosen = None              # the sd_card.Release that was chosen
         self.release = None             # its date (datetime.date) or None
         self.listed = []                # the releases found in the folder
+        self.shownFolder = None         # the folder they were listed from
         self.since = None               # Terminal position when the restart page was shown
         self.verdict = 'unknown'
         self.built = None
@@ -69,6 +70,8 @@ class SdWizard:
         self.buildButtons()
         self.win.protocol('WM_DELETE_WINDOW', self.close)
         self.win.bind('<Escape>', lambda _e: self.close())
+        # coming back from Configure Paths: look at the tool folder (and the releases) again
+        self.win.bind('<FocusIn>', self.onFocus)
         self.fillReleases()
         self.show(0)
         showCentered(self.win, root)
@@ -140,8 +143,7 @@ class SdWizard:
         self.notes.grid(row=6, column=0, sticky='w', pady=(0, 6))
         self.notes.configure(state='disabled')
         self.toolLabel = self.note(frame, 7, '', RED)
-        self.buttonRow(frame, 8, [('Open Configure Paths...', self.onPaths),
-                                  ('Check the tool again', self.update)])
+        self.buttonRow(frame, 8, [('Open Configure Paths...', self.onPaths)])
 
     def pageBoard(self, frame, number):
         self.heading(frame, number, 'Prepare the board')
@@ -224,6 +226,16 @@ class SdWizard:
         if self.index == 3:
             self.btnFailed.configure(state='normal' if ready else 'disabled')
 
+    def onFocus(self, event):
+        """The window got the focus back (the user may have changed the folders in Configure Paths
+        meanwhile): on the first page check the tool folder again, and list the releases again if
+        the releases folder is another one now. Only for the window itself, not for every control
+        in it."""
+        if str(event.widget) == str(self.win) and self.index == 0:
+            if self.releaseFolder() != self.shownFolder:
+                self.fillReleases()
+            self.update()
+
     def next(self):
         if self.index == 0 and not self.install():
             return
@@ -254,6 +266,7 @@ class SdWizard:
     def fillReleases(self):
         """Lists the releases in the folder, newest first, and chooses the newest"""
         folder = self.releaseFolder()
+        self.shownFolder = folder
         self.folderLabel.configure(text=f'Folder: {folder}')
         self.listed = sd_card.find_releases(folder)
         if self.listed:
