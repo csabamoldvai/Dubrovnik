@@ -1062,6 +1062,8 @@ class App:
                     hint='Where File > Image Files > Open File starts.'),
             PathRow('userToolsDir', 'My tools', s.userToolsDir, settings_lib.default_folder('myTools'),
                     hint='Scripts with a "# TOOL: name" first line in this folder are added to the Tools menu.'),
+            PathRow('', 'Datasheets', settings_lib.datasheet_folder(), '', editable=False, create=True,
+                    hint='Put datasheet PDFs here (file name with the part number): Help > Datasheet opens them.'),
             PathRow('sdImageDir', 'SD card software', s.sdImageDir, settings_lib.default_folder('SD-card'),
                     hint='Where Tools > Program SD Card looks for the releases (the zip from Teams).'),
             PathRow('mfgToolDir', 'SD card tool', s.mfgToolDir, '',
@@ -1070,8 +1072,6 @@ class App:
                     hint='The files of the Help > Documents menu.'),
             PathRow('', 'Program tools', toolsFolder(), '', editable=False,
                     hint='The tools that come with the program.'),
-            PathRow('', 'Datasheets', settings_lib.datasheet_folder(), '', editable=False, create=True,
-                    hint='Put datasheet PDFs here (file name with the part number): Help > Datasheet opens them.'),
             PathRow('', 'Settings', s.folder, '', editable=False,
                     hint='Settings, saved parameters and the Assistant credentials.'),
         ]
