@@ -8,6 +8,13 @@ To release a new version: change VERSION in dubLibs\version.py, add an entry at
 the top of this file, commit, then tag the commit:  git tag v<VERSION>
 
 
+VERSION 1.4.5                                              (in preparation)
+-----------------------------------------------------------------------------
+New:
+  * Help > Documents has a photo of the bare board, "Dubrovnik Rev C1 PCB" (top side). It opens
+    in your picture viewer, where you can zoom in to read the part names and the boot-mode table.
+
+
 VERSION 1.4.4                                                      2026-11-13
 -----------------------------------------------------------------------------
 New:
