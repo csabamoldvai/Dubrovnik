@@ -1,9 +1,8 @@
 # Project notes for Claude Code sessions
 
 Dubrovnik Workbench: a PC program (Tkinter / CustomTkinter) for the Dubrovnik SPI flash test board.
-Latest tag: `v1.4.4` (on `main`, installer built locally, not published on GitHub; the last GitHub release is 1.4.3).
-The next release will be **v1.5.0** (the user's decision: the SD card programming earns a minor bump); it is being
-built on branch `program-sd-card` and `dubLibs/version.py` still says 1.4.4 until the user says to bump it. Read `README.md` (overview), `FOLDERS.md` (what each folder is for) and
+Latest tag: `v1.5.0` (SD card programming, Quad Enable notes; installer built locally, not published on GitHub; the
+last GitHub release is 1.4.3, and `v1.4.4` was built locally only). The next number is the user's choice. Read `README.md` (overview), `FOLDERS.md` (what each folder is for) and
 `TODO_refactoring.md` (the code review and the planned refactoring) before changing code.
 
 ## Decisions already made (do not re-ask)
@@ -18,13 +17,14 @@ built on branch `program-sd-card` and `dubLibs/version.py` still says 1.4.4 unti
   for new work ask which branch to use (1.4.3 work went on branch `read-window-font-scaling`; small, clear changes
   were made straight on `main` when the user said so; still ask each time). Commit messages end with the
   Co-Authored-By line given by the harness.
-- **Version:** `dubLibs/version.py` is 1.4.3, released on GitHub 2026-11-12 (commit a7bcf87, tag `v1.4.3`, installer
-  `Dubrovnik-Setup-1.4.3.exe` attached). Also released on GitHub: 1.4.2 and 1.4.0. Tags `v1.4.0`, `v1.4.2`, `v1.4.3` are on
-  origin (the commit b138e70 of `v1.4.2` is titled "V2.4.2" by mistake; never move the tag). 1.2.3 was released 2026-10-15
-  (tag `v1.2.3`, installer only). Patch numbers (1.4.1, 1.4.2, 1.4.3) were used for bug-fix installers for the coworker;
-  the next number is the user's choice (the Assistant, working, is planned as 1.5). Change the version, tag, build the
-  installer and create a release only when the user says so. The tags `tested-on-board-1..8` mark commits the user tried
-  on the real board.
+- **Version:** `dubLibs/version.py` is 1.5.0 (tag `v1.5.0` on `main`, 2026-11-13: SD card programming, Quad Enable
+  notes; installer built locally, not published on GitHub). Released on GitHub: 1.4.3 (2026-11-12, commit a7bcf87, installer
+  `Dubrovnik-Setup-1.4.3.exe` attached), 1.4.2 and 1.4.0. `v1.4.4` was tagged and built for local use only. Tags `v1.4.0`,
+  `v1.4.2`, `v1.4.3`, `v1.4.4`, `v1.5.0` are on origin (the commit b138e70 of `v1.4.2` is titled "V2.4.2" by mistake; never
+  move a tag). 1.2.3 was released 2026-10-15 (tag `v1.2.3`, installer only). Patch numbers (1.4.1 to 1.4.4) were used
+  for bug-fix installers for the coworker; the next number is the user's choice (1.5.0 was a minor bump for a new
+  feature). Change the version, tag, build the installer and create a release only when the user says so. The tags
+  `tested-on-board-1..8` mark commits the user tried on the real board.
 - **Classic edition** was removed (first step of the refactoring). It lives on in tag `v1.2`; do not bring it back or
   add features for it. There is one program now: `dubGui/dubrovnik_workbench.py`.
 - **Refactoring** (Classic removed, `App` class, dialogs and panels in their own modules, `Settings` object, menu

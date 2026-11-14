@@ -8,7 +8,7 @@ To release a new version: change VERSION in dubLibs\version.py, add an entry at
 the top of this file, commit, then tag the commit:  git tag v<VERSION>
 
 
-VERSION 1.5.0                                              (in preparation)
+VERSION 1.5.0                                                      2026-11-13
 -----------------------------------------------------------------------------
 New:
   * Tools > Program SD Card...: a guide through programming the board's SD card with MfgTool2,
