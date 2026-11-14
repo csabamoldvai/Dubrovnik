@@ -267,6 +267,70 @@ class ReleaseTests(unittest.TestCase):
         names = [os.path.basename(r.path) for r in sd_card.find_releases(self.root)]
         self.assertEqual(names, ['20260918.zip', '20260916.zip', '20250101'])
 
+    def test_zip_with_the_image_in_a_flash_folder_and_the_notes_above_it(self):
+        path = os.path.join(self.root, '20250826.zip')       # like the real release of 2025-08-26
+        with zipfile.ZipFile(path, 'w') as archive:
+            archive.writestr('20250826/relnotes.docx', notes_docx(['Old release notes']))
+            archive.writestr('20250826/Flash/boot_image.sb', b'flash image')
+        release = sd_card.open_release(path)
+        self.assertEqual(release.member, '20250826/Flash/boot_image.sb')
+        self.assertEqual(release.notes_member, '20250826/relnotes.docx')
+        self.assertEqual(release.notes(), 'Old release notes')
+        self.assertEqual(release.date, datetime.date(2025, 8, 26))
+        target, _backup = release.install(make_tool(self.root))
+        with open(target, 'rb') as fh:
+            self.assertEqual(fh.read(), b'flash image')
+
+    def test_zip_notes_next_to_the_image_win_over_notes_further_up(self):
+        path = os.path.join(self.root, '20260916.zip')
+        with zipfile.ZipFile(path, 'w') as archive:
+            archive.writestr('relnotes.docx', notes_docx(['Top']))
+            archive.writestr('20260916/relnotes.docx', notes_docx(['Next to the image']))
+            archive.writestr('20260916/boot_image.sb', b'x')
+        self.assertEqual(sd_card.open_release(path).notes(), 'Next to the image')
+
+    def test_zip_notes_in_an_unrelated_folder_are_still_found(self):
+        path = os.path.join(self.root, '20260916.zip')
+        with zipfile.ZipFile(path, 'w') as archive:
+            archive.writestr('docs/relnotes.docx', notes_docx(['Elsewhere']))
+            archive.writestr('20260916/boot_image.sb', b'x')
+        self.assertEqual(sd_card.open_release(path).notes(), 'Elsewhere')
+
+    def test_folder_with_the_image_in_a_flash_folder_and_the_notes_above_it(self):
+        release_dir = os.path.join(self.root, '20250826')
+        make_release(os.path.join(release_dir, 'Flash'), '', data=b'flash image')
+        with open(os.path.join(release_dir, 'relnotes.docx'), 'wb') as fh:
+            fh.write(notes_docx(['Folder old notes']))
+        release = sd_card.open_release(release_dir)
+        self.assertEqual((release.kind, release.date), ('folder', datetime.date(2025, 8, 26)))
+        self.assertEqual(release.notes(), 'Folder old notes')
+        target, _backup = release.install(make_tool(self.root))
+        with open(target, 'rb') as fh:
+            self.assertEqual(fh.read(), b'flash image')
+
+    def test_teams_double_folder_with_flash_inside(self):
+        outer = os.path.join(self.root, '20250826')
+        inner = os.path.join(outer, '20250826')
+        make_release(os.path.join(inner, 'Flash'), '', data=b'deep image')
+        with open(os.path.join(inner, 'relnotes.docx'), 'wb') as fh:
+            fh.write(notes_docx(['Deep notes']))
+        release = sd_card.open_release(outer)
+        self.assertEqual(release.notes(), 'Deep notes')
+        self.assertEqual(release.date, datetime.date(2025, 8, 26))
+
+    def test_an_image_too_deep_is_not_found(self):
+        deep = os.path.join(self.root, '20260916', 'a', 'b', 'c', 'd')
+        make_release(deep, '', data=b'x')
+        with self.assertRaises(sd_card.ReleaseError):
+            sd_card.open_release(os.path.join(self.root, '20260916'))
+
+    def test_a_bare_sb_in_flash_finds_the_notes_one_folder_up(self):
+        release_dir = os.path.join(self.root, '20250826')
+        sb = make_release(os.path.join(release_dir, 'Flash'), '', data=b'x')
+        with open(os.path.join(release_dir, 'relnotes.docx'), 'wb') as fh:
+            fh.write(notes_docx(['Bare in flash']))
+        self.assertEqual(sd_card.open_release(sb).notes(), 'Bare in flash')
+
     def test_same_content_is_not_fooled_by_equal_size_and_time(self):
         a, b = os.path.join(self.root, 'a'), os.path.join(self.root, 'b')
         for path, data in ((a, b'old image'), (b, b'new image')):        # same size, different bytes

@@ -176,16 +176,19 @@ def install_image(sb_path, tool_folder):
 class Release:
     """One release of the board software: a .zip from Teams, a folder, or a boot_image.sb file.
     path: what the user chose. kind: 'zip', 'folder' or 'file'. date: datetime.date or None (from
-    the name 20260916). label: a short text for a list. Made by open_release()."""
+    the name 20260916). label: a short text for a list. image: the path of boot_image.sb (folder
+    and file). member, notes_member: names inside a zip. Made by open_release()."""
 
-    def __init__(self, path, kind, date, member=None, notes_member=None):
+    def __init__(self, path, kind, date, member=None, notes_member=None, image=None):
         self.path, self.kind, self.date = path, kind, date
-        self.member, self.notes_member = member, notes_member   # names inside a zip
+        self.member, self.notes_member, self.image = member, notes_member, image
         name = os.path.basename(path)
         self.label = {'zip': name, 'folder': f'{name}  (folder)', 'file': name}[kind]
 
     def notes(self, limit=3000):
-        """The text of relnotes.docx of this release, or None if there is none"""
+        """The text of relnotes.docx of this release, or None if there is none. It is looked for
+        next to boot_image.sb and then in the folders above it (some releases keep the image in a
+        subfolder such as 20250826/Flash/ and the notes in 20250826/)."""
         try:
             if self.kind == 'zip':
                 if not self.notes_member:
@@ -194,8 +197,16 @@ class Release:
                     if archive.getinfo(self.notes_member).file_size > MAX_DOCX_BYTES:
                         return None
                     return docx_text(archive.read(self.notes_member), limit)
-            folder = self.path if self.kind == 'folder' else os.path.dirname(self.path)
-            return read_relnotes(folder_with_image(folder) or folder, limit)
+            folder = os.path.dirname(self.image)
+            top = self.path if self.kind == 'folder' else os.path.dirname(folder)
+            while True:
+                text = read_relnotes(folder, limit)
+                if text is not None or os.path.normcase(folder) == os.path.normcase(top):
+                    return text
+                parent = os.path.dirname(folder)
+                if parent == folder:
+                    return None
+                folder = parent
         except (OSError, KeyError, zipfile.BadZipFile):
             return None
 
@@ -209,40 +220,56 @@ class Release:
                 return install_stream(lambda: archive.open(self.member), tool_folder, size)
             finally:
                 archive.close()
-        if self.kind == 'folder':
-            sb = os.path.join(folder_with_image(self.path) or self.path, IMAGE_NAME)
-        else:
-            sb = self.path
-        return install_image(sb, tool_folder)
+        return install_image(self.image, tool_folder)
 
 
-def folder_with_image(folder):
-    """folder itself, or its only subfolder (Teams puts 20260916 inside 20260916), whichever has
-    boot_image.sb; None if neither has"""
-    if os.path.isfile(os.path.join(folder, IMAGE_NAME)):
-        return folder
-    try:
-        inner = [os.path.join(folder, n) for n in os.listdir(folder)
-                 if os.path.isdir(os.path.join(folder, n))]
-    except OSError:
-        return None
-    if len(inner) == 1 and os.path.isfile(os.path.join(inner[0], IMAGE_NAME)):
-        return inner[0]
+def find_image(folder, max_depth=3):
+    """The path of the boot_image.sb nearest to the top of folder (looking up to max_depth folders
+    down: Teams may put 20260916 inside 20260916, and a release may keep it in a Flash folder);
+    None if there is none"""
+    base_depth = os.path.normpath(folder).count(os.sep)
+    found = []
+    for root, dirs, files in os.walk(folder):
+        depth = os.path.normpath(root).count(os.sep) - base_depth
+        if depth >= max_depth:
+            dirs[:] = []
+        for name in files:
+            if name.lower() == IMAGE_NAME:
+                found.append((depth, os.path.join(root, name)))
+    return min(found)[1] if found else None
+
+
+def date_from_parts(parts):
+    """The date in the nearest of these folder names (nearest = last), or None"""
+    for part in reversed(parts):
+        date = date_from_name(part)
+        if date:
+            return date
     return None
+
+
+def zip_dir(name):
+    """The folder part of a name inside a zip ('' for the top)"""
+    return name.replace('\\', '/').rpartition('/')[0]
 
 
 def zip_members(archive):
     """(boot image member, release notes member or None) of a zip: the boot_image.sb nearest to the
-    top, and the relnotes.docx in the same folder. Raises ReleaseError if there is no boot image."""
+    top, and the relnotes.docx next to it or, failing that, in the nearest folder above it (or the
+    nearest to the top if none is above). Raises ReleaseError if there is no boot image."""
     names = [i.filename for i in archive.infolist() if not i.is_dir()]
     images = sorted((n for n in names if n.replace('\\', '/').split('/')[-1].lower() == IMAGE_NAME),
                     key=lambda n: n.count('/'))
     if not images:
         raise ReleaseError(f'There is no {IMAGE_NAME} in the zip file.')
     image = images[0]
-    prefix = image[:len(image) - len(IMAGE_NAME)]
-    notes = next((n for n in names if n.lower() == (prefix + RELNOTES_NAME).lower()), None)
-    return image, notes
+    image_dir = zip_dir(image)
+    notes = [n for n in names if n.replace('\\', '/').split('/')[-1].lower() == RELNOTES_NAME]
+    above = [n for n in notes if zip_dir(n) == '' or image_dir == zip_dir(n)
+             or image_dir.startswith(zip_dir(n) + '/')]
+    if above:
+        return image, max(above, key=lambda n: len(zip_dir(n)))     # the nearest to the image
+    return image, (min(notes, key=lambda n: n.count('/')) if notes else None)
 
 
 def open_release(path):
@@ -251,20 +278,20 @@ def open_release(path):
     path = os.path.normpath(path)
     try:
         if os.path.isdir(path):
-            inner = folder_with_image(path)
-            if inner is None:
+            image = find_image(path)
+            if image is None:
                 raise ReleaseError(f'There is no {IMAGE_NAME} in the folder.')
-            return Release(path, 'folder', date_from_name(os.path.basename(path))
-                           or date_from_name(os.path.basename(inner)))
+            inside = os.path.relpath(os.path.dirname(image), path)
+            parts = [os.path.basename(path)] + ([] if inside == '.' else inside.split(os.sep))
+            return Release(path, 'folder', date_from_parts(parts), image=image)
         if path.lower().endswith('.zip'):
             with zipfile.ZipFile(path) as archive:
                 member, notes = zip_members(archive)
-            parts = member.replace('\\', '/').split('/')
-            date = (date_from_name(parts[-2]) if len(parts) > 1 else None) \
-                or date_from_name(os.path.splitext(os.path.basename(path))[0])
+            date = (date_from_parts(zip_dir(member).split('/'))
+                    or date_from_name(os.path.splitext(os.path.basename(path))[0]))
             return Release(path, 'zip', date, member, notes)
         if os.path.isfile(path):
-            return Release(path, 'file', release_date(path))
+            return Release(path, 'file', release_date(path), image=path)
     except zipfile.BadZipFile as e:
         raise ReleaseError(f'The zip file is damaged: {e}') from e
     except OSError as e:
