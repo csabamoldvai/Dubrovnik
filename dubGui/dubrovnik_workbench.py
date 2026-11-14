@@ -29,6 +29,7 @@ from dubLibs import dubrovnik  # instead of "from dubLibs import Dubrovnik as du
 from dubGui import menus
 from dubGui.dialogs import messages
 from dubGui.dialogs.assistant_settings import AssistantSettingsDialog
+from dubGui.dialogs.sd_wizard import SdWizard
 from dubGui.dialogs.assistant_window import AssistantWindow, ScriptReview
 from dubGui.dialogs.file_viewer import FileViewer
 from dubGui.dialogs.hex_dialog import HexDialog
@@ -328,6 +329,7 @@ class App:
         self.fileViewer = None
         self.hexDialog = None
         self.pathsDialog = None
+        self.sdWizard = None
         self.fontCache = []
         self.termDialog = None
         self.scriptPreview = None
@@ -1030,6 +1032,14 @@ class App:
             return
         self.hexDialog = HexDialog(self.root, self.settings, self.termColors,
                                    CFG_DEFAULTS)
+
+    def showSdWizard(self):
+        """File > Program SD Card...: the guide through programming the board's SD card"""
+        if self.sdWizard is not None and self.sdWizard.win.winfo_exists():
+            self.sdWizard.win.focus_set()
+            return
+        self.sdWizard = SdWizard(self.root, self.settings, self.showPathsDialog,
+                                 self.term.displayText, self.term.endMark, self.term.textSince)
 
     def showPathsDialog(self):
         """Preferences > Configure Paths...: where the script and image file dialogs start,

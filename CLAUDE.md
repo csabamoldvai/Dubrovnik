@@ -127,7 +127,15 @@ the project's. The window checks never touch the user's real settings (`%APPDATA
   folders, Results and Assistant. Tests patch it; never let a check read the real `Documents\Dubrovnik`
   (`menu_dump.py` uses a temporary one).
 - Flaky window checks (also on old code, on a busy PC): `check_threaded_programming` (slow-board pause limit 400 ms),
-  `check_terminal_dialog`. Run twice before calling it a regression.
+  `check_terminal_dialog`, `check_focus_keys` (needs real keyboard focus: Windows may refuse it while another window
+  is in front or the user is typing). Run twice before calling it a regression.
+- **SD card programming** (File > Program SD Card..., branch `program-sd-card`): `dubGui/dialogs/sd_wizard.py` (six
+  pages with tick boxes) and `dubLibs/sd_card.py` (no GUI: tool folder check, release date from the `yyyymmdd`
+  folder name, text of `relnotes.docx` with DOCTYPE/entities refused, copy as `boot_image.sb` with a `.bak`, build
+  date from the board's banner `Flash Memory Test Bench - Dec  5 2024 17:51:33`). NXP's MfgTool2.exe has no command
+  line and its result cannot be read, so the user is asked whether the bar was green. The tool is not bundled
+  (licence unknown, versioned folder names); its folder is a Configure Paths row (`mfgToolDir`). The board prints
+  the banner by itself after RESET; the wizard reads it from the Terminal text after a mark (`endMark`/`textSince`).
 - **GitHub:** `gh` is `C:\Program Files\GitHub CLI\gh.exe` (not on the Bash PATH); logged in as csabamoldvai. Release
   recipe: version in `dubLibs/version.py`, heading in `changelist.txt`, version line in `README.md`, run the unit tests
   and `run_all.py`, commit, push `main`, tag, push the tag, build with
@@ -140,10 +148,10 @@ the project's. The window checks never touch the user's real settings (`%APPDATA
 - `dubGui/` the program: `dubrovnik_workbench.py` (the `App` class: menus, actions, start-up; a compact launcher next
   to it), `look.py` (colours and widget styles), `menus.py` (the menus as tables), `panels/` (one module per panel: `serial_panel`, `erase_panel`,
   `program_panel`, `read_panel`, `terminal`, base class in `base`) and `dialogs/` (one module per window: `messages`,
-  `progress`, `hex_dialog`, `file_viewer`, `terminal_dialog`, `assistant_window`, `assistant_settings`, `script_preview`). Panels and dialogs get only what they
+  `progress`, `hex_dialog`, `file_viewer`, `terminal_dialog`, `assistant_window`, `assistant_settings`, `script_preview`, `sd_wizard`). Panels and dialogs get only what they
   need as arguments (no `self.app`).
   `dubLibs/` shared libraries without GUI code (`boardcom`, `dubrovnik`,
-  `firmware_image`, `hexdump`, `run_py_script`, `cfgfile`, `termstyle`, `datasheet`, `assistant`, `assistant_config`, `fields`, `settings`)
+  `firmware_image`, `hexdump`, `run_py_script`, `cfgfile`, `termstyle`, `datasheet`, `assistant`, `assistant_config`, `fields`, `settings`, `sd_card`)
 - Settings: one `dubLibs/settings.py` `Settings` object, made by `App` (`app.settings`) and given to whoever needs
   it (a constructor argument in the panels and the dialogs). It loads, validates and saves the
   file; `App.loadSettings` puts the entry-box values into the panels. `SerComFrame` only does the connection.

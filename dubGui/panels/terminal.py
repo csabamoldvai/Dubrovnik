@@ -142,6 +142,18 @@ class Terminal(LabeledFrame):
             self.serCom.deviceDetected('', failed=True)
             self.bootBuf = ''
 
+    def endMark(self):
+        """A position at the end of the text now, for textSince() later (the SD card wizard
+        reads the board's start-up message that arrives after this point)"""
+        return self.txt.index('end-1c')
+
+    def textSince(self, mark):
+        """The text that was added after endMark() gave this position ('' if the text was cleared)"""
+        try:
+            return self.txt.get(mark, 'end-1c')
+        except Exception:
+            return ''
+
     def displayText(self, text):
         self.txt.insert(END, '\n' + text)
         self.txt.insert(END, '\n' + PROMPT)

@@ -11,6 +11,12 @@ the top of this file, commit, then tag the commit:  git tag v<VERSION>
 VERSION 1.4.5                                              (in preparation)
 -----------------------------------------------------------------------------
 New:
+  * File > Program SD Card...: a guide through programming the board's SD card with MfgTool2,
+    six pages with tick boxes: choose the release's boot_image.sb (the folder name is the release
+    date; relnotes.docx is shown), copy it into the tool as boot_image.sb (the previous one is kept
+    as boot_image.sb.bak), prepare the board, start the tool, ask how it ended, restart, and
+    compare the build date the board prints at start-up with the release date. New setting:
+    Preferences > Configure Paths > SD card tool (the folder with MfgTool2.exe).
   * Help > Documents has a photo of the bare board, "Dubrovnik Rev C1 PCB" (top side). It opens
     in your picture viewer, where you can zoom in to read the part names and the boot-mode table.
 
