@@ -8,7 +8,7 @@ To release a new version: change VERSION in dubLibs\version.py, add an entry at
 the top of this file, commit, then tag the commit:  git tag v<VERSION>
 
 
-VERSION 1.5.1                                              (in preparation)
+VERSION 1.5.1                                                  2026-11-13
 -----------------------------------------------------------------------------
 Changed:
   * Datasheets: the folder for your own datasheet PDFs is Documents\Dubrovnik\Datasheets, next to
