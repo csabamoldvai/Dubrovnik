@@ -10,6 +10,7 @@ from dubLibs.boardcom import BoardTimeout, TIMEOUT_LIST
 
 SILENT_NOTE = '    Board not responding'      # added to the status bar text of a silent board
 NO_DEVICE_NOTE = '    No device detected'        # ... of a board that found no device in its socket
+MANUAL_NOTE = ' (set manually)'                # after the device the user set with setpart
 
 
 class SerComFrame(LabeledFrame):
@@ -138,8 +139,9 @@ class SerComFrame(LabeledFrame):
                 try:
                     if self.comm.isFlashPresent():
                         pn = self.du.get_part_number(self.comm)
-                        self.serParams += '    Device: ' + pn
+                        self.deviceDetected(pn, manual=self.isManual(pn))
                     else:
+                        self.setManualPart('')          # the board looked and found nothing
                         self.serParams += NO_DEVICE_NOTE
                     self.statusLabel.configure(text=self.serParams)
                 except BoardTimeout as e:
@@ -200,18 +202,35 @@ class SerComFrame(LabeledFrame):
         if self.scriptRunning:          # a script can't go on without the board
             self.scriptStop[0] = True
 
-    def deviceDetected(self, partNumber, failed=False):
+    def deviceDetected(self, partNumber, failed=False, manual=False):
         """The board (re)detected its device, e.g. after being switched off and
         on again: show it in the status bar ('' = no device yet; failed=True: the
-        board looked and found none)"""
+        board looked and found none). manual=True: the user set this part with setpart,
+        the board did not detect it; the status bar says so and it is remembered (also
+        for the next start of the program) until the board detects its own part again."""
         self.du.forget_status_forms()       # a new device may have other status register commands
+        self.setManualPart(partNumber if manual else '')
         if self.portStatus != 'connected':
             return
         base = self.serParams.split('    Device:')[0]
         base = base.replace(SILENT_NOTE, '').replace(NO_DEVICE_NOTE, '')    # it answered
-        self.serParams = base + (f'    Device: {partNumber}' if partNumber
+        self.serParams = base + (f'    Device: {partNumber}' + (MANUAL_NOTE if manual else '') if partNumber
                                  else NO_DEVICE_NOTE if failed else '')
         self.statusLabel.configure(text=self.serParams)
+
+    def setManualPart(self, part):
+        """Remembers the part the user set with setpart ('' = none, the board detected its own).
+        The board keeps a set part until it is reset or powered up, so after a reconnect or a restart
+        of the program it still reports it; this is how the program knows that it was set by hand."""
+        part = (part or '').strip().upper()
+        if part != self.settings.manualPart:
+            self.settings.manualPart = part
+            self.settings.save()
+
+    def isManual(self, part):
+        """True if part, as the board reports it, is the part that was set by hand and has not been
+        replaced by a detected one since (see setManualPart)"""
+        return bool(part) and part.strip().upper() == self.settings.manualPart
 
     def markSilent(self):
         """Connected to the port, but the board does not answer: say so in the status bar"""

@@ -195,7 +195,7 @@ class Terminal(LabeledFrame):
             # in the status bar, so that Help > Datasheet looks for this part
             part = datasheet.part_from_setpart(resp)
             if part:
-                self.serCom.deviceDetected(part)
+                self.serCom.deviceDetected(part, manual=True)
         except Exception as e:
             resp = f'error from boardcom: {e}'
             if isinstance(e, BoardTimeout):

@@ -132,8 +132,12 @@ the project's. The window checks never touch the user's real settings (`%APPDATA
 - **setpart and the status bar:** Help > Datasheet uses the `Device:` in the status bar (`serCom.serParams`), which
   the board's start-up banner sets (`Terminal.watchBootMessage`). The Terminal's `setpart` command changes the board's
   part without a banner, so `Terminal.execute` reads "Changing target part to <part>" (`datasheet.part_from_setpart`)
-  and calls `serCom.deviceDetected(PART)`. The board only accepts the exact part names it knows (`setpart at25sl128`
-  is refused, `at25sl128a` works).
+  and calls `serCom.deviceDetected(PART, manual=True)`: the status bar says `Device: PART (set manually)`. The board
+  keeps the set part until RESET or power-up (and `config` reports it), so a reconnect or a restart cannot tell it from a
+  detected part: `settings.manualPart` remembers what the user set. `serCom.isManual(part)` (used by Connect and
+  `probeBoard`) keeps the mark when the board reports that same part; a banner, a failed detection, or a different
+  part at connect clears it. There is no board command for "which chip did you detect" or to re-detect: only RESET or
+  power-up does. The board only accepts the exact part names it knows (`setpart at25sl128` is refused, `at25sl128a` works).
 - **One Documents folder:** `settings.documents_folder()` (asks Windows, OneDrive-aware) is used by the default script
   folders, Results and Assistant. Tests patch it; never let a check read the real `Documents\Dubrovnik`
   (`menu_dump.py` uses a temporary one).

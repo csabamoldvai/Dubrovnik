@@ -407,7 +407,8 @@ class App:
                     'Warning', 'No flash device detected\nInstall a device and RESET the board')
             else:                   # show the device in the status bar
                 try:
-                    self.serCom.deviceDetected(self.du.get_part_number(comm))
+                    part = self.du.get_part_number(comm)
+                    self.serCom.deviceDetected(part, manual=self.serCom.isManual(part))
                 except Exception:
                     pass            # the status bar just shows no device
         except boardcom.BoardTimeout:

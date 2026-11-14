@@ -641,7 +641,7 @@ like <em>File &rarr; Scripts &rarr; Run Command Script</em>, with the listing fi
       shown. <em>Open Documents Folder</em> takes you there.</li>
   <li><strong>Datasheet</strong> &ndash; opens the datasheet of the device shown in the status bar. If a PDF whose name contains the
       part number is in the <code>docs</code> folder or in your datasheet folder (<code>Documents\Dubrovnik\Datasheets</code>; <em>Preferences &rarr; Configure Paths &rarr; Datasheets &rarr; Open</em> shows it and makes it if it is not there yet) it is opened. The old place, <code>%APPDATA%\Dubrovnik\Datasheets</code>, is still searched;
-      otherwise the web address from <em>Preferences &rarr; Datasheet Source</em> is opened in your browser. It needs a connected board with a device. After <code>setpart</code> in the Terminal the status bar shows the part you set, so this item looks for that part.</li>
+      otherwise the web address from <em>Preferences &rarr; Datasheet Source</em> is opened in your browser. It needs a connected board with a device. After <code>setpart</code> in the Terminal the status bar shows the part you set, marked <em>(set manually)</em>, so this item looks for that part.</li>
   <li><strong>About</strong> &ndash; version and authors.</li>
 </ul>
 
@@ -734,7 +734,7 @@ for details of one command.</p>
 <tr><td><code>psget &lt;power supply domain&gt;</code></td><td>read current voltage for a specific power supply domain</td></tr>
 <tr><td><code>psset &lt;power supply domain&gt; &lt;desired volt&gt;</code></td><td>set voltage for a specific power supply domain</td></tr>
 <tr><td><code>rsm</code></td><td>return to SPI</td></tr>
-<tr><td><code>setpart &lt;part# string&gt;</code></td><td>set a new target part (the status bar shows it, and Help &rarr; Datasheet follows it)</td></tr>
+<tr><td><code>setpart &lt;part# string&gt;</code></td><td>set a new target part until the next RESET or power-up. The status bar shows it as <em>Device: &lt;part&gt; (set manually)</em> and Help &rarr; Datasheet follows it. The board keeps the part when you disconnect and connect again, and the Workbench remembers that you set it, also after a restart; when the board detects its own chip again (RESET, power-up), the mark goes.</td></tr>
 <tr><td><code>timer &lt;start/stop&gt;</code></td><td>measure time</td></tr>
 <tr><td><code>trig &lt;trig_mode&gt;</code></td><td>generate trigger on GPIO pin</td></tr>
 <tr><td><code>ver</code></td><td>Tiberias version</td></tr>

@@ -21,7 +21,12 @@ Fixed:
   * Help > Datasheet kept looking for the device the board had detected at power-up, also after
     "setpart <part>" in the Terminal (it opened the website for the old part, although a datasheet
     for the new part was in the datasheet folder). The status bar now shows the part the board says
-    it changed to ("Changing target part to ..."), also for setpart lines of a command script.
+    it changed to ("Changing target part to ..."), also for setpart lines of a command script, and
+    marks it "(set manually)". The board keeps a set part until a RESET or power-up, so after
+    Disconnect / Connect, or a restart of the program with Auto connect, it still reports that part:
+    the Workbench remembers that you set it (in the settings file) and keeps the mark; when the
+    board detects its own chip again (its start-up message after RESET or power-up, or a different
+    part at the next connect) the mark goes.
 
 
 VERSION 1.5.0                                                      2026-11-13

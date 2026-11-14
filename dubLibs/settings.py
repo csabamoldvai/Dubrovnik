@@ -31,6 +31,8 @@ DEFAULTS = dict(
     userToolsFolder='',
     # Tools > Program SD Card: the folder with MfgTool2.exe, and where the last boot_image.sb came from
     mfgToolFolder='', sdImageFolder='',
+    # the part the user set with setpart in the Terminal, kept until the board detects its own part again
+    manualPart='',
     # Terminal look (Preferences > Terminal...). terminalTheme is one of TERM_CHOICES;
     # the three colours are used by the 'custom' theme.
     terminalBg='#1B1F24', terminalFg='#D6DBE1', terminalSelect='#34506E',
@@ -96,6 +98,7 @@ class Settings:
                                          Documents\\Dubrovnik\\myTools)
     mfgToolDir                           the folder with MfgTool2.exe (Tools > Program SD Card; '' = not set)
     sdImageDir                           the folder of the last boot_image.sb chosen there
+    manualPart                           the part set with setpart ('' = none): shown as "(set manually)"
     datasheetUrl
     folder, cfgFile                     where the settings are kept"""
 
@@ -111,6 +114,7 @@ class Settings:
         self.userToolsDir = ''
         self.mfgToolDir = ''
         self.sdImageDir = ''
+        self.manualPart = ''
         self.appearance = d['appearance']
         self.dispMode = d['displayMode']
         self.showPanels = d['showPanels']
@@ -184,6 +188,7 @@ class Settings:
                     'userToolsFolder': self.userToolsDir,
                     'mfgToolFolder': self.mfgToolDir,
                     'sdImageFolder': self.sdImageDir,
+                    'manualPart': self.manualPart,
                     'programFolder': self.programDir})
         if self.winSize:
             cfg['windowWidth'], cfg['windowHeight'] = self.winSize
@@ -242,6 +247,7 @@ class Settings:
                               if os.path.isdir(v['pythonScriptFolder']) else '')
             self.userToolsDir = v['userToolsFolder']     # kept as typed: a network drive may be away
             self.mfgToolDir = v['mfgToolFolder']         # also kept as typed
+            self.manualPart = v['manualPart'].strip().upper()
             self.sdImageDir = (v['sdImageFolder']
                                if os.path.isdir(v['sdImageFolder']) else '')
             self.programDir = (v['programFolder']

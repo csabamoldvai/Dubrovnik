@@ -68,6 +68,21 @@ class SettingsTests(unittest.TestCase):
                          ('https://example.com/{part}', (900, 700), (10, 20)))
         self.assertEqual(params, {k: DEFAULTS[k] for k in PARAM_KEYS})
 
+    def test_the_part_set_by_hand_is_empty_by_default_and_survives_a_restart(self):
+        s = Settings(self.folder)
+        self.assertEqual(s.manualPart, '')
+        s.manualPart = 'AT25SL128A'
+        self.assertTrue(s.save())
+        again = Settings(self.folder)
+        again.load()
+        self.assertEqual(again.manualPart, 'AT25SL128A')
+
+    def test_the_part_set_by_hand_is_cleaned_when_loaded(self):
+        self.write({'manualPart': '  at25sl128a '})
+        s = Settings(self.folder)
+        s.load()
+        self.assertEqual(s.manualPart, 'AT25SL128A')
+
     def test_script_options_default_on_roundtrip_and_bad_values(self):
         s = Settings(self.folder)
         self.assertEqual((s.scriptListing, s.scriptComments), (True, True))
