@@ -202,6 +202,8 @@ class DubApi:
         reply = self.du.read_mode(self.comm, mode, start_addr=address,
                                   length=length, echo=0)
         if show:
+            for note in getattr(self.du, 'notes', ()):      # e.g. "(Quad Enable set: ...)"
+                self._term.scriptPrint(note)
             self._show()
         self._check()
         cmd = (getattr(self.comm, 'cmdline', '') or '').strip()

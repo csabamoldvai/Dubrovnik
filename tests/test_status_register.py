@@ -183,6 +183,65 @@ class QuadEnableTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.du.set_quad_enable(board, True)
 
+    def test_set_quad_enable_says_what_it_changed(self):
+        board = FakeBoard(STANDARD, sts2=0x40)
+        self.assertEqual(self.du.set_quad_enable(board, True), (0x40, 0x42))
+        self.assertIsNone(self.du.set_quad_enable(board, True))              # already set
+        self.assertEqual(self.du.set_quad_enable(board, False), (0x42, 0x40))
+
+
+class QuadEnableNoteTests(unittest.TestCase):
+    """read_mode leaves a one-line note in du.notes when it changes the Quad Enable bit (the Read
+    panel and the scripts show it); textToDisplay stays the board's data only"""
+
+    def setUp(self):
+        self.du = dubrovnik.Dubrovnik()
+        self.du.read = lambda *args, **kwargs: 'data'       # the read itself is not under test
+
+    def test_a_quad_read_that_sets_the_bit_leaves_a_note(self):
+        board = FakeBoard(STANDARD, sts2=0x00)
+        self.du.read_mode(board, 'Quad (114)')
+        self.assertEqual(self.du.notes,
+                         ['(Quad Enable set: status register 2 was 00, now 02)'])
+
+    def test_an_spi_read_that_clears_the_bit_leaves_a_note(self):
+        board = FakeBoard(STANDARD, sts2=0x02)
+        self.du.read_mode(board, 'SPI')
+        self.assertEqual(self.du.notes,
+                         ['(Quad Enable cleared: status register 2 was 02, now 00)'])
+
+    def test_no_note_when_the_bit_was_already_right(self):
+        self.du.read_mode(FakeBoard(STANDARD, sts2=0x02), 'Quad (114)')
+        self.assertEqual(self.du.notes, [])
+        self.du.read_mode(FakeBoard(STANDARD, sts2=0x00), 'Dual')
+        self.assertEqual(self.du.notes, [])
+
+    def test_the_note_is_for_one_read_only(self):
+        board = FakeBoard(STANDARD, sts2=0x00)
+        self.du.read_mode(board, 'Quad (114)')
+        self.assertEqual(len(self.du.notes), 1)
+        self.du.read_mode(board, 'Quad (114)')                # the bit is set now: nothing changes
+        self.assertEqual(self.du.notes, [])
+
+    def test_the_note_is_not_put_in_the_data_that_is_parsed(self):
+        board = FakeBoard(STANDARD, sts2=0x00)
+        self.du.textToDisplay = 'unchanged'
+        self.du.read_mode(board, 'Quad (114)')
+        self.assertEqual(self.du.textToDisplay, 'unchanged')   # the stubbed read left it alone
+
+    def test_a_bit_that_does_not_stick_gives_an_error_and_no_note(self):
+        board = FakeBoard(STANDARD, sts2=0x00)
+        board.answer = lambda cmd, real=board.answer: ('' if cmd.startswith('06') else real(cmd))
+        with self.assertRaises(ValueError):
+            self.du.read_mode(board, 'Quad (114)')
+        self.assertEqual(self.du.notes, [])
+
+    def test_an_unsupported_mode_clears_the_old_note(self):
+        self.du.notes = ['old']
+        with self.assertRaises(ValueError):
+            self.du.read_mode(FakeBoard(STANDARD), 'Octal')
+        self.assertEqual(self.du.notes, [])
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -142,10 +142,12 @@ class ReadFrame(LabeledFrame):
         reply = self.du.textToDisplay
         cmdline = getattr(self.comm, 'cmdline', '')
         text = reply[:-1]
+        # what the read did on the way, e.g. "(Quad Enable set: ...)": shown above the data
+        note = '\n'.join(self.du.notes) + '\n' if self.du.notes else ''
         if self.du.dispmode == 'h':          # laid out here, like a hex editor
             data = hexdump.bytes_from_reply(reply, cmdline)
             if len(data) != length:
-                return (f'(Hex View: expected {length} bytes at 0x{start:X}, found '
+                return (note + f'(Hex View: expected {length} bytes at 0x{start:X}, found '
                         f'{len(data)}; raw reply follows)\n' + text)
             text = hexdump.format_hexdump(
                 data, start, per_row=self.settings.hexRow,
@@ -159,7 +161,7 @@ class ReadFrame(LabeledFrame):
             if command and lines[0].strip().endswith(command):
                 lines = lines[1:]
             text = f'--- 0x{start:X} ---\n' + '\n'.join(lines)
-        return text
+        return note + text
 
     def stopRead(self):
         """The Stop button (the Read button while a long read runs): same as Esc"""

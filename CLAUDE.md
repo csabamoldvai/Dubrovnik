@@ -122,7 +122,9 @@ the project's. The window checks never touch the user's real settings (`%APPDATA
 - **Status register 2:** devices differ (on some, command 35 is "Read Sector Lockdown Registers"; 05 may or may not take a
   count). `Dubrovnik.status_forms()` asks the board's `help 35`, `5`, `31`, `1` once per connection (forgotten in
   `get_part_number` and `SerComFrame.deviceDetected`). The Read panel's `read_mode` sets or clears the Quad Enable bit
-  before reading: kept as is on purpose (a warning or a Preference may come later). Commands typed in the Terminal go to
+  before reading and, when it really changes the bit, leaves a line in `du.notes` that the Read panel (`readText`) and
+  `dub.read` print above the data (not in `textToDisplay`: that is parsed as board data). A pop-up warning was
+  rejected (modes are switched often); a Preference to turn the automatic change off may still come. Commands typed in the Terminal go to
   the board unchanged (only trimmed, the `#` comment cut, `clear` is local).
 - **One Documents folder:** `settings.documents_folder()` (asks Windows, OneDrive-aware) is used by the default script
   folders, Results and Assistant. Tests patch it; never let a check read the real `Documents\Dubrovnik`
@@ -163,7 +165,7 @@ the project's. The window checks never touch the user's real settings (`%APPDATA
   `Documents\Dubrovnik\` `commandScripts`, `pythonScripts`, `myTools` (the user's Tools menu entries: a script whose
   first line is `# TOOL: name`; `.txt`/`.scr` first line only, `.py` within 20 lines), `Results`, `Assistant`.
   `dubScripts\` now only has `gui_tests`, `legacy`, `scratch`.
-- Ideas not done: a warning or Preference for the Quad Enable step of Read; rename the Configure Paths row "Documents"
+- Ideas not done: a Preference to turn the automatic Quad Enable change off (the note in the Terminal is done); rename the Configure Paths row "Documents"
   (it is the program's `docs\`) to "Help documents"; put datasheets in `Documents\Dubrovnik\Datasheets` (decided not to
   for now: OneDrive sync of confidential PDFs, network Documents); keep an eye on the CustomTkinter icon that pops into
   a dialog's title bar about 200 ms after it opens.

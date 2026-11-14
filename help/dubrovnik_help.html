@@ -235,8 +235,10 @@ SPI, 550&nbsp;&micro;s in Dual and 392&nbsp;&micro;s in Quad (1-1-4) in the trai
 <div class="note"><strong>Quad Enable is handled for you.</strong> Before a read,
 the Workbench sets the Quad Enable bit (bit 1 of status register 2) for the two
 Quad modes and clears it for SPI and Dual. It only writes the register when the
-bit has to change, and checks the result. The bit is non-volatile in most flash
-devices, so it stays as the last read left it.</div>
+bit has to change, and checks the result. When it does change the bit, the Terminal
+says so above the data, for example <code>(Quad Enable set: status register 2 was 00,
+now 02)</code>. The bit is non-volatile in most flash devices, so it stays as the last
+read left it.</div>
 
 <!-- ------------------------------------------------------------------ -->
 <h2 id="terminal">7. Terminal</h2>

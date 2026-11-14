@@ -26,6 +26,9 @@ class Dubrovnik:
         # used by other modules to display text(e.g. the Workbench)
         self.textToDisplay = ""
         self.dispmode = 'b'
+        # one-line notes about what read_mode did on the way (Quad Enable changed); the Read panel
+        # and the scripts show them. Kept apart from textToDisplay, which is parsed as board data.
+        self.notes = []
 
     def get_version(self, comm, echo=1):
         """### Returns Tiberias software version"""
@@ -629,28 +632,36 @@ class Dubrovnik:
         """Sets (enable=True) or clears the Quad Enable bit in status register 2.
         The write is skipped if the bit is already in the requested state
         (QE is non-volatile on most flash devices), and the result is verified
-        by reading the register back. Raises ValueError if QE didn't change."""
+        by reading the register back. Raises ValueError if QE didn't change.
+        Returns (status register 2 before, after) if the bit was changed, else None."""
         sr2 = self.read_status2(comm)
         new = (sr2 | self.QE_MASK) if enable else (sr2 & ~self.QE_MASK)
-        if new != sr2:
-            comm.send(f'{self.wel}; {self.status2_write_command(comm, new)}; wait 0')
-            if self.read_status2(comm) != new:
-                raise ValueError(
-                    f'Quad Enable could not be {"set" if enable else "cleared"}'
-                    f' (status register 2 is {sr2:02x}, expected {new:02x})')
+        if new == sr2:
+            return None
+        comm.send(f'{self.wel}; {self.status2_write_command(comm, new)}; wait 0')
+        if self.read_status2(comm) != new:
+            raise ValueError(
+                f'Quad Enable could not be {"set" if enable else "cleared"}'
+                f' (status register 2 is {sr2:02x}, expected {new:02x})')
+        return sr2, new
 
     def read_mode(self, comm, spi_mode, start_addr=0, length=256, echo=1):
         """Reads flash using the read opcode of spi_mode (a key of READ_OPCODES).
-        Quad Enable is set for the quad modes and cleared for SPI and Dual.
+        Quad Enable is set for the quad modes and cleared for SPI and Dual. When that changes the
+        bit, a line saying so is put in self.notes (it is emptied at the start of every call).
         Raises ValueError for a mode that is not supported."""
+        self.notes = []
         if spi_mode not in self.READ_OPCODES:
             raise ValueError(f'SPI mode "{spi_mode}" is not supported yet')
         isQuad = spi_mode in self.QUAD_MODES
         opcode = self.READ_OPCODES[spi_mode]
         try:
-            self.set_quad_enable(comm, isQuad)
+            changed = self.set_quad_enable(comm, isQuad)
         except IndexError:
             raise ValueError('Unexpected reply when reading status register 2')
+        if changed:
+            self.notes.append(f'(Quad Enable {"set" if isQuad else "cleared"}: status register 2 '
+                              f'was {changed[0]:02x}, now {changed[1]:02x})')
         return self.read(comm, start_addr, length, echo,
                          opcode=opcode,
                          mode_byte=self.READ_MODE_BYTES.get(opcode))

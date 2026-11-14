@@ -20,6 +20,10 @@ New:
     build date the board prints at start-up with the release date. New settings: Preferences >
     Configure Paths > SD card software (the releases folder) and SD card tool (the folder with
     MfgTool2.exe).
+  * Read: when a read changes the Quad Enable bit (set for a Quad read, cleared for SPI and Dual)
+    the Terminal now says so above the data, for example "(Quad Enable set: status register 2 was
+    00, now 02)". Nothing is shown when the bit was already right. Scripts (dub.read) print the
+    same line. Before, the bit was changed silently.
   * Help > Documents has a photo of the bare board, "Dubrovnik Rev C1 PCB" (top side). It opens
     in your picture viewer, where you can zoom in to read the part names and the boot-mode table.
 
