@@ -1049,6 +1049,8 @@ class App:
                     hint='Where File > Image Files > Open File starts.'),
             PathRow('userToolsDir', 'My tools', s.userToolsDir, settings_lib.default_folder('myTools'),
                     hint='Scripts with a "# TOOL: name" first line in this folder are added to the Tools menu.'),
+            PathRow('mfgToolDir', 'SD card tool', s.mfgToolDir, '',
+                    hint='The folder with MfgTool2.exe (File > Program SD Card). Empty until you set it.'),
             PathRow('', 'Documents', docsFolder(), '', editable=False,
                     hint='The files of the Help > Documents menu.'),
             PathRow('', 'Program tools', toolsFolder(), '', editable=False,
@@ -1063,6 +1065,7 @@ class App:
         s = self.settings
         s.commandDir, s.pythonDir = values['commandDir'], values['pythonDir']
         s.programDir, s.userToolsDir = values['programDir'], values['userToolsDir']
+        s.mfgToolDir = values['mfgToolDir']
         s.save()
         self.showStatus('Paths saved')
 

@@ -29,6 +29,8 @@ DEFAULTS = dict(
     appearance='system', terminalTheme='dark', showPanels=True,
     displayMode='Byte', commandScriptFolder='', pythonScriptFolder='', programFolder='',
     userToolsFolder='',
+    # File > Program SD Card: the folder with MfgTool2.exe, and where the last boot_image.sb came from
+    mfgToolFolder='', sdImageFolder='',
     # Terminal look (Preferences > Terminal...). terminalTheme is one of TERM_CHOICES;
     # the three colours are used by the 'custom' theme.
     terminalBg='#1B1F24', terminalFg='#D6DBE1', terminalSelect='#34506E',
@@ -84,8 +86,10 @@ class Settings:
                                          and the folder of the last file chosen
     userToolsDir                         a second folder for the Tools menu ('' = the default,
                                          Documents\\Dubrovnik\\myTools)
+    mfgToolDir                           the folder with MfgTool2.exe (File > Program SD Card; '' = not set)
+    sdImageDir                           the folder of the last boot_image.sb chosen there
     datasheetUrl
-    folder, cfgFile                      where the settings are kept"""
+    folder, cfgFile                     where the settings are kept"""
 
     def __init__(self, folder=None):
         d = DEFAULTS
@@ -97,6 +101,8 @@ class Settings:
         self.pythonDir = ''
         self.programDir = ''
         self.userToolsDir = ''
+        self.mfgToolDir = ''
+        self.sdImageDir = ''
         self.appearance = d['appearance']
         self.dispMode = d['displayMode']
         self.showPanels = d['showPanels']
@@ -168,6 +174,8 @@ class Settings:
                     'commandScriptFolder': self.commandDir,
                     'pythonScriptFolder': self.pythonDir,
                     'userToolsFolder': self.userToolsDir,
+                    'mfgToolFolder': self.mfgToolDir,
+                    'sdImageFolder': self.sdImageDir,
                     'programFolder': self.programDir})
         if self.winSize:
             cfg['windowWidth'], cfg['windowHeight'] = self.winSize
@@ -225,6 +233,9 @@ class Settings:
             self.pythonDir = (v['pythonScriptFolder']
                               if os.path.isdir(v['pythonScriptFolder']) else '')
             self.userToolsDir = v['userToolsFolder']     # kept as typed: a network drive may be away
+            self.mfgToolDir = v['mfgToolFolder']         # also kept as typed
+            self.sdImageDir = (v['sdImageFolder']
+                               if os.path.isdir(v['sdImageFolder']) else '')
             self.programDir = (v['programFolder']
                                if os.path.isdir(v['programFolder']) else '')
             self.winSize = cfgfile.int_pair(cfg, 'windowWidth', 'windowHeight',
